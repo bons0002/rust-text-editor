@@ -1,4 +1,4 @@
-use app::run;
+use app::init;
 
 use std::env;
 
@@ -8,7 +8,7 @@ fn main() {
     let filename = String::from(&args[1]);
 
     // Run the app
-    match run(filename) {
+    match init(filename) {
         Ok(_) => (),
         _ => panic!("Unresolved issue"),
     };
