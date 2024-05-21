@@ -1,7 +1,6 @@
 use std::io::{self, stdout};
 
 use crossterm::{
-    cursor::Show,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
@@ -13,18 +12,12 @@ use ratatui::{
 
 use editor;
 
-// TEMP IMPORTS
-use std::thread;
-use std::time::Duration;
-
 // Main driver function
-pub fn run(filename: &str) -> io::Result<()> {
+pub fn run(filename: String) -> io::Result<()> {
     // Put stdout into raw mode (turn off canonical mode)
     enable_raw_mode()?;
     // Switches the terminal to an alternate screen
     stdout().execute(EnterAlternateScreen)?;
-    // Show the cursor
-    stdout().execute(Show)?;
 
     // Draw the terminal widgets
     // Temporarily not handling errors
@@ -39,18 +32,19 @@ pub fn run(filename: &str) -> io::Result<()> {
 }
 
 // Create the terminal and draw the ui
-fn draw_terminal(filename: &str) -> io::Result<()> {
+fn draw_terminal(filename: String) -> io::Result<()> {
     // Create a new terminal
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // Text that will be printed to the editor
-    let mut text = String::from("");
+    let mut editor_space = editor::Editor::new(filename);
     for i in 0..50 {
         terminal.draw(|frame| {
-            ui(frame, filename, &text);
+            ui(frame, &editor_space.filename, &editor_space.content);
+            frame.set_cursor(0, 0);
         })?;
         // Get input and add to the string
-        editor::handle_input(&mut text);
+        editor::handle_input(&mut editor_space);
     }
 
     Ok(())
