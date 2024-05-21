@@ -11,6 +11,8 @@ use ratatui::{
     widgets::*,
 };
 
+use editor;
+
 // TEMP IMPORTS
 use std::thread;
 use std::time::Duration;
@@ -41,19 +43,21 @@ fn draw_terminal(filename: &str) -> io::Result<()> {
     // Create a new terminal
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
-    loop {
+    // Text that will be printed to the editor
+    let mut text = String::from("");
+    for i in 0..50 {
         terminal.draw(|frame| {
-            ui(frame, filename);
+            ui(frame, filename, &text);
         })?;
-        thread::sleep(Duration::from_secs(5));
-        break;
+        // Get input and add to the string
+        editor::handle_input(&mut text);
     }
 
     Ok(())
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, _filename: &str) {
+fn ui(frame: &mut Frame, _filename: &str, text: &str) {
     // Create tabs (TEMP)
     let tabs_layout = Layout::new(
         Direction::Vertical,
@@ -83,7 +87,7 @@ fn ui(frame: &mut Frame, _filename: &str) {
     );
     // Main editor space
     frame.render_widget(
-        Block::new().borders(Borders::ALL),
+        Paragraph::new(text).block(Block::new().borders(Borders::ALL)),
         main_layout[1],
     );
 }
