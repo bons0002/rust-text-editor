@@ -29,6 +29,10 @@ impl Editor {
             pos: (0, 0),
         }
     }
+
+    pub fn set_starting_pos(&mut self, start: (u16, u16)) {
+        self.pos = (start.0 + 1, start.1 + 1);
+    }
 }
 
 // Get the key pressed
