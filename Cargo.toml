@@ -1,5 +1,3 @@
 [workspace]
 
-members = [
-    "editor",
-]
+members = ["editor", "app",]
