@@ -3,7 +3,6 @@ use std::{thread, time, env};
 use std::fs::{self, File};
 
 use termion;
-use termion::cursor::DetectCursorPos;
 use termion::input::TermRead;
 use termion::raw::IntoRawMode;
 
