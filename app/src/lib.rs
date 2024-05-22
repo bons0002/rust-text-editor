@@ -124,7 +124,7 @@ fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
     // Create the rest of the frame
     let main_layout = Layout::new(
         Direction::Horizontal,
-        [Constraint::Percentage(10), Constraint::Percentage(90)],
+        [Constraint::Percentage(14), Constraint::Percentage(86)],
     )
     .split(tabs_layout[1]);
 
