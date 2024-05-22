@@ -145,7 +145,7 @@ impl Editor {
                                 self.pos = (self.pos.0 - 1, self.pos.1);
                                 self.raw_pos = (self.raw_pos.0 - 1, self.raw_pos.1);
                             } else { // Otherwise
-                                self.pos = (0, self.pos.1);
+                                self.pos = (1, self.pos.1);
                                 self.raw_pos = (self.width.0 + 1, self.raw_pos.1);
                             }
                         }
@@ -269,7 +269,7 @@ impl Editor {
     // Check the beginning of line cursor condition
     fn check_cursor_begin_line(&mut self) -> bool {
         // If the x position is before the start of the line, return false
-        if self.pos.0 <= 0 {
+        if self.pos.0 <= 1 {
             return false;
         }
         true
