@@ -2,13 +2,10 @@ pub mod editor {
 
     use std::{
         fs::{self, File},
-        io::Write, 
         path::Path, 
         time::Duration,
     };
-    
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
-    
     use config;
 
     pub struct EditorSpace {
@@ -20,9 +17,9 @@ pub mod editor {
         width: (usize, usize),
         // Vertical bounds of the editor block
         height: (usize, usize),
-        // Position in the raw string
+        // Position on the screen (frontend cursor)
         pub raw_pos: (usize, usize),
-        // Position of cursor in current vector
+        // Position of cursor in the actual data vector (backend cursor)
         pub pos: (usize, usize),
         // Track if the starting cursor position has already been set
         pub start_cursor_set: bool,
@@ -220,10 +217,11 @@ pub mod editor {
         }
     }
 
+    // Module containing all the functionality of each key. Called in handle_input
     mod key_functions {
 
-        use super::*;
-        use config;
+        use std::io::Write;
+        use super::{EditorSpace, File, config};
 
         // Functionality of pressing a normal character key
         pub fn char_key(editor: &mut EditorSpace, code: char) {
