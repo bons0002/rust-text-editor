@@ -13,7 +13,7 @@ use ratatui::{
     widgets::*,
 };
 
-use editor::Editor::*;
+use editor::editor::*;
 use config;
 
 // Initialize the terminal

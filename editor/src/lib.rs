@@ -1,4 +1,4 @@
-pub mod Editor {
+pub mod editor {
 
     use std::{
         fs::{self, File},
