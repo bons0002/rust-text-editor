@@ -67,37 +67,19 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
     Ok(())
 }
 
-fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
-    // Create tabs (TEMP)
-    let tabs_layout = Layout::new(
-        Direction::Vertical,
-        [Constraint::Percentage(5), Constraint::Percentage(95)],
-    )
-    .split(frame.size());
-
-    // Create the rest of the frame
-    let main_layout = Layout::new(
-        Direction::Horizontal,
-        [Constraint::Percentage(10), Constraint::Percentage(90)],
-    )
-    .split(tabs_layout[1]);
-
-    let layouts = vec![tabs_layout, main_layout];
-
-    return layouts;
-}
-
 // Define the frame ui
 fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
     let layouts = create_layouts(frame);
     let tabs_layout = &layouts[0];
     let main_layout = &layouts[1];
+
+    let tab_name = editor_space.filename.clone();
     frame.render_widget(
-        Tabs::new(vec!["Tab1", "Tab2", "Tab3", "Tab4"])
+        Tabs::new(vec![tab_name, String::from("Tab 2"), String::from("Tab 3"), String::from("Tab 4")])
             .block(Block::bordered())
             .style(Style::default().white())
-            .highlight_style(Style::default().green())
-            .select(2)
+            .highlight_style(Style::default().white().on_blue().underline_color(Color::White).add_modifier(Modifier::BOLD))
+            .select(0)
             .divider(symbols::DOT)
             .padding(" ", " "),
     tabs_layout[0]
@@ -123,4 +105,24 @@ fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
     if editor_space.start_cursor_set == false {
         editor_space.set_starting_pos((main_layout[1].x, main_layout[1].y), main_layout[1].width, main_layout[1].height);
     }
+}
+
+fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
+    // Create tabs (TEMP)
+    let tabs_layout = Layout::new(
+        Direction::Vertical,
+        [Constraint::Percentage(5), Constraint::Percentage(95)],
+    )
+    .split(frame.size());
+
+    // Create the rest of the frame
+    let main_layout = Layout::new(
+        Direction::Horizontal,
+        [Constraint::Percentage(10), Constraint::Percentage(90)],
+    )
+    .split(tabs_layout[1]);
+
+    let layouts = vec![tabs_layout, main_layout];
+
+    return layouts;
 }
