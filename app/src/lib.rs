@@ -1,6 +1,7 @@
 use std::io::{self, stdout};
 use std::rc::Rc;
 
+use crossterm::cursor::{EnableBlinking, SetCursorStyle};
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
@@ -19,6 +20,8 @@ pub fn init(filename: String) -> io::Result<()> {
     enable_raw_mode()?;
     // Switches the terminal to an alternate screen
     stdout().execute(EnterAlternateScreen)?;
+    stdout().execute(EnableBlinking)?;
+    stdout().execute(SetCursorStyle::BlinkingBar)?;
 
     // Draw the terminal widgets
     // Temporarily not handling errors
@@ -40,13 +43,17 @@ fn run(filename: String) -> io::Result<()> {
     // Struct to track the entire editing space
     let mut editor_space = editor::Editor::new(filename);
     // Loop while editing
-    for _i in 0..250 {
+    loop {
         terminal.draw(|frame| {
             ui(frame, &mut editor_space);
             frame.set_cursor(editor_space.raw_pos.0, editor_space.raw_pos.1);
         })?;
         // Get input and add to the string
         editor_space.handle_input();
+        // Check if break loop
+        if editor_space.break_loop {
+            break;
+        }
     }
 
     Ok(())
@@ -93,12 +100,19 @@ fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
         main_layout[0],
     );
     // Main editor space
-    frame.render_widget(
-        Paragraph::new(editor_space.get_paragraph()).block(Block::new().borders(Borders::ALL)),
-        main_layout[1],
-    );
+    if !editor_space.content.is_empty() {
+        frame.render_widget(
+            Paragraph::new(editor_space.get_paragraph()).block(Block::new().borders(Borders::ALL)),
+            main_layout[1],
+        );
+    } else {
+        frame.render_widget(
+            Block::new().borders(Borders::ALL),
+            main_layout[1],
+        );
+    }
     // Set the starting position for the cursor of the editor space if it hasn't been set
     if editor_space.start_cursor_set == false {
-        editor_space.set_starting_pos((main_layout[1].x, main_layout[1].y));
+        editor_space.set_starting_pos((main_layout[1].x, main_layout[1].y), main_layout[1].width, main_layout[1].height);
     }
 }
