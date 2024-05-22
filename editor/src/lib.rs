@@ -15,13 +15,13 @@ pub struct Editor {
     // Text content of current frame
     pub content: Vec<String>,
     // Horizontal bounds of the editor block
-    width: (u16, u16),
+    width: (usize, usize),
     // Vertical bounds of the editor block
-    height: (u16, u16),
+    height: (usize, usize),
     // Position in the raw string
-    pub raw_pos: (u16, u16),
+    pub raw_pos: (usize, usize),
     // Position of cursor in current vector
-    pub pos: (u16, u16),
+    pub pos: (usize, usize),
     // Track if the starting cursor position has already been set
     pub start_cursor_set: bool,
     // TEMP bool to break the main loop
@@ -72,11 +72,11 @@ impl Editor {
     }
 
     // Set the starting position of the editing space cursor
-    pub fn set_starting_pos(&mut self, start: (u16, u16), width: u16, height: u16) {
+    pub fn set_starting_pos(&mut self, start: (usize, usize), width: usize, height: usize) {
         // Position of visible text in frame
         let text_pos = (
-            (self.content[self.content.len() - 1].len() + 1) as u16,
-            (self.content.len()) as u16,
+            (self.content[self.content.len() - 1].len() + 1),
+            (self.content.len()),
         );
         // Position of cursor in frame
         self.raw_pos = (start.0 + text_pos.0, start.1 + text_pos.1);
@@ -112,20 +112,20 @@ impl Editor {
                         // If normal character, insert that character
                         KeyCode::Char(code) => {
                             // Insert the character
-                            self.content[self.pos.1 as usize].insert(self.pos.0 as usize - 1, code);
+                            self.content[self.pos.1].insert(self.pos.0 - 1, code);
                             // Move cursor
                             self.pos = (self.pos.0 + 1, self.pos.1);
                             self.raw_pos = (self.raw_pos.0 + 1, self.raw_pos.1);
                         }
                         // If Enter was pressed, insert newline
                         KeyCode::Enter => {
-                            let loc = (self.pos.0 as usize, self.pos.1 as usize);
+                            let loc = (self.pos.0, self.pos.1);
                             let  mut after_cursor = "";
                             if loc.0 < self.content[loc.1].len() {
                                 after_cursor = &self.content[loc.1][loc.0..];
                             }
                             // Insert new row
-                            self.content.insert(self.pos.1 as usize + 1, String::from(after_cursor));
+                            self.content.insert(self.pos.1 + 1, String::from(after_cursor));
                             // Reset cursor to beginning of line
                             self.pos = (1, self.pos.1 + 1);
                             self.raw_pos = (self.width.0 + 1, self.raw_pos.1 + 1);
@@ -133,7 +133,7 @@ impl Editor {
                         // If tab was pressed, insert tab character
                         KeyCode::Tab => {
                             // Insert tab character
-                            self.content[self.pos.1 as usize].insert(self.pos.0 as usize - 1, '\t');
+                            self.content[self.pos.1].insert(self.pos.0 - 1, '\t');
                             // Move cursor
                             self.pos = (self.pos.0 + 1, self.pos.1);
                             self.raw_pos = (self.raw_pos.0 + config.tab_width, self.raw_pos.1);
@@ -152,37 +152,43 @@ impl Editor {
                         // Right arrow moves cursor right
                         KeyCode::Right => {
                             // Count the number of tab characters
-                            let tab_chars = self.content[self.pos.1 as usize].matches('\t').count() as u16 * (config.tab_width - 1);
+                            let tab_chars = self.content[self.pos.1 as usize].matches('\t').count() * (config.tab_width - 1);
 
                             // If the cursor doesn't go beyond the end of the line
                             if self.check_cursor_end_line(self.pos.1 as usize) {
                                 self.pos = (self.pos.0 + 1, self.pos.1);
                                 self.raw_pos = (self.raw_pos.0 + 1, self.raw_pos.1);
                             } else { // Otherwise
-                                self.pos = (self.content[self.pos.1 as usize].len() as u16 + 1, self.pos.1);
-                                self.raw_pos = (self.width.0 + self.content[self.pos.1 as usize].len() as u16 + 1 + tab_chars, self.raw_pos.1);
+                                self.pos = (self.content[self.pos.1].len() + 1, self.pos.1);
+                                self.raw_pos = (self.width.0 + self.content[self.pos.1].len() + 1 + tab_chars, self.raw_pos.1);
                             }
                         }
                         // Up arrow move cursor up one line
                         KeyCode::Up => {
                             // Ensure that the cursor doesn't move above the editor block
-                            // Within block
                             if self.pos.1 > 0 {
                                 // Location of line above
                                 let idx_pos = self.pos.1 - 1;
                                 let idx_raw = self.raw_pos.1 - 1;
                                 // Count the number of tab characters
-                                let tab_chars = self.content[idx_pos as usize].matches('\t').count() as u16 * (config.tab_width - 1);
+                                let tab_chars = self.content[idx_pos as usize].matches('\t').count() * (config.tab_width - 1);
 
                                 // Check that the cursor doesn't move beyond the end of the above line
                                 // Cursor before end of line
-                                if self.check_cursor_end_line(self.pos.1 as usize - 1) {
+                                if self.check_cursor_end_line(self.pos.1 - 1) {
                                     self.pos = (self.pos.0, idx_pos);
                                     self.raw_pos = (self.raw_pos.0, idx_raw);
                                 } else {    // After end of line
-                                    self.pos = (self.content[idx_pos as usize].len() as u16 + 1, idx_pos);
-                                    self.raw_pos = (self.width.0 + self.content[idx_pos as usize].len() as u16 + 1 + tab_chars, idx_raw);
+                                    self.pos = (self.content[idx_pos].len() + 1, idx_pos);
+                                    self.raw_pos = (self.width.0 + self.content[idx_pos].len() + 1 + tab_chars, idx_raw);
                                 }
+                            }
+                        }
+                        // Down arrow move cursor down one line
+                        KeyCode::Down => {
+                            // Ensure that the cursor doesn't move below the editor block
+                            if self.pos.1 < self.content.len() {
+
                             }
                         }
 
@@ -201,9 +207,9 @@ impl Editor {
                         // Uppercase characters
                         KeyCode::Char(code) => {
                             // Index of the line
-                            let idx = self.pos.1 as usize;
+                            let idx = self.pos.1;
                             // Insert at the location
-                            let loc = self.pos.0 as usize;
+                            let loc = self.pos.0;
                             // Make sure there isn't overflow
                             if loc >= self.content[idx].len() {
                                 self.content[idx].push(code.to_ascii_uppercase());

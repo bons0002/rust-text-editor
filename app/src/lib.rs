@@ -54,7 +54,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
     loop {
         terminal.draw(|frame| {
             ui(frame, &mut editor_space);
-            frame.set_cursor(editor_space.raw_pos.0, editor_space.raw_pos.1);
+            frame.set_cursor(editor_space.raw_pos.0 as u16, editor_space.raw_pos.1 as u16);
         })?;
         // Get input and add to the string
         editor_space.handle_input(&config);
@@ -103,7 +103,12 @@ fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
     }
     // Set the starting position for the cursor of the editor space if it hasn't been set
     if editor_space.start_cursor_set == false {
-        editor_space.set_starting_pos((main_layout[1].x, main_layout[1].y), main_layout[1].width, main_layout[1].height);
+        editor_space.set_starting_pos(
+            (main_layout[1].x as usize,
+                main_layout[1].y as usize),
+                main_layout[1].width as usize,
+                main_layout[1].height as usize
+            );
     }
 }
 
