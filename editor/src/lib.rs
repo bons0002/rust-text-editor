@@ -122,10 +122,14 @@ impl Editor {
                             let loc = (self.pos.0, self.pos.1);
                             let  mut after_cursor = "";
                             if loc.0 < self.content[loc.1].len() {
-                                after_cursor = &self.content[loc.1][loc.0..];
+                                after_cursor = &self.content[loc.1][loc.0 - 1..];
                             }
+                            
                             // Insert new row
                             self.content.insert(self.pos.1 + 1, String::from(after_cursor));
+                            // Remove the rest of the old row after the enter
+                            self.content[loc.1].truncate(loc.0 - 1);
+
                             // Reset cursor to beginning of line
                             self.pos = (1, self.pos.1 + 1);
                             self.raw_pos = (self.width.0 + 1, self.raw_pos.1 + 1);
