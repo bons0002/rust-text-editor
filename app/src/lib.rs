@@ -104,6 +104,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config)
     // Set the starting position for the cursor of the editor space if it hasn't been set
     if editor_space.start_cursor_set == false {
         editor_space.set_starting_pos(
+                config,
             (main_layout[1].x as usize,
                 main_layout[1].y as usize),
                 main_layout[1].width as usize,
