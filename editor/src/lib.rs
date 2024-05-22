@@ -91,8 +91,12 @@ impl Editor {
     }
 
     // Return the vector as a paragraph
-    pub fn get_paragraph(&self) -> String {
-        self.content.join("\n").replace('\t', "    ")
+    pub fn get_paragraph(&self, tab_width: usize) -> String {
+        let mut spaces = String::from("");
+        for _i in 0..tab_width {
+            spaces.push(' ');
+        }
+        self.content.join("\n").replace('\t', &spaces)
     }
 
     // Get the key pressed
@@ -119,12 +123,14 @@ impl Editor {
                         }
                         // If Enter was pressed, insert newline
                         KeyCode::Enter => {
+                            // Get the current cursor position
                             let loc = (self.pos.0, self.pos.1);
+                            // String to store everything on the current line after the cursor
                             let  mut after_cursor = "";
                             if loc.0 < self.content[loc.1].len() {
                                 after_cursor = &self.content[loc.1][loc.0 - 1..];
                             }
-                            
+
                             // Insert new row
                             self.content.insert(self.pos.1 + 1, String::from(after_cursor));
                             // Remove the rest of the old row after the enter
@@ -146,8 +152,14 @@ impl Editor {
                         KeyCode::Left => {
                             // If the cursor doesn't move before the beginning of the editor block
                             if self.check_cursor_begin_line() {
-                                self.pos = (self.pos.0 - 1, self.pos.1);
-                                self.raw_pos = (self.raw_pos.0 - 1, self.raw_pos.1);
+                                // If the next char isn't a tab, move normally
+                                if self.content[self.pos.1].chars().nth(self.pos.0 - 2) != Some('\t') {
+                                    self.pos = (self.pos.0 - 1, self.pos.1);
+                                    self.raw_pos = (self.raw_pos.0 - 1, self.raw_pos.1);
+                                } else {    // Otherwise, move by the number of tab spaces
+                                    self.pos = (self.pos.0 - 1, self.pos.1);
+                                    self.raw_pos = (self.raw_pos.0 - config.tab_width, self.raw_pos.1);
+                                }
                             } else { // Otherwise
                                 self.pos = (1, self.pos.1);
                                 self.raw_pos = (self.width.0 + 1, self.raw_pos.1);
@@ -156,14 +168,21 @@ impl Editor {
                         // Right arrow moves cursor right
                         KeyCode::Right => {
                             // Count the number of tab characters
-                            let tab_chars = self.content[self.pos.1 as usize].matches('\t').count() * (config.tab_width - 1);
+                            let tab_chars = self.content[self.pos.1].matches('\t').count() * (config.tab_width - 1);
 
                             // If the cursor doesn't go beyond the end of the line
-                            if self.check_cursor_end_line(self.pos.1 as usize) {
-                                self.pos = (self.pos.0 + 1, self.pos.1);
-                                self.raw_pos = (self.raw_pos.0 + 1, self.raw_pos.1);
+                            if self.check_cursor_end_line(self.pos.1) {
+                                // If not a tab character, move normally
+                                if self.content[self.pos.1].chars().nth(self.pos.0 - 1) != Some('\t') {
+                                    self.pos = (self.pos.0 + 1, self.pos.1);
+                                    self.raw_pos = (self.raw_pos.0 + 1, self.raw_pos.1);
+                                } else {    // Otherwise, move the number of tab spaces
+                                    self.pos = (self.pos.0 + 1, self.pos.1);
+                                    self.raw_pos = (self.raw_pos.0 + config.tab_width, self.raw_pos.1);
+                                }
                             } else { // Otherwise
                                 self.pos = (self.content[self.pos.1].len() + 1, self.pos.1);
+                                // Raw cursor must take into account the end of the line plus the number of tabs
                                 self.raw_pos = (self.width.0 + self.content[self.pos.1].len() + 1 + tab_chars, self.raw_pos.1);
                             }
                         }
@@ -175,7 +194,7 @@ impl Editor {
                                 let idx_pos = self.pos.1 - 1;
                                 let idx_raw = self.raw_pos.1 - 1;
                                 // Count the number of tab characters
-                                let tab_chars = self.content[idx_pos as usize].matches('\t').count() * (config.tab_width - 1);
+                                let tab_chars = self.content[idx_pos].matches('\t').count() * (config.tab_width - 1);
 
                                 // Check that the cursor doesn't move beyond the end of the above line
                                 // Cursor before end of line
@@ -191,9 +210,37 @@ impl Editor {
                         // Down arrow move cursor down one line
                         KeyCode::Down => {
                             // Ensure that the cursor doesn't move below the editor block
-                            if self.pos.1 < self.content.len() {
+                            if self.pos.1 < self.content.len() - 1 {
+                                // Location of line below
+                                let idx_pos = self.pos.1 + 1;
+                                let idx_raw = self.raw_pos.1 + 1;
+                                // Count the number of tab characters
+                                let tab_chars = self.content[idx_pos].matches('\t').count() * (config.tab_width - 1);
 
+                                // Check that the cursor doesn't move beyond the end of the next line
+                                if self.check_cursor_end_line(self.pos.1 + 1) {
+                                    self.pos = (self.pos.0, idx_pos);
+                                    self.raw_pos = (self.raw_pos.0, idx_raw);
+                                } else {    // After end of line
+                                    self.pos = (self.content[idx_pos].len() + 1, idx_pos);
+                                    self.raw_pos = (self.width.0 + self.content[idx_pos].len() + 1 + tab_chars, idx_raw);
+                                }
                             }
+                        }
+                        // Home button moves to beginning of line
+                        KeyCode::Home => {
+                            // Move to beginning of line
+                            self.pos = (1, self.pos.1);
+                            self.raw_pos = (self.width.0 + 1, self.raw_pos.1)
+                        }
+                        // End button move to end of line
+                        KeyCode::End => {
+                            // Count the number of tab characters
+                            let tab_chars = self.content[self.pos.1].matches('\t').count() * (config.tab_width - 1);
+
+                            // Move to end of line
+                            self.pos = (self.content[self.pos.1].len() + 1, self.pos.1);
+                            self.raw_pos = (self.width.0 + self.content[self.pos.1].len() + 1 + tab_chars, self.raw_pos.1);
                         }
 
                         _ => (),
@@ -278,6 +325,10 @@ impl Editor {
         }
         true
     }
+}
+
+fn next_non_whitespace() -> usize {
+    0   // stub
 }
 
 

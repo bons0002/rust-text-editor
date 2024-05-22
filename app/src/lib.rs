@@ -53,7 +53,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
     // Loop while editing
     loop {
         terminal.draw(|frame| {
-            ui(frame, &mut editor_space);
+            ui(frame, &mut editor_space, &config);
             frame.set_cursor(editor_space.raw_pos.0 as u16, editor_space.raw_pos.1 as u16);
         })?;
         // Get input and add to the string
@@ -68,7 +68,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
+fn ui(frame: &mut Frame, editor_space: &mut editor::Editor, config:&config::Config) {
     let layouts = create_layouts(frame);
     let tabs_layout = &layouts[0];
     let main_layout = &layouts[1];
@@ -92,7 +92,7 @@ fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
     // Main editor space
     if !editor_space.content.is_empty() {
         frame.render_widget(
-            Paragraph::new(editor_space.get_paragraph()).block(Block::new().borders(Borders::ALL)),
+            Paragraph::new(editor_space.get_paragraph(config.tab_width)).block(Block::new().borders(Borders::ALL)),
             main_layout[1],
         );
     } else {
