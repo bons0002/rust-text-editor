@@ -7,3 +7,4 @@ edition = "2021"
 ratatui = "0.26"
 crossterm = "0.27"
 editor = { path = "../editor" }
+config = { path = "../config" }

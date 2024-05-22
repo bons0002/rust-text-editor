@@ -5,6 +5,7 @@ use crossterm::cursor::{EnableBlinking, SetCursorStyle};
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
+    execute,
 };
 
 use ratatui::{
@@ -13,19 +14,25 @@ use ratatui::{
 };
 
 use editor;
+use config;
 
 // Initialize the terminal
 pub fn init(filename: String) -> io::Result<()> {
     // Put stdout into raw mode (turn off canonical mode)
     enable_raw_mode()?;
-    // Switches the terminal to an alternate screen
-    stdout().execute(EnterAlternateScreen)?;
-    stdout().execute(EnableBlinking)?;
-    stdout().execute(SetCursorStyle::BlinkingBar)?;
+    // Set configuration
+    let config = config::Config::new(SetCursorStyle::BlinkingBar, 4);
+    // Switches the terminal to an alternate screen and changes the cursor
+    execute!(
+        stdout(),
+        EnterAlternateScreen,
+        EnableBlinking,
+        config.cursor_style,
+    )?;
 
     // Draw the terminal widgets
     // Temporarily not handling errors
-    let _ = run(filename);
+    run(filename, config)?;
 
     // Turn off raw mode for stdout (enable canonical mode)
     disable_raw_mode()?;
@@ -36,12 +43,13 @@ pub fn init(filename: String) -> io::Result<()> {
 }
 
 // Main driver function
-fn run(filename: String) -> io::Result<()> {
+fn run(filename: String, config: config::Config) -> io::Result<()> {
     // Create a new terminal
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // Struct to track the entire editing space
     let mut editor_space = editor::Editor::new(filename);
+
     // Loop while editing
     loop {
         terminal.draw(|frame| {
@@ -49,7 +57,7 @@ fn run(filename: String) -> io::Result<()> {
             frame.set_cursor(editor_space.raw_pos.0, editor_space.raw_pos.1);
         })?;
         // Get input and add to the string
-        editor_space.handle_input();
+        editor_space.handle_input(&config);
         // Check if break loop
         if editor_space.break_loop {
             break;

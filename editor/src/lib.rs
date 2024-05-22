@@ -7,6 +7,8 @@ use std::{
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 
+use config;
+
 pub struct Editor {
     // Name of file opened in current editor frame
     pub filename: String,
@@ -24,8 +26,6 @@ pub struct Editor {
     pub start_cursor_set: bool,
     // TEMP bool to break the main loop
     pub break_loop: bool,
-    // Size of tab character
-    tab_size: u16,
 }
 
 impl Editor {
@@ -44,7 +44,6 @@ impl Editor {
             pos: (0, 0),
             start_cursor_set: false,
             break_loop: false,
-            tab_size: 4,
         }
     }
 
@@ -97,7 +96,7 @@ impl Editor {
     }
 
     // Get the key pressed
-    pub fn handle_input(&mut self) {
+    pub fn handle_input(&mut self, config: &config::Config) {
         // Non-blocking read
         if event::poll(Duration::from_millis(50)).unwrap() {
             // Read input
@@ -137,7 +136,7 @@ impl Editor {
                             self.content[self.pos.1 as usize].insert(self.pos.0 as usize - 1, '\t');
                             // Move cursor
                             self.pos = (self.pos.0 + 1, self.pos.1);
-                            self.raw_pos = (self.raw_pos.0 + self.tab_size, self.raw_pos.1);
+                            self.raw_pos = (self.raw_pos.0 + config.tab_width, self.raw_pos.1);
                         }
                         // Left arrow moves cursor left
                         KeyCode::Left => {
@@ -153,7 +152,7 @@ impl Editor {
                         // Right arrow moves cursor right
                         KeyCode::Right => {
                             // Count the number of tab characters
-                            let tab_chars = self.content[self.pos.1 as usize].matches('\t').count() as u16 * (self.tab_size - 1);
+                            let tab_chars = self.content[self.pos.1 as usize].matches('\t').count() as u16 * (config.tab_width - 1);
 
                             // If the cursor doesn't go beyond the end of the line
                             if self.check_cursor_end_line(self.pos.1 as usize) {
@@ -173,7 +172,7 @@ impl Editor {
                                 let idx_pos = self.pos.1 - 1;
                                 let idx_raw = self.raw_pos.1 - 1;
                                 // Count the number of tab characters
-                                let tab_chars = self.content[idx_pos as usize].matches('\t').count() as u16 * (self.tab_size - 1);
+                                let tab_chars = self.content[idx_pos as usize].matches('\t').count() as u16 * (config.tab_width - 1);
 
                                 // Check that the cursor doesn't move beyond the end of the above line
                                 // Cursor before end of line
