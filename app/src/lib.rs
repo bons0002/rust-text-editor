@@ -13,7 +13,7 @@ use ratatui::{
     widgets::*,
 };
 
-use editor;
+use editor::Editor::*;
 use config;
 
 // Initialize the terminal
@@ -48,7 +48,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // Struct to track the entire editing space
-    let mut editor_space = editor::Editor::new(filename);
+    let mut editor_space = EditorSpace::new(filename);
 
     // Loop while editing
     loop {
@@ -68,7 +68,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, editor_space: &mut editor::Editor, config:&config::Config) {
+fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config) {
     let layouts = create_layouts(frame);
     let tabs_layout = &layouts[0];
     let main_layout = &layouts[1];
