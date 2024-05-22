@@ -40,7 +40,7 @@ fn run(filename: String) -> io::Result<()> {
     // Struct to track the entire editing space
     let mut editor_space = editor::Editor::new(filename);
     // Loop while editing
-    for _i in 0..50 {
+    for _i in 0..250 {
         terminal.draw(|frame| {
             ui(frame, &mut editor_space);
             frame.set_cursor(editor_space.raw_pos.0, editor_space.raw_pos.1);
@@ -94,7 +94,7 @@ fn ui(frame: &mut Frame, editor_space: &mut editor::Editor) {
     );
     // Main editor space
     frame.render_widget(
-        Paragraph::new(editor_space.raw_content.clone()).block(Block::new().borders(Borders::ALL)),
+        Paragraph::new(editor_space.get_paragraph()).block(Block::new().borders(Borders::ALL)),
         main_layout[1],
     );
     // Set the starting position for the cursor of the editor space if it hasn't been set

@@ -1,6 +1,5 @@
 use std::{
-    fs::{self, File},
-    path::Path,
+    fs::{self, File}, io::Write, path::Path, time::Duration
 };
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
@@ -8,8 +7,6 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 pub struct Editor {
     // Name of file opened in current editor frame
     pub filename: String,
-    // The raw text of the file
-    pub raw_content: String,
     // Text content of current frame
     pub content: Vec<String>,
     // Position in the raw string
@@ -26,12 +23,9 @@ impl Editor {
         if !Path::new(&filename).exists() {
             File::create(&filename).unwrap();
         }
-        // Get the file as a vector of string (for lines) and a raw string
-        let result = Self::parse_file(&filename);
         Editor {
             // Read in the contents of the file
-            content: result.0,
-            raw_content: result.1,
+            content: Self::parse_file(&filename),
             filename,
             raw_pos: (0,0),
             pos: (0, 0),
@@ -40,12 +34,10 @@ impl Editor {
     }
 
     // Parse the specified file to a vector of strings (each element representing a line) as a string for the raw data
-    fn parse_file(filename: &String) -> (Vec<String>, String) {
+    fn parse_file(filename: &String) -> Vec<String> {
         // Read the file to a string
         let content = fs::read_to_string(&filename)
                 .expect("Couldn't read file");
-        // Copy file string
-        let raw_content = content.clone();
 
         // Split the string into lines
         let lines = content.lines();
@@ -55,7 +47,7 @@ impl Editor {
             result.push(String::from(line));
         }
         // Return the vector and raw string
-        return (result, raw_content);
+        return result;
     }
 
     // Set the starting position of the editing space cursor
@@ -68,58 +60,88 @@ impl Editor {
         self.pos = (text_pos.0, text_pos.1 - 1);
     }
 
+    pub fn get_paragraph(&self) -> String {
+        self.content.join("\n")
+    }
+
     // Get the key pressed
-pub fn handle_input(&mut self) {
-    match event::read().unwrap() {
-        // Return the character if only a key (without moodifier key) is pressed
-        Event::Key(KeyEvent {
-            code,
-            modifiers: KeyModifiers::NONE,
-            ..
-        }) => {
-            // Return the key
-            match code {
-                // If normal character, insert that character
-                KeyCode::Char(code) => {
-                    //let last_idx = self.content.len();
-                    let idx = self.pos.1 as usize;
-                    self.content[idx].push(code);
-                    self.raw_content.push(code);
+    pub fn handle_input(&mut self) {
+        // Non-blocking read
+        if event::poll(Duration::from_millis(50)).unwrap() {
+            // Read input
+            match event::read().unwrap() {
+                // Return the character if only a key (without moodifier key) is pressed
+                Event::Key(KeyEvent {
+                    code,
+                    modifiers: KeyModifiers::NONE,
+                    ..
+                }) => {
+                    // Return the key
+                    match code {
+                        // If normal character, insert that character
+                        KeyCode::Char(code) => {
+                            //let last_idx = self.content.len();
+                            let idx = self.pos.1 as usize;
+                            self.content[idx].push(code);
+                        }
+                        // If Enter was pressed, insert newline
+                        KeyCode::Enter => {
+                            let idx = self.pos.1 as usize;
+                            let loc = (self.pos.0 as usize, self.pos.1 as usize);
+                            let  mut after_cursor = "";
+                            if loc.0 < self.content[loc.1].len() {
+                                after_cursor = &self.content[loc.1][loc.0..];
+                            }
+                            // Insert new row
+                            self.content.insert(idx+1, String::from(after_cursor));
+                            self.pos.1 += 1;
+                        }
+                        _ => (),
+                    }
+                },
+
+                // Uppercase letters (Using shift)
+                Event::Key(KeyEvent {
+                    code,
+                    modifiers: KeyModifiers::SHIFT,
+                    ..
+                }) => {
+                    match code {
+                        KeyCode::Char(code) => {
+                            let idx = self.pos.1 as usize;
+                            self.content[idx].push(code.to_ascii_uppercase());
+                        }
+                        _ => ()
+                    }
                 }
-                // If Enter was pressed, insert newline
-                KeyCode::Enter => {
-                    let idx = self.pos.1 as usize;
-                    // Add newline to the row
-                    self.content[idx].push('\n');
-                    // Insert new row
-                    self.content.push(String::from(""));
-                    // Add newline to the string
-                    self.raw_content.push('\n');
+
+                // Control modified keys
+                Event::Key(KeyEvent {
+                    code,
+                    modifiers: KeyModifiers::CONTROL,
+                    ..
+                }) => {
+                    match code {
+                        // Save the frame to the file
+                        KeyCode::Char('s') => {
+                            let mut file = match File::options()
+                                .read(false)
+                                .write(true)
+                                .open(&self.filename) {
+                                    Ok(file) => file,
+                                    Err(_) => File::create(&self.filename).unwrap(),
+                                };
+                            file.write(&self.get_paragraph().as_bytes())
+                                .expect("Unable to write to file");
+                        }
+                        _ => (),
+                    }
                 }
+
                 _ => (),
             }
-        },
-
-        // Uppercase letters (Using shift)
-        Event::Key(KeyEvent {
-            code,
-            modifiers: KeyModifiers::SHIFT,
-            ..
-        }) => {
-            match code {
-                KeyCode::Char(code) => {
-                    let idx = self.pos.1 as usize;
-                    self.content[idx].push(code.to_ascii_uppercase());
-                    self.raw_content.push(code.to_ascii_uppercase());
-                }
-                _ => ()
-            }
         }
-
-        _ => (),
     }
-}
-
 }
 
 #[cfg(test)]
