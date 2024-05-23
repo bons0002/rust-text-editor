@@ -21,7 +21,7 @@ pub fn init(filename: String) -> io::Result<()> {
     // Put stdout into raw mode (turn off canonical mode)
     enable_raw_mode()?;
     // Set configuration
-    let config = config::Config::new(SetCursorStyle::BlinkingBar, 4);
+    let config = config::Config::new(SetCursorStyle::DefaultUserShape, 4);
     // Switches the terminal to an alternate screen and changes the cursor
     execute!(
         stdout(),
@@ -40,7 +40,6 @@ pub fn init(filename: String) -> io::Result<()> {
     execute!(
         stdout(),
         LeaveAlternateScreen,
-        SetCursorStyle::DefaultUserShape,
     )?;
 
     Ok(())
