@@ -44,7 +44,7 @@ pub fn tab_key(editor: &mut EditorSpace, config: &config::Config) {
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace, config: &config::Config) {
     // If the cursor doesn't move before the beginning of the editor block
-    if editor.check_cursor_begin_line() {
+    if check_cursor_begin_line(editor) {
         // If the next char isn't a tab, move normally
         if editor.content[editor.pos.1].chars().nth(editor.pos.0 - 2) != Some('\t') {
             editor.pos = (editor.pos.0 - 1, editor.pos.1);
@@ -65,7 +65,7 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &config::Config) {
     let tab_chars = editor.content[editor.pos.1].matches('\t').count() * (config.tab_width - 1);
 
     // If the cursor doesn't go beyond the end of the line
-    if editor.check_cursor_end_line(editor.pos.1) {
+    if check_cursor_end_line(editor, editor.pos.1) {
         // If not a tab character, move normally
         if editor.content[editor.pos.1].chars().nth(editor.pos.0 - 1) != Some('\t') {
             editor.pos = (editor.pos.0 + 1, editor.pos.1);
@@ -93,7 +93,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &config::Config) {
 
         // Check that the cursor doesn't move beyond the end of the above line
         // Cursor before end of line
-        if editor.check_cursor_end_line(idx_pos) {
+        if check_cursor_end_line(editor, idx_pos) {
             editor.pos = (editor.pos.0, idx_pos);
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
         } else {    // After end of line
@@ -114,7 +114,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &config::Config) {
         let tab_chars = editor.content[idx_pos].matches('\t').count() * (config.tab_width - 1);
 
         // Check that the cursor doesn't move beyond the end of the next line
-        if editor.check_cursor_end_line(idx_pos) {
+        if check_cursor_end_line(editor, idx_pos) {
             editor.pos = (editor.pos.0, idx_pos);
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
         } else {    // After end of line
@@ -153,4 +153,22 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
     for line in &editor.content {
         write!(file, "{}\n", line).unwrap();
     }
+}
+
+// Check the end of line cursor condition
+fn check_cursor_end_line(editor: &mut EditorSpace, idx: usize) -> bool {
+    // If the x position is beyond the end of the line, return false
+    if editor.pos.0 > editor.content[idx].chars().count() {
+        return false;
+    }
+    true
+}
+
+// Check the beginning of line cursor condition
+fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
+    // If the x position is before the start of the line, return false
+    if editor.pos.0 <= 1 {
+        return false;
+    }
+    true
 }

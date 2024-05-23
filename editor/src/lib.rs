@@ -200,24 +200,6 @@ pub mod editor {
                 }
             }
         }
-
-        // Check the end of line cursor condition
-        fn check_cursor_end_line(&mut self, idx: usize) -> bool {
-            // If the x position is beyond the end of the line, return false
-            if self.pos.0 as usize > self.content[idx].chars().count() {
-                return false;
-            }
-            true
-        }
-
-        // Check the beginning of line cursor condition
-        fn check_cursor_begin_line(&mut self) -> bool {
-            // If the x position is before the start of the line, return false
-            if self.pos.0 <= 1 {
-                return false;
-            }
-            true
-        }
     }
 }
 
