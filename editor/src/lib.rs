@@ -153,7 +153,11 @@ pub mod editor {
                             }
                             // If tab was pressed, insert tab character
                             KeyCode::Tab => {
-                                key_functions::tab_key(self, config)
+                                key_functions::tab_key(self, config);
+                            }
+                            // If backspace was pressed, remove the previous character
+                            KeyCode::Backspace => {
+                                key_functions::backspace(self, config);
                             }
                             // Left arrow moves cursor left
                             KeyCode::Left => {
