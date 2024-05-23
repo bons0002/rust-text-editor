@@ -5,7 +5,7 @@ pub mod editor {
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
     use ratatui::{
-        style::{Color, Style},
+        style::Style,
         text::{Line, Text},
         widgets::Paragraph
     };
