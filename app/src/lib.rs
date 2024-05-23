@@ -1,7 +1,7 @@
 use std::io::{self, stdout};
 use std::rc::Rc;
 
-use crossterm::cursor::{EnableBlinking, SetCursorStyle};
+use crossterm::cursor::EnableBlinking;
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     execute,
@@ -84,8 +84,8 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
         Tabs::new(vec![tab_name, String::from("Tab 2"), String::from("Tab 3"), String::from("Tab 4")])
             .block(
                 Block::new()
-                    .fg(config.theme.editor_fg)
-                    .bg(config.theme.editor_bg)
+                    .fg(config.theme.app_fg)
+                    .bg(config.theme.app_bg)
                     .borders(Borders::ALL),
             )
             .style(Style::default().white())
@@ -103,8 +103,8 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
     frame.render_widget(
         Block::new()
             .title("Explorer")
-            .fg(config.theme.editor_fg)
-            .bg(config.theme.editor_bg)
+            .fg(config.theme.app_fg)
+            .bg(config.theme.app_bg)
             .borders(Borders::ALL),
         main_layout[0],
     );
@@ -113,8 +113,8 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
         frame.render_widget(
             editor_space.get_paragraph(config)
                 .block(Block::new()
-                    .fg(config.theme.editor_fg)
-                    .bg(config.theme.editor_bg)
+                    .fg(config.theme.app_fg)
+                    .bg(config.theme.app_bg)
                     .borders(Borders::ALL)
                 ),
             main_layout[1],
@@ -122,8 +122,8 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
     } else {    // If the file is empty, make an empty block
         frame.render_widget(
             Block::new()
-            .fg(config.theme.editor_fg)
-            .bg(config.theme.editor_bg)
+            .fg(config.theme.app_fg)
+            .bg(config.theme.app_bg)
             .borders(Borders::ALL),
             main_layout[1],
         );
