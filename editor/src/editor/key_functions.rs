@@ -16,19 +16,18 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 pub fn enter_key(editor: &mut EditorSpace) {
     // Get the current cursor position
     let loc = (editor.pos.0, editor.pos.1);
-    // String to store everything on the current line after the cursor
-    let  mut after_cursor = "";
-    if loc.0 < editor.content[loc.1].len() {
-        after_cursor = &editor.content[loc.1][loc.0 - 1..];
-    }
+    let line = &editor.content[loc.1];
+    
+    // Get the rest of the line after the cursor
+    let after_cursor = get_after_cursor(line, loc.0);
 
     // Insert new row
-    editor.content.insert(editor.pos.1 + 1, String::from(after_cursor));
+    editor.content.insert(loc.1 + 1, String::from(after_cursor));
     // Remove the rest of the old row after the enter
     editor.content[loc.1].truncate(loc.0 - 1);
 
     // Reset cursor to beginning of line
-    editor.pos = (1, editor.pos.1 + 1);
+    editor.pos = (1, loc.1 + 1);
     editor.raw_pos = (editor.width.0 + 1, editor.raw_pos.1 + 1);
 }
 
@@ -39,6 +38,15 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
     // Move cursor
     editor.pos = (editor.pos.0 + 1, editor.pos.1);
     editor.raw_pos = (editor.raw_pos.0 + config.tab_width, editor.raw_pos.1);
+}
+
+pub fn backspace(editor: &mut EditorSpace, config: &Config) {
+    left_arrow(editor, config);
+    // If the line is empty, remove it
+    if editor.pos.0 == 0 {
+        
+    }
+    editor.content[editor.pos.1].remove(editor.pos.0 - 1);
 }
 
 // Left arrow key functionality
@@ -171,4 +179,10 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
         return false;
     }
     true
+}
+
+// Get the rest of the text on the line after the cursor
+fn get_after_cursor(line: &String, loc: usize) -> &str {
+    // Get the rest of the line and store 
+    &line[loc - 1..]
 }
