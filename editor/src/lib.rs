@@ -1,12 +1,13 @@
 pub mod editor {
 
     use std::{
-        fs::{self, File},
-        path::Path, 
-        time::Duration,
+        fs::{self, File}, iter, path::Path, time::Duration
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
     use config;
+    use ratatui::{
+        style::{Color, Style, Stylize}, text::{Line, Text}, widgets::Paragraph
+    };
 
     // Module containing all the functionality of each key. Called in handle_input
     mod key_functions;
@@ -97,12 +98,31 @@ pub mod editor {
         }
 
         // Return the vector as a paragraph
-        pub fn get_paragraph(&self, tab_width: usize) -> String {
-            let mut spaces = String::from("");
-            for _i in 0..tab_width {
-                spaces.push(' ');
+        pub fn get_paragraph(&self, tab_width: usize) -> Paragraph {
+            // Vector to store the lines
+            let mut lines: Vec<Line> = Vec::new();
+            let content = &self.content;
+            // Create a vector of Lines
+            for part in content {
+                lines.push(Line::from(
+                    // Replace tab chars with spaces
+                    part.replace(
+                    '\t',
+                    // Iterator to create a string of tab_width number of spaces
+                    &iter::repeat(" ").take(tab_width).collect::<String>()
+                    )
+                ));
             }
-            self.content.join("\n").replace('\t', &spaces)
+
+            // Temp line highlighting
+            lines[self.pos.1] = lines[self.pos.1].clone().style(Style::default()
+                .fg(Color::Black)
+                .bg(Color::DarkGray)
+            );
+
+            // Return a paragraph from the lines
+            Paragraph::new(Text::from(lines))
+
         }
 
         // Get the key pressed
@@ -156,9 +176,7 @@ pub mod editor {
                             KeyCode::End => {
                                 key_functions::end_key(self, config);
                             }
-
                             _ => (),
-                        
                         }
                     },
 
