@@ -1,7 +1,7 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 
 use std::io::Write;
-use super::{EditorSpace, File, config};
+use super::{EditorSpace, File, Config};
 
 // Functionality of pressing a normal character key
 pub fn char_key(editor: &mut EditorSpace, code: char) {
@@ -33,7 +33,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 }
 
 // Functionality for the tab key
-pub fn tab_key(editor: &mut EditorSpace, config: &config::Config) {
+pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
     // Insert tab character
     editor.content[editor.pos.1].insert(editor.pos.0 - 1, '\t');
     // Move cursor
@@ -42,7 +42,7 @@ pub fn tab_key(editor: &mut EditorSpace, config: &config::Config) {
 }
 
 // Left arrow key functionality
-pub fn left_arrow(editor: &mut EditorSpace, config: &config::Config) {
+pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
     // If the cursor doesn't move before the beginning of the editor block
     if check_cursor_begin_line(editor) {
         // If the next char isn't a tab, move normally
@@ -60,7 +60,7 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &config::Config) {
 }
 
 // Right arrow key functionality
-pub fn right_arrow(editor: &mut EditorSpace, config: &config::Config) {
+pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
     // Count the number of tab characters
     let tab_chars = editor.content[editor.pos.1].matches('\t').count() * (config.tab_width - 1);
 
@@ -82,7 +82,7 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &config::Config) {
 }
 
 // Up arrow key functionality
-pub fn up_arrow(editor: &mut EditorSpace, config: &config::Config) {
+pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
     // Ensure that the cursor doesn't move above the editor block
     if editor.pos.1 > 0 {
         // Location of line above
@@ -104,7 +104,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &config::Config) {
 }
 
 // Down arrow key functionality
-pub fn down_arrow(editor: &mut EditorSpace, config: &config::Config) {
+pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
     // Ensure that the cursor doesn't move below the editor block
     if editor.pos.1 < editor.content.len() - 1 {
         // Location of line below
@@ -132,7 +132,7 @@ pub fn home_key(editor: &mut EditorSpace) {
 }
 
 // End key functionality
-pub fn end_key(editor: &mut EditorSpace, config: &config::Config) {
+pub fn end_key(editor: &mut EditorSpace, config: &Config) {
     // Count the number of tab characters
     let tab_chars = editor.content[editor.pos.1].matches('\t').count() * (config.tab_width - 1);
 

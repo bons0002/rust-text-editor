@@ -4,7 +4,6 @@ use std::rc::Rc;
 use crossterm::cursor::{EnableBlinking, SetCursorStyle};
 use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
     execute,
 };
 
@@ -14,14 +13,14 @@ use ratatui::{
 };
 
 use editor::editor::*;
-use config;
+use config::config::Config;
 
 // Initialize the terminal
 pub fn init(filename: String) -> io::Result<()> {
     // Put stdout into raw mode (turn off canonical mode)
     enable_raw_mode()?;
     // Set configuration
-    let config = config::Config::new(SetCursorStyle::DefaultUserShape, 4);
+    let config = Config::default();
     // Switches the terminal to an alternate screen and changes the cursor
     execute!(
         stdout(),
@@ -46,7 +45,7 @@ pub fn init(filename: String) -> io::Result<()> {
 }
 
 // Main driver function
-fn run(filename: String, config: config::Config) -> io::Result<()> {
+fn run(filename: String, config: Config) -> io::Result<()> {
     // Create a new terminal
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
@@ -71,7 +70,7 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config) {
+fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
     // Construct the layout of the frame
     let layouts = create_layouts(frame);
     // The layout for the tabs bar
@@ -80,11 +79,21 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config)
     let main_layout = &layouts[1];
 
     let tab_name = editor_space.filename.clone();
+    // Render tabs
     frame.render_widget(
         Tabs::new(vec![tab_name, String::from("Tab 2"), String::from("Tab 3"), String::from("Tab 4")])
-            .block(Block::bordered())
+            .block(
+                Block::new()
+                    .fg(config.theme.editor_fg)
+                    .bg(config.theme.editor_bg)
+                    .borders(Borders::ALL),
+            )
             .style(Style::default().white())
-            .highlight_style(Style::default().white().on_blue().underline_color(Color::White).add_modifier(Modifier::BOLD))
+            .highlight_style(Style::default()
+                .fg(config.theme.tab_fg)
+                .bg(config.theme.tab_bg)
+                .underline_color(config.theme.tab_fg)
+                .add_modifier(Modifier::BOLD))
             .select(0)
             .divider(symbols::DOT)
             .padding(" ", " "),
@@ -92,19 +101,30 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config)
     );
     // File explorer
     frame.render_widget(
-        Block::new().title("Explorer").borders(Borders::ALL),
+        Block::new()
+            .title("Explorer")
+            .fg(config.theme.editor_fg)
+            .bg(config.theme.editor_bg)
+            .borders(Borders::ALL),
         main_layout[0],
     );
     // Main editor space
     if !editor_space.content.is_empty() {
         frame.render_widget(
-            editor_space.get_paragraph(config.tab_width)
-                .block(Block::new().borders(Borders::ALL)),
+            editor_space.get_paragraph(config)
+                .block(Block::new()
+                    .fg(config.theme.editor_fg)
+                    .bg(config.theme.editor_bg)
+                    .borders(Borders::ALL)
+                ),
             main_layout[1],
         );
     } else {    // If the file is empty, make an empty block
         frame.render_widget(
-            Block::new().borders(Borders::ALL),
+            Block::new()
+            .fg(config.theme.editor_fg)
+            .bg(config.theme.editor_bg)
+            .borders(Borders::ALL),
             main_layout[1],
         );
     }

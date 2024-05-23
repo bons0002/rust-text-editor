@@ -4,10 +4,13 @@ pub mod editor {
         fs::{self, File}, iter, path::Path, time::Duration
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
-    use config;
     use ratatui::{
-        style::{Color, Style, Stylize}, text::{Line, Text}, widgets::Paragraph
+        style::{Color, Style},
+        text::{Line, Text},
+        widgets::Paragraph
     };
+
+    use config::config::Config;
 
     // Module containing all the functionality of each key. Called in handle_input
     mod key_functions;
@@ -75,7 +78,7 @@ pub mod editor {
         }
 
         // Set the starting position of the editing space cursor
-        pub fn set_starting_pos(&mut self, config: &config::Config, start: (usize, usize), width: usize, height: usize) {
+        pub fn set_starting_pos(&mut self, config: &Config, start: (usize, usize), width: usize, height: usize) {
             // Position of visible text in frame
             let text_pos = (
                 (self.content[self.content.len() - 1].len() + 1),
@@ -98,7 +101,7 @@ pub mod editor {
         }
 
         // Return the vector as a paragraph
-        pub fn get_paragraph(&self, tab_width: usize) -> Paragraph {
+        pub fn get_paragraph(&self, config: &Config) -> Paragraph {
             // Vector to store the lines
             let mut lines: Vec<Line> = Vec::new();
             let content = &self.content;
@@ -109,15 +112,15 @@ pub mod editor {
                     part.replace(
                     '\t',
                     // Iterator to create a string of tab_width number of spaces
-                    &iter::repeat(" ").take(tab_width).collect::<String>()
+                    &iter::repeat(" ").take(config.tab_width).collect::<String>()
                     )
                 ));
             }
 
             // Temp line highlighting
             lines[self.pos.1] = lines[self.pos.1].clone().style(Style::default()
-                .fg(Color::Black)
-                .bg(Color::DarkGray)
+                .fg(config.theme.editor_highlight_fg_color)
+                .bg(config.theme.editor_highlight_bg_color)
             );
 
             // Return a paragraph from the lines
@@ -126,7 +129,7 @@ pub mod editor {
         }
 
         // Get the key pressed
-        pub fn handle_input(&mut self, config: &config::Config) {
+        pub fn handle_input(&mut self, config: &Config) {
             // Non-blocking read
             if event::poll(Duration::from_millis(50)).unwrap() {
                 // Read input
