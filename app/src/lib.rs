@@ -37,7 +37,11 @@ pub fn init(filename: String) -> io::Result<()> {
     // Turn off raw mode for stdout (enable canonical mode)
     disable_raw_mode()?;
     // Exit the alternate screen
-    stdout().execute(LeaveAlternateScreen)?;
+    execute!(
+        stdout(),
+        LeaveAlternateScreen,
+        SetCursorStyle::DefaultUserShape,
+    )?;
 
     Ok(())
 }
@@ -69,8 +73,11 @@ fn run(filename: String, config: config::Config) -> io::Result<()> {
 
 // Define the frame ui
 fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config) {
+    // Construct the layout of the frame
     let layouts = create_layouts(frame);
+    // The layout for the tabs bar
     let tabs_layout = &layouts[0];
+    // The layout for the editor space and the explorer
     let main_layout = &layouts[1];
 
     let tab_name = editor_space.filename.clone();
@@ -92,10 +99,11 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config)
     // Main editor space
     if !editor_space.content.is_empty() {
         frame.render_widget(
-            Paragraph::new(editor_space.get_paragraph(config.tab_width)).block(Block::new().borders(Borders::ALL)),
+            editor_space.get_paragraph(config.tab_width)
+                .block(Block::new().borders(Borders::ALL)),
             main_layout[1],
         );
-    } else {
+    } else {    // If the file is empty, make an empty block
         frame.render_widget(
             Block::new().borders(Borders::ALL),
             main_layout[1],
@@ -113,6 +121,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&config::Config)
     }
 }
 
+// Create the ui layouts for the frame
 fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
     // Create tabs (TEMP)
     let tabs_layout = Layout::new(
@@ -130,5 +139,5 @@ fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
 
     let layouts = vec![tabs_layout, main_layout];
 
-    return layouts;
+    layouts
 }
