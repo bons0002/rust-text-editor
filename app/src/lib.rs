@@ -40,6 +40,7 @@ pub fn init(filename: String) -> io::Result<()> {
                 stdout(),
                 LeaveAlternateScreen,
             )?;
+            panic!("An error has occurred");
         }
     };
 
