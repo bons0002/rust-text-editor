@@ -31,15 +31,6 @@ pub fn enter_key(editor: &mut EditorSpace) {
     editor.raw_pos = (editor.width.0 + 1, editor.raw_pos.1 + 1);
 }
 
-// Functionality for the tab key
-pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
-    // Insert tab character
-    editor.content[editor.pos.1].insert(editor.pos.0 - 1, '\t');
-    // Move cursor
-    editor.pos = (editor.pos.0 + 1, editor.pos.1);
-    editor.raw_pos = (editor.raw_pos.0 + config.tab_width, editor.raw_pos.1);
-}
-
 pub fn backspace(editor: &mut EditorSpace, config: &Config) {
     let line = editor.content[editor.pos.1].clone();
         // Remove empty line
@@ -61,6 +52,21 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
             // Remove one character
             editor.content[editor.pos.1].remove(editor.pos.0 - 1);
         }
+}
+
+// Get the rest of the text on the line after the cursor
+fn get_after_cursor(line: &String, loc: usize) -> &str {
+    // Get the rest of the line and store 
+    &line[loc - 1..]
+}
+
+// Functionality for the tab key
+pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
+    // Insert tab character
+    editor.content[editor.pos.1].insert(editor.pos.0 - 1, '\t');
+    // Move cursor
+    editor.pos = (editor.pos.0 + 1, editor.pos.1);
+    editor.raw_pos = (editor.raw_pos.0 + config.tab_width, editor.raw_pos.1);
 }
 
 // Left arrow key functionality
@@ -122,19 +128,17 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
             editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
             editor.raw_pos = (editor.width.0 + editor.content[idx_pos].len() + 1 + tab_chars, idx_raw);
         }
-    } else {    // If the cursor moves beyond the bound, scroll up
-        if editor.scroll_offset.0 > 0 {
-            // Scroll up
-            editor.scroll_offset = (editor.scroll_offset.0 - 1, editor.scroll_offset.1);
-            // Location of line below
-            let idx_pos = editor.pos.1 - 1;
-            // Check that the cursor doesn't move beyond the end of the above line
-            // Cursor before end of line
-            if check_cursor_end_line(editor, editor.pos.1 - 1) {
-                editor.pos = (editor.pos.0, idx_pos);
-            } else {
-                editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
-            }
+    } else if editor.scroll_offset.0 > 0 {    // If the cursor moves beyond the bound, scroll up
+        // Scroll up
+        editor.scroll_offset = (editor.scroll_offset.0 - 1, editor.scroll_offset.1);
+        // Location of line below
+        let idx_pos = editor.pos.1 - 1;
+        // Check that the cursor doesn't move beyond the end of the above line
+        // Cursor before end of line
+        if check_cursor_end_line(editor, editor.pos.1 - 1) {
+            editor.pos = (editor.pos.0, idx_pos);
+        } else {
+            editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
         }
     }
 }
@@ -158,21 +162,37 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
             editor.raw_pos = (editor.width.0 + editor.content[idx_pos].len() + 1 + tab_chars, idx_raw);
         }
     }
-    else {  // If the cursor goes below the bound, scroll down
-        if editor.scroll_offset.0 < editor.content.len() as u16 {
-            // Scroll down
-            editor.scroll_offset = (editor.scroll_offset.0 + 1, editor.scroll_offset.1);
-            // Location of line below
-            let idx_pos = editor.pos.1 + 1;
-            // Check that the cursor doesn't move beyond the end of the above line
-            // Cursor before end of line
-            if check_cursor_end_line(editor, editor.pos.1 + 1) {
-                editor.pos = (editor.pos.0, idx_pos);
-            } else {
-                editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
-            }
+    else if editor.scroll_offset.0 < editor.content.len() as u16 {  // If the cursor goes below the bound, scroll down
+        // Scroll down
+        editor.scroll_offset = (editor.scroll_offset.0 + 1, editor.scroll_offset.1);
+        // Location of line below
+        let idx_pos = editor.pos.1 + 1;
+        // Check that the cursor doesn't move beyond the end of the above line
+        // Cursor before end of line
+        if check_cursor_end_line(editor, editor.pos.1 + 1) {
+            editor.pos = (editor.pos.0, idx_pos);
+        } else {
+            editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
         }
     }
+}
+
+// Check the end of line cursor condition
+fn check_cursor_end_line(editor: &mut EditorSpace, idx: usize) -> bool {
+    // If the x position is beyond the end of the line, return false
+    if editor.pos.0 > editor.content[idx].chars().count() {
+        return false;
+    }
+    true
+}
+
+// Check the beginning of line cursor condition
+fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
+    // If the x position is before the start of the line, return false
+    if editor.pos.0 <= 1 {
+        return false;
+    }
+    true
 }
 
 // Home key functionality
@@ -203,28 +223,4 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
     for line in &editor.content {
         write!(file, "{}\n", line).unwrap();
     }
-}
-
-// Check the end of line cursor condition
-fn check_cursor_end_line(editor: &mut EditorSpace, idx: usize) -> bool {
-    // If the x position is beyond the end of the line, return false
-    if editor.pos.0 > editor.content[idx].chars().count() {
-        return false;
-    }
-    true
-}
-
-// Check the beginning of line cursor condition
-fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
-    // If the x position is before the start of the line, return false
-    if editor.pos.0 <= 1 {
-        return false;
-    }
-    true
-}
-
-// Get the rest of the text on the line after the cursor
-fn get_after_cursor(line: &String, loc: usize) -> &str {
-    // Get the rest of the line and store 
-    &line[loc - 1..]
 }
