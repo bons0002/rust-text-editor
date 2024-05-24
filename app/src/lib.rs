@@ -109,6 +109,15 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
             .borders(Borders::ALL),
         main_layout[0],
     );
+    // Set the starting position for the cursor of the editor space if it hasn't been set
+    if editor_space.start_cursor_set == false {
+        editor_space.set_starting_pos(
+            (main_layout[1].x as usize,
+                main_layout[1].y as usize),
+                main_layout[1].width as usize,
+                main_layout[1].height as usize
+            );
+    }
     // Main editor space
     if !editor_space.content.is_empty() {
         frame.render_widget(
@@ -128,15 +137,6 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
             .borders(Borders::ALL),
             main_layout[1],
         );
-    }
-    // Set the starting position for the cursor of the editor space if it hasn't been set
-    if editor_space.start_cursor_set == false {
-        editor_space.set_starting_pos(
-            (main_layout[1].x as usize,
-                main_layout[1].y as usize),
-                main_layout[1].width as usize,
-                main_layout[1].height as usize
-            );
     }
 }
 
