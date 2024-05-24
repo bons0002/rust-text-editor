@@ -106,7 +106,7 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 // Up arrow key functionality
 pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
     // Ensure that the cursor doesn't move above the editor block
-    if editor.pos.1 > 0 {
+    if editor.raw_pos.1 > editor.height.0 + 1 {
         // Location of line above
         let idx_pos = editor.pos.1 - 1;
         let idx_raw = editor.raw_pos.1 - 1;
@@ -122,13 +122,27 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
             editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
             editor.raw_pos = (editor.width.0 + editor.content[idx_pos].len() + 1 + tab_chars, idx_raw);
         }
+    } else {    // If the cursor moves beyond the bound, scroll up
+        if editor.scroll_offset.0 > 0 {
+            // Scroll up
+            editor.scroll_offset = (editor.scroll_offset.0 - 1, editor.scroll_offset.1);
+            // Location of line below
+            let idx_pos = editor.pos.1 - 1;
+            // Check that the cursor doesn't move beyond the end of the above line
+            // Cursor before end of line
+            if check_cursor_end_line(editor, editor.pos.1 - 1) {
+                editor.pos = (editor.pos.0, idx_pos);
+            } else {
+                editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
+            }
+        }
     }
 }
 
 // Down arrow key functionality
 pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
     // Ensure that the cursor doesn't move below the editor block
-    if editor.pos.1 < editor.content.len() - 1 {
+    if editor.pos.1 < ((editor.height.1 - editor.height.0) - 3) {
         // Location of line below
         let idx_pos = editor.pos.1 + 1;
         let idx_raw = editor.raw_pos.1 + 1;
@@ -142,6 +156,21 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
         } else {    // After end of line
             editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
             editor.raw_pos = (editor.width.0 + editor.content[idx_pos].len() + 1 + tab_chars, idx_raw);
+        }
+    }
+    else {  // If the cursor goes below the bound, scroll down
+        if editor.scroll_offset.0 < editor.content.len() as u16 {
+            // Scroll down
+            editor.scroll_offset = (editor.scroll_offset.0 + 1, editor.scroll_offset.1);
+            // Location of line below
+            let idx_pos = editor.pos.1 + 1;
+            // Check that the cursor doesn't move beyond the end of the above line
+            // Cursor before end of line
+            if check_cursor_end_line(editor, editor.pos.1 + 1) {
+                editor.pos = (editor.pos.0, idx_pos);
+            } else {
+                editor.pos = (editor.content[idx_pos].len() + 1, idx_pos);
+            }
         }
     }
 }

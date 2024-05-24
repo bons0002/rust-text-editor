@@ -30,6 +30,8 @@ pub mod editor {
         pub pos: (usize, usize),
         // Track if the starting cursor position has already been set
         pub start_cursor_set: bool,
+        // Sets the amount to scroll the text
+        pub scroll_offset: (u16, u16),
         // TEMP bool to break the main loop
         pub break_loop: bool,
     }
@@ -49,6 +51,7 @@ pub mod editor {
                 raw_pos: (0,0),
                 pos: (0, 0),
                 start_cursor_set: false,
+                scroll_offset: (0,0),
                 break_loop: false,
             }
         }
@@ -78,23 +81,14 @@ pub mod editor {
         }
 
         // Set the starting position of the editing space cursor
-        pub fn set_starting_pos(&mut self, config: &Config, start: (usize, usize), width: usize, height: usize) {
-            // Position of visible text in frame
-            let text_pos = (
-                (self.content[self.content.len() - 1].len() + 1),
-                (self.content.len()),
-            );
-            // Position of cursor in frame
-            self.raw_pos = (start.0 + text_pos.0, start.1 + text_pos.1);
-            // Position of cursor in actual text data
-            self.pos = (text_pos.0, text_pos.1 - 1);
-            
+        pub fn set_starting_pos(&mut self, start: (usize, usize), width: usize, height: usize) {
             // Set the bounds of the block
             self.width = (start.0, start.0 + width);
             self.height = (start.1, start.1 + height);
 
-            // Make sure to move cursor to end of line
-            key_functions::end_key(self, config);
+            // Set the cursor to the beginning of the block
+            self.pos = (1,0);
+            self.raw_pos = (self.width.0 + 1, self.height.0 + 1);
 
             // Flag that cursor has been initialized
             self.start_cursor_set = true;
@@ -125,6 +119,7 @@ pub mod editor {
 
             // Return a paragraph from the lines
             Paragraph::new(Text::from(lines))
+                .scroll(self.scroll_offset)
 
         }
 
