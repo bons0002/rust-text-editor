@@ -30,8 +30,18 @@ pub fn init(filename: String) -> io::Result<()> {
     )?;
 
     // Draw the terminal widgets
-    // Temporarily not handling errors
-    run(filename, config)?;
+    match run(filename, config) {
+        Ok(_) => (),
+        Err(_) => {
+            // Turn off raw mode for stdout (enable canonical mode)
+            disable_raw_mode()?;
+            // Exit the alternate screen
+            execute!(
+                stdout(),
+                LeaveAlternateScreen,
+            )?;
+        }
+    };
 
     // Turn off raw mode for stdout (enable canonical mode)
     disable_raw_mode()?;
