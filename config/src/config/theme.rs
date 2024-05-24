@@ -28,4 +28,16 @@ impl Theme {
             tab_bg: Color::Blue,
         }
     }
+
+	// Light theme based on the existing terminal theme
+	pub fn light_terminal() -> Self {
+		Theme {
+			app_fg: Color::Black,
+			app_bg: Color::White,
+			editor_highlight_fg_color: Color::Black,
+			editor_highlight_bg_color: Color::Gray,
+			tab_fg: Color::Black,
+			tab_bg: Color::LightBlue,
+		}
+	}
 }

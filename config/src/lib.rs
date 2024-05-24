@@ -24,7 +24,7 @@ pub mod config {
                 // Set the number of spaces for a tab to 4
                 tab_width: 4,
                 // Set the theme as a default dark theme based on the terminal theme
-                theme: theme::Theme::dark_terminal(),
+                theme: theme::Theme::light_terminal(),
             }
         }
     }
