@@ -41,12 +41,26 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 }
 
 pub fn backspace(editor: &mut EditorSpace, config: &Config) {
-    left_arrow(editor, config);
-    // If the line is empty, remove it
-    if editor.pos.0 == 0 {
-        
-    }
-    editor.content[editor.pos.1].remove(editor.pos.0 - 1);
+    let line = editor.content[editor.pos.1].clone();
+        // Remove empty line
+        if editor.pos.0 <= 1 {  // If cursor at beginning of line, move to above line
+            if editor.content.len() > 1 {
+                // Get the text from the rest of the line after the cursor
+                let after_cursor = get_after_cursor(&line, editor.pos.0);
+                // Remove the current line
+                editor.content.remove(editor.pos.1);
+                // Move up one line
+                up_arrow(editor, config);
+                end_key(editor, config);
+                // Append the rest of the line to the previous line (where the cursor is moving to)
+                editor.content[editor.pos.1].push_str(after_cursor);
+            }
+        } else {
+            // Move cursor left
+            left_arrow(editor, config);
+            // Remove one character
+            editor.content[editor.pos.1].remove(editor.pos.0 - 1);
+        }
 }
 
 // Left arrow key functionality
@@ -151,13 +165,12 @@ pub fn end_key(editor: &mut EditorSpace, config: &Config) {
 
 // Save key combo functionality
 pub fn save_key_combo(editor: &mut EditorSpace) {
-    let mut file = match File::options()
-        .read(false)
-        .write(true)
-        .open(&editor.filename) {
-            Ok(file) => file,
-            Err(_) => File::create(&editor.filename).unwrap(),
-        };
+    // Create a blank file
+    let mut file = match File::create(&editor.filename) {
+        Ok(file) => file,
+        Err(_) => panic!("Could not open file"),
+    };
+    // Write the content to the new file
     for line in &editor.content {
         write!(file, "{}\n", line).unwrap();
     }
