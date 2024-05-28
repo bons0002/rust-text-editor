@@ -5,12 +5,11 @@ pub mod editor {
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
     use ratatui::{
-        style::Style,
-        text::{Line, Text},
-        widgets::Paragraph
+        style::Style, symbols::line, text::{Line, Text}, widgets::Paragraph
     };
 
     use config::config::Config;
+    use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelExtend, ParallelIterator};
 
     // Module containing all the functionality of each key. Called in handle_input
     mod key_functions;
@@ -68,13 +67,25 @@ pub mod editor {
             let tab_spaces = &iter::repeat(" ").take(config.tab_width).collect::<String>();
 
             if !content.is_empty() {
+                let line_split: Vec<&str> = content.split('\n').collect();
                 // Split the string into lines
-                let lines = content.lines();
-                // Add the lines to a vector
-                for line in lines {
-                    // Replace space indentation with tab indentation
-                    result.push(String::from(line).replace(tab_spaces, "\t"));
-                }
+                let mut lines: Vec<String> = Vec::new();
+                // Convert this split lines into a vector of strings
+                lines.par_extend(line_split
+                    .into_par_iter()    // Parallel iterator
+                    .map(|line| {   // Operation
+                        let mut temp = String::from(line);
+                        // Add new newlines on each line (consumed when split)
+                        temp.push('\n');
+                        temp
+                    }));
+                
+                // Add each line (with space indentation replaced with tabs) to the vector of strings
+                result.par_extend(lines
+                    .into_par_iter()
+                    .map(|line| {
+                        line.replace(tab_spaces, "\t")
+                    }));
                 // Return the vector and raw string
                 return result;
             }
