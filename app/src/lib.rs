@@ -61,7 +61,7 @@ fn run(filename: String, config: Config) -> io::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // Struct to track the entire editing space
-    let mut editor_space = EditorSpace::new(filename);
+    let mut editor_space = EditorSpace::new(filename, &config);
 
     // Loop while editing
     loop {

@@ -37,14 +37,14 @@ pub mod editor {
     }
 
     impl EditorSpace {
-        pub fn new(filename: String) -> Self {
+        pub fn new(filename: String, config: &Config) -> Self {
             // Check if a file exists, if not create it
             if !Path::new(&filename).exists() {
                 File::create(&filename).unwrap();
             }
             EditorSpace {
                 // Read in the contents of the file
-                content: Self::parse_file(&filename),
+                content: Self::parse_file(&filename, config),
                 filename,
                 width: (0,0),
                 height: (0,0),
@@ -57,20 +57,23 @@ pub mod editor {
         }
 
         // Parse the specified file to a vector of strings (each element representing a line) as a string for the raw data
-        fn parse_file(filename: &String) -> Vec<String> {
+        fn parse_file(filename: &String, config: &Config) -> Vec<String> {
             // Read the file to a string
             let content = fs::read_to_string(&filename)
                     .expect("Couldn't read file");
 
             // Vector containing text lines
             let mut result: Vec<String> = Vec::new();
+            // String of spaces of length tab_width. Used to replace space indentation with tab indentation
+            let tab_spaces = &iter::repeat(" ").take(config.tab_width).collect::<String>();
 
             if !content.is_empty() {
                 // Split the string into lines
                 let lines = content.lines();
                 // Add the lines to a vector
                 for line in lines {
-                    result.push(String::from(line).replace("    ", "\t"));
+                    // Replace space indentation with tab indentation
+                    result.push(String::from(line).replace(tab_spaces, "\t"));
                 }
                 // Return the vector and raw string
                 return result;

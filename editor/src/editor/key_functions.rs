@@ -120,8 +120,10 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
             editor.pos = (next_pos_0, idx_pos);
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
         } else {    // After end of line
+			// Set cursor to beginning of line
             editor.pos = (0, idx_pos);
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
+			// Move cursor to end of line
             end_key(editor, config);
         }
     } else if editor.scroll_offset.0 > 0 {    // If the cursor moves beyond the bound, scroll up
@@ -159,8 +161,10 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
                 editor.pos = (next_pos_0, idx_pos);
                 editor.raw_pos = (editor.raw_pos.0, idx_raw);
             } else {    // After end of line
+				// Set cursor to beginning of line
                 editor.pos = (0, idx_pos);
                 editor.raw_pos = (editor.raw_pos.0, idx_raw);
+				// Move cursor to end of line
                 end_key(editor, config);
             }
         } else if editor.scroll_offset.0 < editor.content.len() as u16 {  // If the cursor goes below the bound, scroll down
