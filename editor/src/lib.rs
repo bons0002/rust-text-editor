@@ -1,11 +1,16 @@
 pub mod editor {
 
     use std::{
-        fs::{self, File}, iter, path::Path, time::Duration
+        fs::{self, File},
+        iter,
+        path::Path,
+        time::Duration,
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
     use ratatui::{
-        style::Style, text::{Line, Text}, widgets::Paragraph
+        style::Style,
+        text::{Line, Text},
+        widgets::Paragraph,
     };
 
     use config::config::Config;
@@ -74,9 +79,7 @@ pub mod editor {
                 lines.par_extend(line_split
                     .into_par_iter()    // Parallel iterator
                     .map(|line| {   // Operation
-                        let mut temp = String::from(line);
-                        // Add new newlines on each line (consumed when split)
-                        temp.push('\n');
+                        let temp = String::from(line);
                         temp
                     }));
                 
@@ -139,7 +142,6 @@ pub mod editor {
             // Return a paragraph from the lines
             Paragraph::new(Text::from(lines))
                 .scroll(self.scroll_offset)
-
         }
 
         // Get the key pressed
