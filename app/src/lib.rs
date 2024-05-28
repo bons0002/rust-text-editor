@@ -1,8 +1,10 @@
-use std::io::{self, stdout};
-use std::rc::Rc;
+use std::{
+    io::{self, stdout},
+    rc::Rc,
+};
 
-use crossterm::cursor::EnableBlinking;
 use crossterm::{
+    cursor::EnableBlinking,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     execute,
 };
