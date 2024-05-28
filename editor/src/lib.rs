@@ -70,7 +70,7 @@ pub mod editor {
                 let lines = content.lines();
                 // Add the lines to a vector
                 for line in lines {
-                    result.push(String::from(line));
+                    result.push(String::from(line).replace("    ", "\t"));
                 }
                 // Return the vector and raw string
                 return result;
@@ -99,19 +99,23 @@ pub mod editor {
             // Vector to store the lines
             let mut lines: Vec<Line> = Vec::new();
             let content = &self.content;
+            
+            // Start tab with a vertical line
+            let mut tab_char = String::from("\u{023D0}");
+            // Iterator to create a string of tab_width - 1 number of spaces
+            tab_char.push_str(&iter::repeat(" ").take(config.tab_width - 1).collect::<String>());
             // Create a vector of Lines
             for part in content {
                 lines.push(Line::from(
                     // Replace tab chars with spaces
                     part.replace(
-                    '\t',
-                    // Iterator to create a string of tab_width number of spaces
-                    &iter::repeat(" ").take(config.tab_width).collect::<String>()
+                        '\t',
+                        tab_char.as_str(),
                     )
                 ));
             }
 
-            // Temp line highlighting
+            // Highlight the selected line
             lines[self.pos.1] = lines[self.pos.1].clone().style(Style::default()
                 .fg(config.theme.editor_highlight_fg_color)
                 .bg(config.theme.editor_highlight_bg_color)
