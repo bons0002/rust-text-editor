@@ -5,11 +5,11 @@ pub mod editor {
     };
     use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
     use ratatui::{
-        style::Style, symbols::line, text::{Line, Text}, widgets::Paragraph
+        style::Style, text::{Line, Text}, widgets::Paragraph
     };
 
     use config::config::Config;
-    use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelExtend, ParallelIterator};
+    use rayon::iter::{IntoParallelIterator, ParallelExtend, ParallelIterator};
 
     // Module containing all the functionality of each key. Called in handle_input
     mod key_functions;
@@ -118,16 +118,17 @@ pub mod editor {
             let mut tab_char = String::from("\u{023D0}");
             // Iterator to create a string of tab_width - 1 number of spaces
             tab_char.push_str(&iter::repeat(" ").take(config.tab_width - 1).collect::<String>());
-            // Create a vector of Lines
-            for part in content {
-                lines.push(Line::from(
-                    // Replace tab chars with spaces
+            
+            // Create a vector of Lines (in parallel)
+            lines.par_extend(content.into_par_iter().map(|part| {
+                Line::from(
+                    // Display tabs as a series of spaces
                     part.replace(
                         '\t',
                         tab_char.as_str(),
                     )
-                ));
-            }
+                )
+            }));
 
             // Highlight the selected line
             lines[self.pos.1] = lines[self.pos.1].clone().style(Style::default()
