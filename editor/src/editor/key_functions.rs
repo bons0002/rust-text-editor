@@ -121,7 +121,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
         } else {    // After end of line
 			// Set cursor to beginning of line
-            editor.pos = (0, idx_pos);
+            editor.pos = (1, idx_pos);
             editor.raw_pos = (editor.raw_pos.0, idx_raw);
 			// Move cursor to end of line
             end_key(editor, config);
@@ -138,7 +138,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 			let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
             editor.pos = (next_pos_0, idx_pos);
         } else {
-            editor.pos = (0, idx_pos);
+            editor.pos = (1, idx_pos);
             end_key(editor, config);
         }
     }
@@ -162,7 +162,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
                 editor.raw_pos = (editor.raw_pos.0, idx_raw);
             } else {    // After end of line
 				// Set cursor to beginning of line
-                editor.pos = (0, idx_pos);
+                editor.pos = (1, idx_pos);
                 editor.raw_pos = (editor.raw_pos.0, idx_raw);
 				// Move cursor to end of line
                 end_key(editor, config);
@@ -179,7 +179,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 				let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
                 editor.pos = (next_pos_0, idx_pos);
             } else {	// After the end of the line
-                editor.pos = (0, idx_pos);
+                editor.pos = (1, idx_pos);
                 end_key(editor, config);
             }
         }
@@ -198,11 +198,11 @@ fn calc_next_line_pos(editor: &mut EditorSpace, config: &Config, idx_pos: usize)
 	// This is done to account for tabs on the next line and adjusting accordingly
 	let next_pos_0 = editor.pos.0 as isize + (config.tab_width - 1) as isize * diff;
 	// If the resulting position is non-negative, return it
-	if next_pos_0 >= 0 {
+	if next_pos_0 >= 1 {
 		return next_pos_0 as usize;
 	}
-	// Otherwise, return 0
-	0
+	// Otherwise, return 1
+	1
 }
 
 // Check the end of line cursor condition
