@@ -255,7 +255,7 @@ mod tests {
 
 	// Test the highlight right function
 	#[test]
-	fn test_highlight_right() {
+	fn test_highlight_right_initial_selection() {
 		// Construct a new editor
 		let config = Config::default();
 		let filename = String::from("../editor/test_files/highlight_right.txt");
@@ -263,8 +263,6 @@ mod tests {
 
 		// Set starting pos in text
 		editor.pos = (1,0);
-
-		// ----- Test 1 -----
 
 		// Highlight 3 characters (123)
 		for _i in 0..3 {
@@ -278,9 +276,21 @@ mod tests {
 		// Check that the content of the highlighted section is correct
 		let selected_string = &editor.content[editor.pos.1][(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
 		assert_eq!(selected_string, "123");
+	}
 
-		// ----- Test 2 -----
+	#[test]
+	fn test_highlight_right_reset_selection() {
+		// Construct a new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_right.txt");
+		let mut editor = EditorSpace::new(filename, &config);
 
+		// Set starting pos in text
+		editor.pos = (1,0);
+		// Highlight 3 character
+		for _i in 0..3 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
 		// Reset selection
 		editor.selection = ((-1,-1), (-1,-1));
 
