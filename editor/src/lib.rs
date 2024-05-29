@@ -32,8 +32,9 @@ pub mod editor {
 		pub start_cursor_set: bool,
 		// TEMP bool to break the main loop
 		pub break_loop: bool,
-		// Vector of text positions indicating currently highlighted characters
-		pub selection: Vec<(usize, usize)>,
+		// The starting and ending positions of the highlighted selection of text
+		// (Negative values indicate no selection)
+		pub selection: ((isize, isize), (isize, isize)),
 
 		// Horizontal bounds of the editor block
 		width: (usize, usize),
@@ -57,7 +58,7 @@ pub mod editor {
 				pos: (0, 0),
 				start_cursor_set: false,
 				break_loop: false,
-				selection: Vec::new(),
+				selection: ((-1,-1), (-1,-1)),
 				width: (0,0),
 				height: (0,0),
 				scroll_offset: (0,0),
@@ -185,26 +186,44 @@ pub mod editor {
 							}
 							// Left arrow moves cursor left
 							KeyCode::Left => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// Left arrow functionality
 								key_functions::left_arrow(self, config);
 							}
 							// Right arrow moves cursor right
 							KeyCode::Right => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// Right arrow functionality
 								key_functions::right_arrow(self, config);
 							}
 							// Up arrow move cursor up one line
 							KeyCode::Up => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// Up arrow functionality
 								key_functions::up_arrow(self, config);
 							}
 							// Down arrow move cursor down one line
 							KeyCode::Down => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// Down arrow functionality
 								key_functions::down_arrow(self, config);
 							}
 							// Home button moves to beginning of line
 							KeyCode::Home => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// Home key functionality
 								key_functions::home_key(self);
 							}
 							// End button move to end of line
 							KeyCode::End => {
+								// Clear the highlighted selection of text
+								self.selection = ((-1,-1),(-1,-1));
+								// End key functionality
 								key_functions::end_key(self, config);
 							}
 							_ => (),
