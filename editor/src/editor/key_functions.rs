@@ -115,7 +115,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 			config,
 			cursor_line::Operation::SUB,
 			1,
-			1
+			1,
 		);
 	} else if editor.scroll_offset.0 > 0 {	// If the cursor moves beyond the bound, scroll up
 		// Scroll up
@@ -127,7 +127,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 			config,
 			cursor_line::Operation::SUB,
 			1,
-			0
+			0,
 		);
 	}
 }
@@ -144,7 +144,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 				config,
 				cursor_line::Operation::ADD,
 				1,
-				1
+				1,
 			);
 		} else if editor.scroll_offset.0 < editor.content.len() as u16 {  // If the cursor goes below the bound, scroll down
 			// Scroll down
@@ -156,7 +156,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 				config,
 				cursor_line::Operation::ADD,
 				1,
-				0
+				0,
 			);
 		}
 	}
