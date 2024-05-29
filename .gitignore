@@ -3,4 +3,3 @@ target/*
 
 # Extensions commonly used when testing
 *.c
-*.txt
