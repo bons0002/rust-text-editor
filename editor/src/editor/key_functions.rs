@@ -107,40 +107,14 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 	// Ensure that the cursor doesn't move above the editor block
 	if editor.raw_pos.1 > editor.height.0 + 1 {
-		// Location of line above
-		let idx_raw = editor.raw_pos.1 - 1;
-		// The y location of the next line
-		let idx_pos = editor.pos.1 - 1;
-		
-		// Check that the cursor doesn't move beyond the end of the above line
-		// Cursor before end of line
-		if check_cursor_end_line(editor, idx_pos) {
-			// Get the x position on the next line
-			let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
-			editor.pos = (next_pos_0, idx_pos);
-			editor.raw_pos = (editor.raw_pos.0, idx_raw);
-		} else {	// After end of line
-			// Set cursor to beginning of line
-			editor.pos = (1, idx_pos);
-			editor.raw_pos = (editor.raw_pos.0, idx_raw);
-			// Move cursor to end of line
-			end_key(editor, config);
-		}
+		// Move the cursor to the previous line
+		move_cursor_line(editor, config, Operation::SUB, 1, 1);
 	} else if editor.scroll_offset.0 > 0 {	// If the cursor moves beyond the bound, scroll up
 		// Scroll up
 		editor.scroll_offset = (editor.scroll_offset.0 - 1, editor.scroll_offset.1);
-		// The y location of the next line
-		let idx_pos = editor.pos.1 - 1;
-		// Check that the cursor doesn't move beyond the end of the above line
-		// Cursor before end of line
-		if check_cursor_end_line(editor, idx_pos) {
-			// Get the x position on the next line
-			let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
-			editor.pos = (next_pos_0, idx_pos);
-		} else {
-			editor.pos = (1, idx_pos);
-			end_key(editor, config);
-		}
+		
+		// Move to the previous line in the text, but don't move the screen cursor
+		move_cursor_line(editor, config, Operation::SUB, 1, 0);
 	}
 }
 
@@ -150,38 +124,79 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 	if editor.pos.1 < editor.content.len() - 1 {
 		// Ensure that the cursor doesn't move below the editor block
 		if editor.raw_pos.1 < ((editor.height.1 - editor.height.0) + 1) {
-			// Location of line below
-			let idx_pos = editor.pos.1 + 1;
-			let idx_raw = editor.raw_pos.1 + 1;
-
-			// Check that the cursor doesn't move beyond the end of the next line
-			if check_cursor_end_line(editor, idx_pos) {
-				// Get the x position on the next line
-				let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
-				editor.pos = (next_pos_0, idx_pos);
-				editor.raw_pos = (editor.raw_pos.0, idx_raw);
-			} else {	// After end of line
-				// Set cursor to beginning of line
-				editor.pos = (1, idx_pos);
-				editor.raw_pos = (editor.raw_pos.0, idx_raw);
-				// Move cursor to end of line
-				end_key(editor, config);
-			}
+			// Move the cursor to the next line
+			move_cursor_line(editor, config, Operation::ADD, 1, 1);
 		} else if editor.scroll_offset.0 < editor.content.len() as u16 {  // If the cursor goes below the bound, scroll down
 			// Scroll down
 			editor.scroll_offset = (editor.scroll_offset.0 + 1, editor.scroll_offset.1);
-			// Location of line below
-			let idx_pos = editor.pos.1 + 1;
-			// Check that the cursor doesn't move beyond the end of the above line
-			// Cursor before end of line
-			if check_cursor_end_line(editor, idx_pos) {
-				// Get the x position on the next line
-				let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
-				editor.pos = (next_pos_0, idx_pos);
-			} else {	// After the end of the line
-				editor.pos = (1, idx_pos);
-				end_key(editor, config);
-			}
+			
+			// Move the position in the text, but don't move the screen cursor
+			move_cursor_line(editor, config, Operation::ADD, 1, 0)
+		}
+	}
+}
+
+fn move_cursor_line(editor: &mut EditorSpace, config: &Config, op: Operation, pos_operand: usize, rawpos_operand: usize) {
+	// Add to the index (move to the next line)
+	if op == Operation::ADD {
+		// The location of the next line in the text
+		let idx_pos = editor.pos.1 + pos_operand;
+		// Location of next line for screen cursor
+		let idx_raw = editor.raw_pos.1 + rawpos_operand;
+
+		// Ensure that the cursor doesn't move beyond the end of the next line
+		if check_cursor_end_line(editor, idx_pos) {
+			// Get the x position on the next line (takes tabs into account)
+			let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
+			// Set position in text
+			editor.pos = (next_pos_0, idx_pos);
+			// Set screen cursor
+			editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		} else {	// After end of line
+			// Set cursor to beginning of line
+			editor.pos = (1, idx_pos);
+			editor.raw_pos = (editor.raw_pos.0, idx_raw);
+			// Move cursor to end of line
+			end_key(editor, config);
+		}
+	} else {	// Subtract from the index (move to previous line)
+		// The location of the previous line in the text
+		let idx_pos = editor.pos.1 - pos_operand;
+		// Location of prev line for screen cursor
+		let idx_raw = editor.raw_pos.1 - rawpos_operand;
+		
+		// Ensure that the cursor doesn't move beyond the end of the previous line
+		if check_cursor_end_line(editor, idx_pos) {
+			// Get the x position on the previous line (takes tabs into account)
+			let next_pos_0 = calc_next_line_pos(editor, config, idx_pos);
+			// Set position in text
+			editor.pos = (next_pos_0, idx_pos);
+			// Set screen cursor
+			editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		} else {	// After end of line
+			// Set cursor to beginning of line
+			editor.pos = (1, idx_pos);
+			editor.raw_pos = (editor.raw_pos.0, idx_raw);
+			// Move cursor to end of line
+			end_key(editor, config);
+		}
+	}
+}
+
+// Tracks which operation to use in move_cursor_line
+enum Operation {
+	ADD,
+	SUB,
+}
+
+// Implement a comparator for the operation
+impl PartialEq for Operation {
+	// Check whether the two enums are the same value
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::ADD, Self::ADD) => true,
+			(Self::SUB, Self::SUB) => true,
+			_ => false,
 		}
 	}
 }
