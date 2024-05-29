@@ -33,6 +33,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	editor.raw_pos = (editor.width.0 + 1, editor.raw_pos.1 + 1);
 }
 
+// Functionality of the backspace key
 pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 	let line = editor.content[editor.pos.1].clone();
 		// Remove empty line
@@ -54,6 +55,22 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 			// Remove one character
 			editor.content[editor.pos.1].remove(editor.pos.0 - 1);
 		}
+}
+
+// Functionality of the delete key
+pub fn delete_key(editor: &mut EditorSpace) {
+	// If not at the end of the current line
+	if editor.pos.0 <= editor.content[editor.pos.1].len() {
+		// Delete next char
+		editor.content[editor.pos.1].remove(editor.pos.0 - 1);
+	} else if editor.pos.1 < editor.content.len() - 1 { // If not at end of last line
+		// Get entire next line
+		let appending_line = editor.content[editor.pos.1 + 1].clone();
+		// Append the next line to the current line
+		editor.content[editor.pos.1].push_str(appending_line.as_str());
+		// Remove the next line
+		editor.content.remove(editor.pos.1 + 1);
+	}
 }
 
 // Get the rest of the text on the line after the cursor

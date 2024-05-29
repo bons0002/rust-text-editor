@@ -175,6 +175,10 @@ pub mod editor {
 							KeyCode::Backspace => {
 								key_functions::backspace(self, config);
 							}
+							// If delete was pressed, remove the next character
+							KeyCode::Delete => {
+    							key_functions::delete_key(self);
+							}
 							// Left arrow moves cursor left
 							KeyCode::Left => {
 								key_functions::left_arrow(self, config);
