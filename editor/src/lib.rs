@@ -241,6 +241,10 @@ pub mod editor {
 							KeyCode::Char(code) => {
 								key_functions::char_key(self, code.to_ascii_uppercase());
 							}
+							// Right arrow highlight text
+							KeyCode::Right => {
+								key_functions::highlight_right(self, config);
+							}
 							_ => ()
 						}
 					}
@@ -270,10 +274,3 @@ pub mod editor {
 		}
 	}
 }
-
-
-#[cfg(test)]
-mod tests {
-	//use super::*;
-}
-

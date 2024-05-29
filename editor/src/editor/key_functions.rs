@@ -226,3 +226,76 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
 		write!(file, "{}\n", line).unwrap();
 	}
 }
+
+pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
+	// If there is currently no selection
+	if editor.selection == ((-1,-1), (-1,-1)) {
+		// Set the starting selection point
+		let begin = (editor.pos.0 as isize - 1, editor.pos.1 as isize);
+		editor.selection = (begin, begin);
+		// Move right
+		right_arrow(editor, config);
+		// Set endpoint for selection
+		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection = (editor.selection.0, end);
+	} else {
+		// Move right
+		right_arrow(editor, config);
+		// Update endpoint for selection
+		let end = (editor.pos.0 as isize - 1, editor.pos.1 as isize);
+		editor.selection = (editor.selection.0, end);
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::editor::EditorSpace;
+	use config::config::Config;
+	use crate::editor::key_functions;
+
+	// Test the highlight right function
+	#[test]
+	fn test_highlight_right() {
+		// Construct a new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_right.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting pos in text
+		editor.pos = (1,0);
+
+		// ----- Test 1 -----
+
+		// Highlight 3 characters (123)
+		for _i in 0..3 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
+		
+		// Check that the endpoints were updated correctly
+		assert_eq!(editor.selection, ((0,0), (3,0)));
+		assert_ne!(editor.selection, ((1,0), (4,0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1][(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "123");
+
+		// ----- Test 2 -----
+
+		// Reset selection
+		editor.selection = ((-1,-1), (-1,-1));
+
+		// Select next 3 (456)
+		for _i in 0..3 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
+
+		// Check endpoints
+		assert_ne!(editor.selection, ((0,0), (3,0)));
+		assert_eq!(editor.selection, ((3,0), (6,0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1][(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "456");
+		assert_ne!(selected_string, "45");
+	}
+}
