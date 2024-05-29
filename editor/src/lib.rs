@@ -24,20 +24,23 @@ pub mod editor {
 		pub filename: String,
 		// Text content of current frame
 		pub content: Vec<String>,
+		// Position of cursor on the screen
+		pub cursor_pos: (usize, usize),
+		// Position within the text (content vector)
+		pub pos: (usize, usize),
+		// Track if the starting cursor position has already been set
+		pub start_cursor_set: bool,
+		// TEMP bool to break the main loop
+		pub break_loop: bool,
+		// Vector of text positions indicating currently highlighted characters
+		pub selection: Vec<(usize, usize)>,
+
 		// Horizontal bounds of the editor block
 		width: (usize, usize),
 		// Vertical bounds of the editor block
 		height: (usize, usize),
-		// Position on the screen (frontend cursor)
-		pub raw_pos: (usize, usize),
-		// Position of cursor in the actual data vector (backend cursor)
-		pub pos: (usize, usize),
-		// Track if the starting cursor position has already been set
-		pub start_cursor_set: bool,
 		// Sets the amount to scroll the text
-		pub scroll_offset: (u16, u16),
-		// TEMP bool to break the main loop
-		pub break_loop: bool,
+		scroll_offset: (u16, u16),
 	}
 
 	impl EditorSpace {
@@ -50,13 +53,14 @@ pub mod editor {
 				// Read in the contents of the file
 				content: Self::parse_file(&filename, config),
 				filename,
-				width: (0,0),
-				height: (0,0),
-				raw_pos: (0,0),
+				cursor_pos: (0,0),
 				pos: (0, 0),
 				start_cursor_set: false,
-				scroll_offset: (0,0),
 				break_loop: false,
+				selection: Vec::new(),
+				width: (0,0),
+				height: (0,0),
+				scroll_offset: (0,0),
 			}
 		}
 
@@ -105,7 +109,7 @@ pub mod editor {
 
 			// Set the cursor to the beginning of the block
 			self.pos = (1,0);
-			self.raw_pos = (self.width.0 + 1, self.height.0 + 1);
+			self.cursor_pos = (self.width.0 + 1, self.height.0 + 1);
 
 			// Flag that cursor has been initialized
 			self.start_cursor_set = true;

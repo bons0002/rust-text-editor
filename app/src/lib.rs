@@ -70,7 +70,7 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 		// Draw the frame
 		terminal.draw(|frame| {
 			ui(frame, &mut editor_space, &config);
-			frame.set_cursor(editor_space.raw_pos.0 as u16, editor_space.raw_pos.1 as u16);
+			frame.set_cursor(editor_space.cursor_pos.0 as u16, editor_space.cursor_pos.1 as u16);
 		})?;
 		// Get input and add to the string
 		editor_space.handle_input(&config);

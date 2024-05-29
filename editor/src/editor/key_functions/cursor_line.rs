@@ -24,21 +24,21 @@ impl PartialEq for Operation {
 }
 
 // Move the cursor to the next or previous line (dependant on the operation)
-pub fn move_cursor_line(editor: &mut EditorSpace, config: &Config, op: Operation, pos_operand: usize, rawpos_operand: usize) {
+pub fn move_cursor_line(editor: &mut EditorSpace, config: &Config, op: Operation, pos_operand: usize, cursor_pos_operand: usize) {
 	// Add to the index (move to the next line)
 	if op == Operation::ADD {
-		add_branch(editor, config, pos_operand, rawpos_operand);
+		add_branch(editor, config, pos_operand, cursor_pos_operand);
 	} else {	// Subtract from the index (move to previous line)
-		sub_branch(editor, config, pos_operand, rawpos_operand);
+		sub_branch(editor, config, pos_operand, cursor_pos_operand);
 	}
 }
 
 // The logic of the ADD branch of move_cursor_line
-fn add_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, rawpos_operand: usize) {
+fn add_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, cursor_pos_operand: usize) {
 	// The location of the next line in the text
 	let idx_pos = editor.pos.1 + pos_operand;
 	// Location of next line for screen cursor
-	let idx_raw = editor.raw_pos.1 + rawpos_operand;
+	let idx_raw = editor.cursor_pos.1 + cursor_pos_operand;
 
 	// Ensure that the cursor doesn't move beyond the end of the next line
 	if check_cursor_end_line(editor, idx_pos) {
@@ -47,22 +47,22 @@ fn add_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, raw
 		// Set position in text
 		editor.pos = (next_pos_0, idx_pos);
 		// Set screen cursor
-		editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		editor.cursor_pos = (editor.cursor_pos.0, idx_raw);
 	} else {	// After end of line
 		// Set cursor to beginning of line
 		editor.pos = (1, idx_pos);
-		editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		editor.cursor_pos = (editor.cursor_pos.0, idx_raw);
 		// Move cursor to end of line
 		end_key(editor, config);
 	}
 }
 
 // The logic of the SUB branch of move_cursor_line
-fn sub_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, rawpos_operand: usize) {
+fn sub_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, cursor_pos_operand: usize) {
 	// The location of the previous line in the text
 	let idx_pos = editor.pos.1 - pos_operand;
 	// Location of prev line for screen cursor
-	let idx_raw = editor.raw_pos.1 - rawpos_operand;
+	let idx_raw = editor.cursor_pos.1 - cursor_pos_operand;
 	
 	// Ensure that the cursor doesn't move beyond the end of the previous line
 	if check_cursor_end_line(editor, idx_pos) {
@@ -71,11 +71,11 @@ fn sub_branch(editor: &mut EditorSpace, config: &Config, pos_operand: usize, raw
 		// Set position in text
 		editor.pos = (next_pos_0, idx_pos);
 		// Set screen cursor
-		editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		editor.cursor_pos = (editor.cursor_pos.0, idx_raw);
 	} else {	// After end of line
 		// Set cursor to beginning of line
 		editor.pos = (1, idx_pos);
-		editor.raw_pos = (editor.raw_pos.0, idx_raw);
+		editor.cursor_pos = (editor.cursor_pos.0, idx_raw);
 		// Move cursor to end of line
 		end_key(editor, config);
 	}
