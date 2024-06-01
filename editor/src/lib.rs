@@ -150,7 +150,7 @@ pub mod editor {
 			spans.par_extend(characters.into_par_iter().enumerate().map(|(loc, character)| {
 				// If on the first line of selection, only 
 				if idx == self.selection.0.1 as usize || idx == self.selection.1.1 as usize {
-					if loc > self.selection.0.0 as usize && loc < self.selection.1.0 as usize {
+					if loc >= self.selection.0.0 as usize && loc < self.selection.1.0 as usize {
 						Span::from(String::from(character))
 							.style(Style::default().bg(config.theme.selection_highlight))
 					} else {

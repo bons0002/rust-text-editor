@@ -249,7 +249,7 @@ mod tests {
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
-		editor.pos = (1, 0);
+		editor.pos = (0, 0);
 
 		// Highlight 3 characters (123)
 		for _i in 0..3 {
@@ -258,7 +258,7 @@ mod tests {
 
 		// Check that the endpoints were updated correctly
 		assert_eq!(editor.selection, ((0, 0), (3, 0)));
-		assert_ne!(editor.selection, ((1, 0), (4, 0)));
+		assert_ne!(editor.selection, ((3, 0), (6, 0)));
 
 		// Check that the content of the highlighted section is correct
 		let selected_string = &editor.content[editor.pos.1]
@@ -274,7 +274,7 @@ mod tests {
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
-		editor.pos = (1, 0);
+		editor.pos = (0, 0);
 		// Highlight 3 character
 		for _i in 0..3 {
 			key_functions::highlight_right(&mut editor, &config);
