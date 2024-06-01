@@ -88,7 +88,7 @@ fn sub_branch(
     } else {
         // After end of line
         // Set cursor to beginning of line
-        editor.pos = (1, idx_pos);
+        editor.pos = (0, idx_pos);
         editor.cursor_pos = (editor.cursor_pos.0, idx_raw);
         // Move cursor to end of line
         end_key(editor, config);
@@ -98,11 +98,11 @@ fn sub_branch(
 // Calculate the x position of the cursor on the next line (accounting for tab character)
 fn calc_next_line_pos(editor: &mut EditorSpace, config: &Config, idx_pos: usize) -> usize {
     // Count the number of tab characters up to the current position on the current line
-    let curr_tab_chars = editor.content[editor.pos.1][0..(editor.pos.0 - 1)]
+    let curr_tab_chars = editor.content[editor.pos.1][0..editor.pos.0]
         .matches('\t')
         .count() as isize;
     // Count the number of tab characters up to the current position on the next line
-    let next_tab_chars = editor.content[idx_pos][0..(editor.pos.0 - 1)]
+    let next_tab_chars = editor.content[idx_pos][0..editor.pos.0]
         .matches('\t')
         .count() as isize;
     // Difference in the number of tab chars between the two lines
@@ -111,9 +111,9 @@ fn calc_next_line_pos(editor: &mut EditorSpace, config: &Config, idx_pos: usize)
     // This is done to account for tabs on the next line and adjusting accordingly
     let next_pos_0 = editor.pos.0 as isize + (config.tab_width - 1) as isize * diff;
     // If the resulting position is non-negative, return it
-    if next_pos_0 >= 1 {
+    if next_pos_0 >= 0 {
         return next_pos_0 as usize;
     }
     // Otherwise, return 1
-    1
+    0
 }

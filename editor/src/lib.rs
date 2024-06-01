@@ -109,7 +109,7 @@ pub mod editor {
 			self.height = (start.1, start.1 + height);
 
 			// Set the cursor to the beginning of the block
-			self.pos = (1, 0);
+			self.pos = (0, 0);
 			self.cursor_pos = (self.width.0 + 1, self.height.0 + 1);
 
 			// Flag that cursor has been initialized
