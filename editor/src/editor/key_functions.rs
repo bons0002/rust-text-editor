@@ -101,8 +101,12 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 		}
 	} else {
 		// Move to above line
-		up_arrow(editor, config);
+		if editor.pos.1 > 0 {
+			up_arrow(editor, config);
 		end_key(editor, config);
+		} else {
+			home_key(editor);
+		}
 	}
 }
 
@@ -120,8 +124,12 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 		}
 	} else {
 		// Move to next line
-		down_arrow(editor, config);
-		home_key(editor);
+		if editor.pos.1 < editor.content.len() - 1 {
+			down_arrow(editor, config);
+			home_key(editor);
+		} else {
+			end_key(editor, config);
+		}
 	}
 }
 
