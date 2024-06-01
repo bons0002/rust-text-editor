@@ -227,11 +227,24 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
 		editor.selection = (editor.selection.0, end);
 	} else {
-		// Move right
-		right_arrow(editor, config);
-		// Update endpoint for selection
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (editor.selection.0, end);
+		// Ensure doesn't try to select past end of line
+		if editor.pos.0 < editor.content[editor.pos.1].len() && editor.pos.0 < (editor.width.1 - editor.width.0 - 1) {
+			// Move right
+			right_arrow(editor, config);
+			// New location
+			let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+
+			// Remove selection if deselecting last position
+			if update == editor.selection.1 {
+				editor.selection = ((-1, -1), (-1, -1));
+			// If the cursor is before the selection, deselect characters
+			} else if update.1 == editor.selection.0.1 && update.0 < editor.selection.1.0 {
+				editor.selection = (update, editor.selection.1);
+			} else if update.0 <= editor.content[editor.pos.1].len() as isize {	// Otherwise, continue selecting at the end
+				// Update endpoint for selection
+				editor.selection = (editor.selection.0, update);
+			}
+		}
 	}
 }
 
@@ -247,13 +260,27 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
 		editor.selection = (begin, editor.selection.1);
 	} else {
-		// Move left
-		left_arrow(editor, config);
-		// Update startpoint for selection
-		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (begin, editor.selection.1);
+		// Ensure doesn't highlight before line
+		if editor.pos.0 > 0 {
+			// Move left
+			left_arrow(editor, config);
+			// New location
+			let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+			
+			// Remove selection if deselecting last position
+			if update == editor.selection.0 {
+				editor.selection = ((-1, -1), (-1, -1));
+			// If the cursor is after the end of the selection, deselect characters
+			} else if update.1 == editor.selection.1.1 && update.0 > editor.selection.0.0 {
+				editor.selection = (editor.selection.0, update);
+			} else if update.0 >= 0 {	// Otherwise, continue selecting at the beginning
+				// Update startpoint for selection
+				editor.selection = (update, editor.selection.1);
+			}
+		}
 	}
 }
+
 
 #[cfg(test)]
 mod tests {
