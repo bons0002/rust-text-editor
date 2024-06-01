@@ -100,7 +100,9 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 			editor.cursor_pos = (editor.cursor_pos.0 - config.tab_width, editor.cursor_pos.1);
 		}
 	} else {
-		home_key(editor);
+		// Move to above line
+		up_arrow(editor, config);
+		end_key(editor, config);
 	}
 }
 
@@ -117,7 +119,9 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 			editor.cursor_pos = (editor.cursor_pos.0 + config.tab_width, editor.cursor_pos.1);
 		}
 	} else {
-		end_key(editor, config);
+		// Move to next line
+		down_arrow(editor, config);
+		home_key(editor);
 	}
 }
 
@@ -215,6 +219,7 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
 	}
 }
 
+// Move the cursor right and change the highlighted selection of text
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	// If there is currently no selection
 	if editor.selection == ((-1, -1), (-1, -1)) {
@@ -248,6 +253,7 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	}
 }
 
+// Move the cursor left and change the highlighted selection of text
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	// If there is currently no selection
 	if editor.selection == ((-1, -1), (-1, -1)) {
@@ -288,7 +294,7 @@ mod tests {
 	use crate::editor::EditorSpace;
 	use config::config::Config;
 
-	// Test the highlight right function
+	// Test the highlight right when starting from no highlighted selection
 	#[test]
 	fn highlight_right_initial_selection() {
 		// Construct a new editor
@@ -314,6 +320,7 @@ mod tests {
 		assert_eq!(selected_string, "123");
 	}
 
+	// Test highlight right when the highlighted selection gets reset and then a new highlighted selection is done
 	#[test]
 	fn highlight_right_reset_selection() {
 		// Construct a new editor
@@ -346,6 +353,7 @@ mod tests {
 		assert_ne!(selected_string, "45");
 	}
 
+	// Check the highlight right when the end of a line (or editor block) is reached
 	#[test]
 	fn highlight_right_overflow_check() {
 		// Construct new editor
@@ -368,6 +376,7 @@ mod tests {
 		assert_eq!(selected_string, "1234567890");
 	}
 
+	// Test the highlight left when starting from no highlighted selection
 	#[test]
 	fn highlight_left_initial_selection() {
 		// Construct new editor
@@ -392,6 +401,7 @@ mod tests {
 		assert_eq!(selected_string, "345");
 	}
 
+	// Test the highlight left when the highlighted selection gets reset and then a new selection is performed
 	#[test]
 	fn highlight_left_reset_selection() {
 		// Construct new editor
@@ -423,6 +433,7 @@ mod tests {
 		assert_eq!(selected_string, "12");
 	}
 
+	// Test that highlight left doesn't highlight before the beginning of the line
 	#[test]
 	fn highlight_left_overflow_check() {
 		// Construct new editor
