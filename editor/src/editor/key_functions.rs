@@ -187,6 +187,7 @@ pub fn end_key(editor: &mut EditorSpace, config: &Config) {
 
 	// Move to end of line if not past the end of the block
 	if editor.content[editor.pos.1].len() < (editor.width.1 - editor.width.0) {
+		// Set the cursor to the end of the visual line in the block
 		editor.pos = (editor.content[editor.pos.1].len(), editor.pos.1);
 		editor.cursor_pos = (
 			editor.width.0 + editor.content[editor.pos.1].len() + 1 + tab_chars,
@@ -242,13 +243,13 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		editor.selection = (begin, begin);
 		// Move left
 		left_arrow(editor, config);
-		// Set endpoint for selection
+		// Set startpoint for selection
 		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
 		editor.selection = (begin, editor.selection.1);
 	} else {
 		// Move left
 		left_arrow(editor, config);
-		// Update endpoint for selection
+		// Update startpoint for selection
 		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
 		editor.selection = (begin, editor.selection.1);
 	}
@@ -262,10 +263,10 @@ mod tests {
 
 	// Test the highlight right function
 	#[test]
-	fn test_highlight_right_initial_selection() {
+	fn highlight_right_initial_selection() {
 		// Construct a new editor
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_right.txt");
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -287,10 +288,10 @@ mod tests {
 	}
 
 	#[test]
-	fn test_highlight_right_reset_selection() {
+	fn highlight_right_reset_selection() {
 		// Construct a new editor
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_right.txt");
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -316,6 +317,87 @@ mod tests {
 			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
 		assert_eq!(selected_string, "456");
 		assert_ne!(selected_string, "45");
+	}
+
+	#[test]
+	fn highlight_right_overflow_check() {
+		// Construct new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set to beginning of line
+		editor.set_starting_pos((0, 0), 10, 1);
+		// Highlight 3 characters
+		for _i in 0..20 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
+
+		// Check overflow
+		assert_eq!(editor.selection, ((0, 0), (10, 0)));
+	}
+
+	#[test]
+	fn highlight_left_initial_selection() {
+		// Construct new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set the starting position
+		editor.pos = (5, 0);
+		editor.cursor_pos = (6 + editor.width.0, 0);
+		// Highlight 3 characters
+		for _i in 0..3 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Check correct selection
+		assert_eq!(editor.selection, ((2, 0), (5, 0)));
+	}
+
+	#[test]
+	fn highlight_left_reset_selection() {
+		// Construct new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set the starting position
+		editor.pos = (5, 0);
+		editor.cursor_pos = (6 + editor.width.0, 0);
+		// Highlight 3 characters
+		for _i in 0..3 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Reset the selection
+		editor.selection = ((-1, -1), (-1, -1));
+		// Highlight 3
+		for _i in 0..3 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Check correct selection
+		assert_eq!(editor.selection, ((0, 0), (2, 0)));
+	}
+
+	#[test]
+	fn highlight_left_overflow_check() {
+		// Construct new editor
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set to beginning of line
+		editor.pos = (0, 0);
+		// Highlight 3 characters
+		for _i in 0..3 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Check overflow
+		assert_eq!(editor.selection, ((0, 0), (0, 0)));
 	}
 }
 
