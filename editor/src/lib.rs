@@ -264,6 +264,10 @@ pub mod editor {
 							KeyCode::Right => {
 								key_functions::highlight_right(self, config);
 							}
+							// Left arrow highlight text
+							KeyCode::Left => {
+								key_functions::highlight_left(self, config);
+							}
 							_ => (),
 						}
 					}

@@ -234,6 +234,26 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	}
 }
 
+pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
+	// If there is currently no selection
+	if editor.selection == ((-1, -1), (-1, -1)) {
+		// Set the starting selection point
+		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection = (begin, begin);
+		// Move left
+		left_arrow(editor, config);
+		// Set endpoint for selection
+		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection = (begin, editor.selection.1);
+	} else {
+		// Move left
+		left_arrow(editor, config);
+		// Update endpoint for selection
+		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection = (begin, editor.selection.1);
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::editor::key_functions;
