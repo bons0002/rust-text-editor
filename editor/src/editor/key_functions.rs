@@ -297,7 +297,7 @@ mod tests {
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
-		editor.pos = (0, 0);
+		editor.set_starting_pos((0, 0), 100, 1);
 
 		// Highlight 3 characters (123)
 		for _i in 0..3 {
@@ -322,7 +322,7 @@ mod tests {
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
-		editor.pos = (0, 0);
+		editor.set_starting_pos((0, 0), 100, 1);
 		// Highlight 3 character
 		for _i in 0..3 {
 			key_functions::highlight_right(&mut editor, &config);
@@ -354,7 +354,7 @@ mod tests {
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set to beginning of line
-		editor.set_starting_pos((0, 0), 10, 1);
+		editor.set_starting_pos((0, 0), 100, 1);
 		// Highlight 3 characters
 		for _i in 0..20 {
 			key_functions::highlight_right(&mut editor, &config);
@@ -362,6 +362,10 @@ mod tests {
 
 		// Check overflow
 		assert_eq!(editor.selection, ((0, 0), (10, 0)));
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "1234567890");
 	}
 
 	#[test]
@@ -381,6 +385,11 @@ mod tests {
 
 		// Check correct selection
 		assert_eq!(editor.selection, ((2, 0), (5, 0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "345");
 	}
 
 	#[test]
@@ -407,6 +416,11 @@ mod tests {
 
 		// Check correct selection
 		assert_eq!(editor.selection, ((0, 0), (2, 0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "12");
 	}
 
 	#[test]
@@ -425,6 +439,11 @@ mod tests {
 
 		// Check overflow
 		assert_eq!(editor.selection, ((0, 0), (0, 0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "");
 	}
 }
 
