@@ -138,7 +138,7 @@ pub mod editor {
 			Paragraph::new(Text::from(lines)).scroll(self.scroll_offset)
 		}
 
-		fn parse_line<'a>(&'a self, config: &Config, idx:usize, line: &'a String) -> Line {
+		fn parse_line(&self, config: &Config, idx:usize, line: &String) -> Line {
 			// Split the line into individual words
 			let characters: Vec<char> = line.chars().collect();
 			let mut spans: Vec<Span> = Vec::new();
@@ -151,75 +151,50 @@ pub mod editor {
 						// Iterator to create a string of tab_width - 1 number of spaces
 						tab_char.push_str(&" ".repeat(config.tab_width - 1));
 
-						// If only one line
-						if (idx as isize) == self.selection.0.1 && self.selection.0.1 == self.selection.1.1 {
-							// If within selection, highlight character
-							if (loc as isize) >= self.selection.0.0 && (loc as isize) <= self.selection.1.0 {
-								Span::from(tab_char).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(tab_char)
-							}
-						// If on first line (and there are multiple lines in selection)
-						} else if (idx as isize) == self.selection.0.1 {
-							// Highlight all characters on the line after the cursor
-							if (loc as isize) >= self.selection.0.0 {
-								Span::from(tab_char).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(tab_char)
-							}
-						// If on last line (and there are multiple lines in selection)
-						} else if (idx as isize) == self.selection.1.1 {
-							// Highlight all characters on the line before the cursor
-							if (loc as isize) <= self.selection.1.0 {
-								Span::from(tab_char).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(tab_char)
-							}
-						// If between first and last line in multine selection
-						} else if (idx as isize) > self.selection.0.1 && (idx as isize) < self.selection.1.1 {
-							Span::from(tab_char).style(Style::default().bg(config.theme.selection_highlight))
-						// If not in selection
-						} else {
-							Span::from(tab_char)
-						}
+						self.highlight_char(config, idx, loc, tab_char)
 					}
 					_ => {
-						// If only one line
-						if (idx as isize) == self.selection.0.1 && self.selection.0.1 == self.selection.1.1 {
-							// If within selection, highlight character
-							if (loc as isize) >= self.selection.0.0 && (loc as isize) <= self.selection.1.0 {
-								Span::from(String::from(character)).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(String::from(character))
-							}
-						// If on first line (and there are multiple lines in selection)
-						} else if (idx as isize) == self.selection.0.1 {
-							// Highlight all characters on the line after the cursor
-							if (loc as isize) >= self.selection.0.0 {
-								Span::from(String::from(character)).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(String::from(character))
-							}
-						// If on last line (and there are multiple lines in selection)
-						} else if (idx as isize) == self.selection.1.1 {
-							// Highlight all characters on the line before the cursor
-							if (loc as isize) <= self.selection.1.0 {
-								Span::from(String::from(character)).style(Style::default().bg(config.theme.selection_highlight))
-							} else {
-								Span::from(String::from(character))
-							}
-						// If between first and last line in multine selection
-						} else if (idx as isize) > self.selection.0.1 && (idx as isize) < self.selection.1.1 {
-							Span::from(String::from(character)).style(Style::default().bg(config.theme.selection_highlight))
-						// If not in selection
-						} else {
-							Span::from(String::from(character))
-						}
+						self.highlight_char(config, idx, loc, String::from(character))
 					}
 				}
 			}));
 
 			Line::from(spans)
+		}
+
+		// Highlight a specific character on the line within the highlighting selection
+		fn highlight_char(&self, config: &Config, idx: usize, loc: usize, character: String) -> Span {
+			// If only one line
+			if (idx as isize) == self.selection.0.1 && self.selection.0.1 == self.selection.1.1 {
+				// If within selection, highlight character
+				if (loc as isize) >= self.selection.0.0 && (loc as isize) <= self.selection.1.0 {
+					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+				} else {
+					Span::from(character)
+				}
+			// If on first line (and there are multiple lines in selection)
+			} else if (idx as isize) == self.selection.0.1 {
+				// Highlight all characters on the line after the cursor
+				if (loc as isize) >= self.selection.0.0 {
+					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+				} else {
+					Span::from(character)
+				}
+			// If on last line (and there are multiple lines in selection)
+			} else if (idx as isize) == self.selection.1.1 {
+				// Highlight all characters on the line before the cursor
+				if (loc as isize) <= self.selection.1.0 {
+					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+				} else {
+					Span::from(character)
+				}
+			// If between first and last line in multine selection
+			} else if (idx as isize) > self.selection.0.1 && (idx as isize) < self.selection.1.1 {
+				Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+			// If not in selection
+			} else {
+				Span::from(character)
+			}
 		}
 
 		// Get the key pressed
