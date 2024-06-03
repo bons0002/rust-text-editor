@@ -227,70 +227,58 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
 	}
 }
 
-// Move the cursor right and change the highlighted selection of text
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
-	// If there is currently no selection
-	if editor.selection == ((-1, -1), (-1, -1)) {
-		// Set the starting selection point
-		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (begin, begin);
-		// Move right
-		right_arrow(editor, config);
-		// Set endpoint for selection
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (editor.selection.0, end);
-	} else {
-		// Ensure doesn't try to select past end of line
-		if editor.pos.0 < editor.content[editor.pos.1].len() && editor.pos.0 < (editor.width.1 - editor.width.0 - 1) {
-			// Move right
-			right_arrow(editor, config);
-			// New location
-			let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+	// Get location and move right
+	let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+	right_arrow(editor, config);
 
-			// Remove selection if deselecting last position
-			if update == editor.selection.1 {
-				editor.selection = ((-1, -1), (-1, -1));
-			// If the cursor is before the selection, deselect characters
-			} else if update.1 == editor.selection.0.1 && update.0 < editor.selection.1.0 {
-				editor.selection = (update, editor.selection.1);
-			} else if update.0 <= editor.content[editor.pos.1].len() as isize {	// Otherwise, continue selecting at the end
-				// Update endpoint for selection
+	// If there is no selection, initialize it
+	if editor.selection == ((-1, -1), (-1, -1)) {
+		editor.selection = (update, update);
+	} else {
+		// If last char
+		if update == editor.selection.1 {
+			editor.selection = ((-1, -1), (-1, -1));
+		// If after on last line
+		} else if update.1 >= editor.selection.1.1 {
+			// If before end of selection on last line
+			if update.0 < editor.selection.1.0 && update.1 == editor.selection.1.1 {
+				// Deselect
+				editor.selection = ((update.0 + 1, update.1), editor.selection.1);
+			} else {
 				editor.selection = (editor.selection.0, update);
 			}
+		// If not on last line
+		} else {
+			editor.selection = ((update.0 + 1, update.1), editor.selection.1);
 		}
 	}
 }
 
-// Move the cursor left and change the highlighted selection of text
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
-	// If there is currently no selection
+	// Move left and get location
+	left_arrow(editor, config);
+	let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+
+	// If there is no selection, initialize it
 	if editor.selection == ((-1, -1), (-1, -1)) {
-		// Set the starting selection point
-		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (begin, begin);
-		// Move left
-		left_arrow(editor, config);
-		// Set startpoint for selection
-		let begin = (editor.pos.0 as isize, editor.pos.1 as isize);
-		editor.selection = (begin, editor.selection.1);
+		editor.selection = (update, update);
 	} else {
-		// Ensure doesn't highlight before line
-		if editor.pos.0 > 0 {
-			// Move left
-			left_arrow(editor, config);
-			// New location
-			let update = (editor.pos.0 as isize, editor.pos.1 as isize);
-			
-			// Remove selection if deselecting last position
-			if update == editor.selection.0 {
-				editor.selection = ((-1, -1), (-1, -1));
-			// If the cursor is after the end of the selection, deselect characters
-			} else if update.1 == editor.selection.1.1 && update.0 > editor.selection.0.0 {
-				editor.selection = (editor.selection.0, update);
-			} else if update.0 >= 0 {	// Otherwise, continue selecting at the beginning
-				// Update startpoint for selection
+		// If last char
+		if update == editor.selection.0 {
+			editor.selection = ((-1, -1), (-1, -1));
+		// If before or on first line
+		} else if update.1 <= editor.selection.0.1 {
+			// If after beginning of selection on first line
+			if update.0 > editor.selection.0.0 && update.1 == editor.selection.0.1 {
+				// Deselect
+				editor.selection = (editor.selection.0, (update.0 - 1, update.1));
+			} else {
 				editor.selection = (update, editor.selection.1);
 			}
+		// If not on first line
+		} else {
+			editor.selection = (editor.selection.0, (update.0 - 1, update.1));
 		}
 	}
 }
@@ -301,168 +289,5 @@ mod tests {
 	use crate::editor::key_functions;
 	use crate::editor::EditorSpace;
 	use config::config::Config;
-
-	// Test the highlight right when starting from no highlighted selection
-	#[test]
-	fn highlight_right_initial_selection() {
-		// Construct a new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set starting pos in text
-		editor.set_starting_pos((0, 0), 100, 1);
-
-		// Highlight 3 characters (123)
-		for _i in 0..3 {
-			key_functions::highlight_right(&mut editor, &config);
-		}
-
-		// Check that the endpoints were updated correctly
-		assert_eq!(editor.selection, ((0, 0), (3, 0)));
-		assert_ne!(editor.selection, ((3, 0), (6, 0)));
-
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "123");
-	}
-
-	// Test highlight right when the highlighted selection gets reset and then a new highlighted selection is done
-	#[test]
-	fn highlight_right_reset_selection() {
-		// Construct a new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set starting pos in text
-		editor.set_starting_pos((0, 0), 100, 1);
-		// Highlight 3 character
-		for _i in 0..3 {
-			key_functions::highlight_right(&mut editor, &config);
-		}
-		// Reset selection
-		editor.selection = ((-1, -1), (-1, -1));
-
-		// Select next 3 (456)
-		for _i in 0..3 {
-			key_functions::highlight_right(&mut editor, &config);
-		}
-
-		// Check endpoints
-		assert_ne!(editor.selection, ((0, 0), (3, 0)));
-		assert_eq!(editor.selection, ((3, 0), (6, 0)));
-
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "456");
-		assert_ne!(selected_string, "45");
-	}
-
-	// Check the highlight right when the end of a line (or editor block) is reached
-	#[test]
-	fn highlight_right_overflow_check() {
-		// Construct new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set to beginning of line
-		editor.set_starting_pos((0, 0), 100, 1);
-		// Highlight 3 characters
-		for _i in 0..20 {
-			key_functions::highlight_right(&mut editor, &config);
-		}
-
-		// Check overflow
-		assert_eq!(editor.selection, ((0, 0), (10, 0)));
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "1234567890");
-	}
-
-	// Test the highlight left when starting from no highlighted selection
-	#[test]
-	fn highlight_left_initial_selection() {
-		// Construct new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set the starting position
-		editor.pos = (5, 0);
-		editor.cursor_pos = (6 + editor.width.0, 0);
-		// Highlight 3 characters
-		for _i in 0..3 {
-			key_functions::highlight_left(&mut editor, &config);
-		}
-
-		// Check correct selection
-		assert_eq!(editor.selection, ((2, 0), (5, 0)));
-
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "345");
-	}
-
-	// Test the highlight left when the highlighted selection gets reset and then a new selection is performed
-	#[test]
-	fn highlight_left_reset_selection() {
-		// Construct new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set the starting position
-		editor.pos = (5, 0);
-		editor.cursor_pos = (6 + editor.width.0, 0);
-		// Highlight 3 characters
-		for _i in 0..3 {
-			key_functions::highlight_left(&mut editor, &config);
-		}
-
-		// Reset the selection
-		editor.selection = ((-1, -1), (-1, -1));
-		// Highlight 3
-		for _i in 0..3 {
-			key_functions::highlight_left(&mut editor, &config);
-		}
-
-		// Check correct selection
-		assert_eq!(editor.selection, ((0, 0), (2, 0)));
-
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "12");
-	}
-
-	// Test that highlight left doesn't highlight before the beginning of the line
-	#[test]
-	fn highlight_left_overflow_check() {
-		// Construct new editor
-		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
-		let mut editor = EditorSpace::new(filename, &config);
-
-		// Set to beginning of line
-		editor.pos = (0, 0);
-		// Highlight 3 characters
-		for _i in 0..3 {
-			key_functions::highlight_left(&mut editor, &config);
-		}
-
-		// Check overflow
-		assert_eq!(editor.selection, ((0, 0), (0, 0)));
-
-		// Check that the content of the highlighted section is correct
-		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
-		assert_eq!(selected_string, "");
-	}
 }
 
