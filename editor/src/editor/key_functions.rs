@@ -105,7 +105,7 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Move to above line
 		if editor.pos.1 > 0 {
 			up_arrow(editor, config);
-		end_key(editor, config);
+			end_key(editor, config);
 		} else {
 			home_key(editor);
 		}
@@ -254,6 +254,7 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 			if update.0 < editor.selection.1.0 && update.1 == editor.selection.1.1 {
 				// Deselect
 				editor.selection = (update, editor.selection.1);
+			// Otherwise, add to the front of the selection
 			} else {
 				editor.selection = (editor.selection.0, update);
 			}
@@ -289,6 +290,7 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 			if update.0 > editor.selection.0.0 && update.1 == editor.selection.0.1 {
 				// Deselect
 				editor.selection = (editor.selection.0, update);
+			// Otherwise, add to the front of the selection
 			} else {
 				editor.selection = (update, editor.selection.1);
 			}
@@ -317,6 +319,7 @@ mod tests {
 		editor.set_starting_pos((0, 0), 100, 100);
 		editor.pos = (0, 1);
 
+		// Select 3 characters
 		for _i in 0..3 {
 			key_functions::highlight_right(&mut editor, &config);
 		}
@@ -330,6 +333,34 @@ mod tests {
 		assert_eq!(selected_string, "abc");
 	}
 
+	// Test whether highlight_right correctly wraps to the second line
+	#[test]
+	fn highlight_right_wrap() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting pos in text
+		editor.set_starting_pos((100, 100), 100, 100);
+		editor.pos = (4, 0);
+
+		// Select 10 characters
+		for _i in 0..10 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((4, 0), (4, 1)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let selected_string_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(selected_string_1);
+		selected_string.push_str(selected_string_2);
+
+		assert_eq!(selected_string, "56789abcd");
+	}
+
 	// Test highlighting 3 characters to the left
 	#[test]
 	fn highlight_left_3_chars() {
@@ -341,6 +372,7 @@ mod tests {
 		editor.set_starting_pos((100, 100), 100, 100);
 		editor.pos = (4, 0);
 
+		// Select 3 characters
 		for _i in 0..3 {
 			key_functions::highlight_left(&mut editor, &config);
 		}
@@ -352,6 +384,35 @@ mod tests {
 		let selected_string = &editor.content[editor.pos.1]
 			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
 		assert_eq!(selected_string, "234");
+	}
+
+	// Test whether highlight_left correctly wraps to the first line
+	#[test]
+	fn highlight_left_wrap() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting pos in text
+		editor.set_starting_pos((1, 1), 10, 2);
+		editor.cursor_pos = (4, 4);	// Arbitrary, just needs to satisfy `up_arrow` wrapping condition
+		editor.pos = (4, 1);
+
+		// Select 10 characters
+		for _i in 0..10 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((4, 0), (4, 1)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let selected_string_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(selected_string_1);
+		selected_string.push_str(selected_string_2);
+		
+		assert_eq!(selected_string, "56789abcd");
 	}
 }
 
