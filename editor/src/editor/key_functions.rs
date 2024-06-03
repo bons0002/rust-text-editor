@@ -229,15 +229,22 @@ pub fn save_key_combo(editor: &mut EditorSpace) {
 	}
 }
 
+// Shift + Right_Arrow highlights (or un-highlights) a selection of text as moving right
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
-	// Get location and move right
-	let update = (editor.pos.0 as isize, editor.pos.1 as isize);
-	right_arrow(editor, config);
-
 	// If there is no selection, initialize it
 	if editor.selection == ((-1, -1), (-1, -1)) {
-		editor.selection = (update, update);
+		// Get the start point
+		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move right
+		right_arrow(editor, config);
+		// Get endpoint
+		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Initialize selection
+		editor.selection = (start, end);
 	} else {
+		// Move right and get location
+		right_arrow(editor, config);
+		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
 		// If last char
 		if update == editor.selection.1 {
 			editor.selection = ((-1, -1), (-1, -1));
@@ -246,26 +253,33 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 			// If before end of selection on last line
 			if update.0 < editor.selection.1.0 && update.1 == editor.selection.1.1 {
 				// Deselect
-				editor.selection = ((update.0 + 1, update.1), editor.selection.1);
+				editor.selection = (update, editor.selection.1);
 			} else {
 				editor.selection = (editor.selection.0, update);
 			}
 		// If not on last line
 		} else {
-			editor.selection = ((update.0 + 1, update.1), editor.selection.1);
+			editor.selection = (update, editor.selection.1);
 		}
 	}
 }
 
+// Shift + Left_Arrow highlights (or un-highlights) a selection of text as moving left
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
-	// Move left and get location
-	left_arrow(editor, config);
-	let update = (editor.pos.0 as isize, editor.pos.1 as isize);
-
 	// If there is no selection, initialize it
 	if editor.selection == ((-1, -1), (-1, -1)) {
-		editor.selection = (update, update);
+		// Get endpoint
+		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move left
+		left_arrow(editor, config);
+		// Get start point
+		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Initialize selection
+		editor.selection = (start, end);
 	} else {
+		// Move left and get location
+		left_arrow(editor, config);
+		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
 		// If last char
 		if update == editor.selection.0 {
 			editor.selection = ((-1, -1), (-1, -1));
@@ -274,13 +288,13 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 			// If after beginning of selection on first line
 			if update.0 > editor.selection.0.0 && update.1 == editor.selection.0.1 {
 				// Deselect
-				editor.selection = (editor.selection.0, (update.0 - 1, update.1));
+				editor.selection = (editor.selection.0, update);
 			} else {
 				editor.selection = (update, editor.selection.1);
 			}
 		// If not on first line
 		} else {
-			editor.selection = (editor.selection.0, (update.0 - 1, update.1));
+			editor.selection = (editor.selection.0, update);
 		}
 	}
 }
@@ -291,5 +305,53 @@ mod tests {
 	use crate::editor::key_functions;
 	use crate::editor::EditorSpace;
 	use config::config::Config;
+
+	// Test highlighting 3 characters to the right
+	#[test]
+	fn highlight_right_3_chars() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting pos in text
+		editor.set_starting_pos((0, 0), 100, 100);
+		editor.pos = (0, 1);
+
+		for _i in 0..3 {
+			key_functions::highlight_right(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((0, 1), (3, 1)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "abc");
+	}
+
+	// Test highlighting 3 characters to the left
+	#[test]
+	fn highlight_left_3_chars() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting pos in text
+		editor.set_starting_pos((100, 100), 100, 100);
+		editor.pos = (4, 0);
+
+		for _i in 0..3 {
+			key_functions::highlight_left(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((1, 0), (4, 0)));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.pos.1]
+			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+		assert_eq!(selected_string, "234");
+	}
 }
 
