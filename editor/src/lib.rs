@@ -138,6 +138,7 @@ pub mod editor {
 			Paragraph::new(Text::from(lines)).scroll(self.scroll_offset)
 		}
 
+		// Get the line as a series of chars
 		fn parse_line(&self, config: &Config, idx:usize, line: &String) -> Line {
 			// Split the line into individual words
 			let characters: Vec<char> = line.chars().collect();
@@ -198,6 +199,34 @@ pub mod editor {
 				}
 			} else {
 				Span::from(character)
+			}
+		}
+
+		// Delete the highlighted selection of text
+		fn delete_selection(&mut self) {
+			// Get everything before the selected text on the beginning line
+			let mut before_selection = String::from(&self.content[self.selection.start.1][..self.selection.start.0]);
+			// Get everything after the selected text on the ending line
+			let after_selection = String::from(&self.content[self.selection.end.1][self.selection.end.0..]);
+
+			let idx = self.selection.start.1 + 1;
+			// Remove the middle lines of the selection
+			for _i in (self.selection.start.1 + 1)..(self.selection.end.1 + 1) {
+				self.content.remove(idx);
+			}
+			
+			// Concat the content after the selection to before the selection
+			before_selection.push_str(after_selection.as_str());
+			// Set the line to the new string
+			self.content[self.selection.start.1] = before_selection;
+
+			// Reset the selection
+			self.selection.is_empty = true;
+			
+			// Move cursor back to original position
+			if self.pos == self.selection.end {
+				self.pos = self.selection.original_pos;
+				self.cursor_pos = self.selection.original_cursor;
 			}
 		}
 

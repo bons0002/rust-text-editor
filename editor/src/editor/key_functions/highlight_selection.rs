@@ -18,6 +18,10 @@ pub struct Selection {
     pub end: (usize, usize),
     // Flag to track if selection is empty or not
     pub is_empty: bool,
+	// Store the start point of the cursor
+	pub original_cursor: (usize, usize),
+	// Store the start point of the text position
+	pub original_pos: (usize, usize),
 }
 
 impl Selection {
@@ -27,6 +31,8 @@ impl Selection {
             start: (0, 0),
             end: (0, 0),
             is_empty: true,
+			original_cursor: (0, 0),
+			original_pos: (0, 0),
         }
     }
 }
@@ -35,6 +41,11 @@ impl Selection {
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
+		// Store the starting position of the cursor
+		editor.selection.original_cursor = editor.cursor_pos;
+		// Store the original starting position in the text
+		editor.selection.original_pos = editor.pos;
+
 		// Get the start point
 		editor.selection.start = editor.pos;
 		// Move right
@@ -72,6 +83,11 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
+		// Store the starting position of the cursor
+		editor.selection.original_cursor = editor.cursor_pos;
+		// Store the original starting position in the text
+		editor.selection.original_pos = editor.pos;
+
 		// Get endpoint
 		editor.selection.end = editor.pos;
 		// Move left
@@ -109,6 +125,11 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
+		// Store the starting position of the cursor
+		editor.selection.original_cursor = editor.cursor_pos;
+		// Store the original starting position in the text
+		editor.selection.original_pos = editor.pos;
+
 		// Get endpoint
 		editor.selection.end = editor.pos;
 		// Move up
@@ -143,6 +164,11 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
+		// Store the starting position of the cursor
+		editor.selection.original_cursor = editor.cursor_pos;
+		// Store the original starting position in the text
+		editor.selection.original_pos = editor.pos;
+
 		// Get start point
 		editor.selection.start = editor.pos;
 		// Move down
@@ -442,6 +468,91 @@ mod tests {
 		selected_string.push_str(temp_3);
 
 		assert_eq!(selected_string, "opqr987654321+_)=-");
+	}
+
+	// ----------------------------------
+	// Delete Highlighted Selection Test
+	// ----------------------------------
+
+	// Delete two (highlighted) lines down from the start
+	#[test]
+	fn delete_selection_down_two_lines() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.selection.start = (5, 0);
+        editor.selection.end = (5, 3);
+        editor.selection.is_empty = false;
+
+		// Delete the selection
+		editor.delete_selection();
+
+		// Check that the selection is empty
+		assert!(editor.selection.is_empty);
+
+		// Check the content of the text after deletion
+		let mut remaining_text = String::new();
+		for line in editor.content {
+			remaining_text.push_str(line.as_str());
+		}
+
+		assert_eq!(remaining_text, "12345opqr987654321+_)=-\\,./")
+	}
+
+	// Test deleting starting from the beginning of a line
+	#[test]
+	fn delete_at_beginning_of_line() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.selection.start = (0, 0);
+        editor.selection.end = (5, 3);
+        editor.selection.is_empty = false;
+
+		// Delete the selection
+		editor.delete_selection();
+
+		// Check that the selection is empty
+		assert!(editor.selection.is_empty);
+
+		// Check the content of the text after deletion
+		let mut remaining_text = String::new();
+		for line in editor.content {
+			remaining_text.push_str(line.as_str());
+		}
+
+		assert_eq!(remaining_text, "opqr987654321+_)=-\\,./");
+	}
+
+	// Test deleting starting from the beginning of a line
+	#[test]
+	fn delete_at_end_of_line() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.selection.start = (9, 0);
+        editor.selection.end = (6, 4);
+        editor.selection.is_empty = false;
+
+		// Delete the selection
+		editor.delete_selection();
+
+		// Check that the selection is empty
+		assert!(editor.selection.is_empty);
+
+		// Check the content of the text after deletion
+		let mut remaining_text = String::new();
+		for line in editor.content {
+			remaining_text.push_str(line.as_str());
+		}
+
+		assert_eq!(remaining_text, "123456789321+_)=-\\,./");
 	}
 }
 
