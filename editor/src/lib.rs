@@ -277,13 +277,13 @@ pub mod editor {
 							// Uppercase characters
 							KeyCode::Char(code) => key_functions::char_key(self, code.to_ascii_uppercase()),
 							// Right arrow highlight text to the right
-							KeyCode::Right => key_functions::highlight_right(self, config),
+							KeyCode::Right => key_functions::highlight_selection::highlight_right(self, config),
 							// Left arrow highlight text to the left
-							KeyCode::Left => key_functions::highlight_left(self, config),
+							KeyCode::Left => key_functions::highlight_selection::highlight_left(self, config),
 							// Up arrow highlights text upwards
-							KeyCode::Up => key_functions::highlight_up(self, config),
+							KeyCode::Up => key_functions::highlight_selection::highlight_up(self, config),
 							// Down arrow highlights text downwards
-							KeyCode::Down => key_functions::highlight_down(self, config),
+							KeyCode::Down => key_functions::highlight_selection::highlight_down(self, config),
 							_ => (),
 						}
 					}
