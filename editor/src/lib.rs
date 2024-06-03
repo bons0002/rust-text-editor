@@ -212,25 +212,15 @@ pub mod editor {
 						// Return the key
 						match code {
 							// If normal character, insert that character
-							KeyCode::Char(code) => {
-								key_functions::char_key(self, code);
-							}
+							KeyCode::Char(code) => key_functions::char_key(self, code),
 							// If Enter was pressed, insert newline
-							KeyCode::Enter => {
-								key_functions::enter_key(self);
-							}
+							KeyCode::Enter => key_functions::enter_key(self),
 							// If tab was pressed, insert tab character
-							KeyCode::Tab => {
-								key_functions::tab_key(self, config);
-							}
+							KeyCode::Tab => key_functions::tab_key(self, config),
 							// If backspace was pressed, remove the previous character
-							KeyCode::Backspace => {
-								key_functions::backspace(self, config);
-							}
+							KeyCode::Backspace => key_functions::backspace(self, config),
 							// If delete was pressed, remove the next character
-							KeyCode::Delete => {
-								key_functions::delete_key(self);
-							}
+							KeyCode::Delete => key_functions::delete_key(self),
 							// Left arrow moves cursor left
 							KeyCode::Left => {
 								// Clear the highlighted selection of text
@@ -285,17 +275,15 @@ pub mod editor {
 					}) => {
 						match code {
 							// Uppercase characters
-							KeyCode::Char(code) => {
-								key_functions::char_key(self, code.to_ascii_uppercase());
-							}
-							// Right arrow highlight text
-							KeyCode::Right => {
-								key_functions::highlight_right(self, config);
-							}
-							// Left arrow highlight text
-							KeyCode::Left => {
-								key_functions::highlight_left(self, config);
-							}
+							KeyCode::Char(code) => key_functions::char_key(self, code.to_ascii_uppercase()),
+							// Right arrow highlight text to the right
+							KeyCode::Right => key_functions::highlight_right(self, config),
+							// Left arrow highlight text to the left
+							KeyCode::Left => key_functions::highlight_left(self, config),
+							// Up arrow highlights text upwards
+							KeyCode::Up => key_functions::highlight_up(self, config),
+							// DEBUG: PRINT SELECTION COORDS (USED TO CHECK UNIT TESTS)
+							KeyCode::PageUp => println!("{:?}", self.selection),
 							_ => (),
 						}
 					}
@@ -308,13 +296,9 @@ pub mod editor {
 					}) => {
 						match code {
 							// Save the frame to the file
-							KeyCode::Char('s') => {
-								key_functions::save_key_combo(self);
-							}
+							KeyCode::Char('s') => key_functions::save_key_combo(self),
 							// Break the loop to end the program
-							KeyCode::Char('c') => {
-								self.break_loop = true;
-							}
+							KeyCode::Char('c') => self.break_loop = true,
 							_ => (),
 						}
 					}

@@ -247,6 +247,7 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
 		// If last char
 		if update == editor.selection.1 {
+			// Reset selection
 			editor.selection = ((-1, -1), (-1, -1));
 		// If after on last line
 		} else if update.1 >= editor.selection.1.1 {
@@ -283,6 +284,7 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
 		// If last char
 		if update == editor.selection.0 {
+			// Reset selection
 			editor.selection = ((-1, -1), (-1, -1));
 		// If before or on first line
 		} else if update.1 <= editor.selection.0.1 {
@@ -301,12 +303,50 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	}
 }
 
+// Shift + Up_Arrow highlights (or un-highlights) lines above in the text
+pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
+	// If there is no selection, initialize it
+	if editor.selection == ((-1, -1), (-1, -1)) {
+		// Get endpoint
+		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move up
+		up_arrow(editor, config);
+		// Get start point
+		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Initialize selection
+		editor.selection = (start, end);
+	} else {
+		// Store the current location
+		let prior = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move up and get location
+		up_arrow(editor, config);
+		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// If the selection is empty
+		if update == editor.selection.0 {
+			// Reset selection
+			editor.selection = ((-1, -1), (-1, -1));
+		// If moving at the beginning of the selection
+		} else if prior.1 <= editor.selection.0.1 {
+			// Update the beginning of the selection
+			editor.selection = (update, editor.selection.1);
+		// If moving at the end of the selection
+		} else {
+			// Deselect from the end
+			editor.selection = (editor.selection.0, update);
+		}
+	}
+}
+
 
 #[cfg(test)]
 mod tests {
 	use crate::editor::key_functions;
 	use crate::editor::EditorSpace;
 	use config::config::Config;
+
+	// ----------------------
+	// Highlight Right Tests
+	// ----------------------
 
 	// Test highlighting 3 characters to the right
 	#[test]
@@ -361,6 +401,10 @@ mod tests {
 		assert_eq!(selected_string, "56789abcd");
 	}
 
+	// ---------------------
+	// Highlight Left Tests
+	// ---------------------
+
 	// Test highlighting 3 characters to the left
 	#[test]
 	fn highlight_left_3_chars() {
@@ -413,6 +457,70 @@ mod tests {
 		selected_string.push_str(selected_string_2);
 		
 		assert_eq!(selected_string, "56789abcd");
+	}
+
+	// -------------------
+	// Highlight Up Tests
+	// -------------------
+
+	// Test highlight_up for selecting two lines up
+	#[test]
+	fn highlight_up_select_two_lines() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_vertical.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting position
+		editor.set_starting_pos((1,1), 9, 6);
+		editor.cursor_pos = (5,7);
+		editor.pos = (5,3);
+
+		// Select 2 lines
+		for _i in 0..2 {
+			key_functions::highlight_up(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((5, 1), (5, 3)));
+
+		// Check that the content of the highlighted section is correct
+		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
+		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(temp_1);
+		selected_string.push_str(temp_2);
+		selected_string.push_str(temp_3);
+
+		assert_eq!(selected_string, "fghi!@#$%^&*(jklmn");
+	}
+
+	// Test highlight_up deselect two lines
+	#[test]
+	fn highlight_up_deselect_one_lines() {
+		let config = Config::default();
+		let filename = String::from("../editor/test_files/highlight_vertical.txt");
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting position
+		editor.set_starting_pos((1,1), 9, 6);
+		editor.cursor_pos = (5,7);
+		editor.pos = (5,3);
+		// Set starting selection
+		editor.selection = ((5, 1), (5, 3));
+
+		// Deselect one line
+		key_functions::highlight_up(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((5, 1), (5, 2)));
+
+		// Check that the content of the highlighted section is correct
+		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let temp_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(temp_1);
+		selected_string.push_str(temp_2);
+
+		assert_eq!(selected_string, "fghi!@#$%");
 	}
 }
 
