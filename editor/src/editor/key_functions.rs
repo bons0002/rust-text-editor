@@ -321,7 +321,7 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 		// Move up and get location
 		up_arrow(editor, config);
 		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
-		// If the selection is empty
+		// If the selection is now empty
 		if update == editor.selection.0 {
 			// Reset selection
 			editor.selection = ((-1, -1), (-1, -1));
@@ -337,12 +337,50 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	}
 }
 
+// Shift + Down_Arrow highlights (or un-highlights) lines below in the text
+pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
+	// If there is no selection, initialize it
+	if editor.selection == ((-1, -1), (-1, -1)) {
+		// Get start point
+		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move down
+		down_arrow(editor, config);
+		// Get endpoint
+		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Initialize selection
+		editor.selection = (start, end);
+	} else {
+		// Store the current location
+		let prior = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// Move down and get location
+		down_arrow(editor, config);
+		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		// If the selection is now empty
+		if update == editor.selection.1 {
+			// Reset selection
+			editor.selection = ((-1, -1), (-1, -1));
+		// If moving at the end of the selection
+		} else if prior.1 >= editor.selection.1.1 {
+			// Update the end of the selection
+			editor.selection = (editor.selection.0, update);
+		// If moving at the beginning of the selection
+		} else {
+			// Deselect from the beginning
+			editor.selection = (update, editor.selection.1);
+		}
+	}
+}
+
 
 #[cfg(test)]
 mod tests {
 	use crate::editor::key_functions;
 	use crate::editor::EditorSpace;
 	use config::config::Config;
+
+	// Filenames for tests
+	const HIGHLIGHT_HORIZONTAL: &str = "../editor/test_files/highlight_horizontal.txt";
+	const HIGHLIGHT_VERTICAL: &str = "../editor/test_files/highlight_vertical.txt";
 
 	// ----------------------
 	// Highlight Right Tests
@@ -352,7 +390,7 @@ mod tests {
 	#[test]
 	fn highlight_right_3_chars() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let filename = String::from(HIGHLIGHT_HORIZONTAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -377,7 +415,7 @@ mod tests {
 	#[test]
 	fn highlight_right_wrap() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let filename = String::from(HIGHLIGHT_HORIZONTAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -409,7 +447,7 @@ mod tests {
 	#[test]
 	fn highlight_left_3_chars() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let filename = String::from(HIGHLIGHT_HORIZONTAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -434,7 +472,7 @@ mod tests {
 	#[test]
 	fn highlight_left_wrap() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_horizontal.txt");
+		let filename = String::from(HIGHLIGHT_HORIZONTAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -467,7 +505,7 @@ mod tests {
 	#[test]
 	fn highlight_up_select_two_lines() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_vertical.txt");
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting position
@@ -498,7 +536,7 @@ mod tests {
 	#[test]
 	fn highlight_up_deselect_one_lines() {
 		let config = Config::default();
-		let filename = String::from("../editor/test_files/highlight_vertical.txt");
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting position
@@ -521,6 +559,72 @@ mod tests {
 		selected_string.push_str(temp_2);
 
 		assert_eq!(selected_string, "fghi!@#$%");
+	}
+
+	// ---------------------
+	// Highlight Down Tests
+	// ---------------------
+
+	// Test highlight_down for selecting two lines down
+	#[test]
+	fn highlight_down_select_two_lines() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting position
+		editor.set_starting_pos((1,1), 9, 6);
+		editor.pos = (5,3);
+
+		// Select 2 lines
+		for _i in 0..2 {
+			key_functions::highlight_down(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((5, 3), (5, 5)));
+
+		// Check that the content of the highlighted section is correct
+		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
+		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(temp_1);
+		selected_string.push_str(temp_2);
+		selected_string.push_str(temp_3);
+
+		assert_eq!(selected_string, "opqr987654321+_)=-");
+	}
+
+	// Test highlight_down for deslecting three lines down
+	#[test]
+	fn highlight_down_deselect_three_lines() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting position
+		editor.set_starting_pos((1,1), 9, 6);
+		editor.pos = (5, 0);
+		// Set starting selection
+		editor.selection = ((5, 0), (5, 5));
+
+		// Deselect three lines
+		for _i in 0..3 {
+			key_functions::highlight_down(&mut editor, &config);
+		}
+
+		// Check selection bounds
+		assert_eq!(editor.selection, ((5, 3), (5, 5)));
+
+		// Check that the content of the highlighted section is correct
+		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
+		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
+		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let mut selected_string = String::from(temp_1);
+		selected_string.push_str(temp_2);
+		selected_string.push_str(temp_3);
+
+		assert_eq!(selected_string, "opqr987654321+_)=-");
 	}
 }
 

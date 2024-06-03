@@ -282,8 +282,8 @@ pub mod editor {
 							KeyCode::Left => key_functions::highlight_left(self, config),
 							// Up arrow highlights text upwards
 							KeyCode::Up => key_functions::highlight_up(self, config),
-							// DEBUG: PRINT SELECTION COORDS (USED TO CHECK UNIT TESTS)
-							KeyCode::PageUp => println!("{:?}", self.selection),
+							// Down arrow highlights text downwards
+							KeyCode::Down => key_functions::highlight_down(self, config),
 							_ => (),
 						}
 					}
