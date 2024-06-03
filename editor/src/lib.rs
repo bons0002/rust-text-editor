@@ -317,6 +317,8 @@ pub mod editor {
 							KeyCode::Up => key_functions::highlight_selection::highlight_up(self, config),
 							// Down arrow highlights text downwards
 							KeyCode::Down => key_functions::highlight_selection::highlight_down(self, config),
+							// End key highlights to end of line
+							KeyCode::End => key_functions::highlight_selection::highlight_end(self, config),
 							_ => (),
 						}
 					}

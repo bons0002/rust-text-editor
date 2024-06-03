@@ -194,6 +194,59 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	}
 }
 
+// Shift + End will highlight (or un-highlight) until the end of the line
+pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
+	if editor.selection.is_empty {
+		// Store the starting position of the cursor
+		editor.selection.original_cursor = editor.cursor_pos;
+		// Store the original starting position in the text
+		editor.selection.original_pos = editor.pos;
+
+		// Get start point
+		editor.selection.start = editor.pos;
+		// Move to end of line
+		end_key(editor, config);
+		// Get endpoint
+		editor.selection.end = editor.pos;
+		// Flag selection as being not empty
+        editor.selection.is_empty = false;
+	} else {
+		// Store the current location
+		let prior = editor.pos;
+		// Move to end of line and get location
+		end_key(editor, config);
+		let update = editor.pos;
+		
+		// If selection is now empty
+		if update == editor.selection.end {
+			// Reset selection
+			editor.selection.is_empty = true;
+		} else {
+			// If only one line
+			if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
+				// If cursor before selection
+				if prior.0 <= editor.selection.start.0 {
+					// Set start to original end
+					editor.selection.start = editor.selection.original_pos;
+					// Set end to end of line
+					editor.selection.end = update;
+				// Otherwise, update endpoint
+				} else {
+					editor.selection.end = update;
+				}
+			// If at last line
+			} else if prior.1 >= editor.selection.end.1 {
+				// Update end
+				editor.selection.end = update;
+			// If at first line
+			} else {
+				// Deselect start
+				editor.selection.start = update;
+			}
+		}
+	}
+}
+
 
 // -----------
 // Unit Tests
