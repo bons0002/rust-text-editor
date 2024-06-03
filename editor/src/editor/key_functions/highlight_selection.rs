@@ -1,4 +1,5 @@
-// Defines the logic of the movement keys that highlight selections of text
+// Defines the logic of the movement keys that highlight selections of text.
+// Also defines the Selection struct for track the highlighted selection.
 
 use super::{
     Config,
@@ -9,39 +10,60 @@ use super::{
     up_arrow,
 };
 
+// Structure that keeps track of the highlighted selection of text
+pub struct Selection {
+    // The start point of the selection
+    pub start: (usize, usize),
+    // The endpoint of the selection
+    pub end: (usize, usize),
+    // Flag to track if selection is empty or not
+    pub is_empty: bool,
+}
+
+impl Selection {
+    // Create a new Selection struct
+    pub fn new() -> Self {
+        Selection {
+            start: (0, 0),
+            end: (0, 0),
+            is_empty: true,
+        }
+    }
+}
+
 // Shift + Right_Arrow highlights (or un-highlights) a selection of text as moving right
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
-	if editor.selection == ((-1, -1), (-1, -1)) {
+	if editor.selection.is_empty {
 		// Get the start point
-		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection.start = editor.pos;
 		// Move right
 		right_arrow(editor, config);
 		// Get endpoint
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
-		// Initialize selection
-		editor.selection = (start, end);
+		editor.selection.end = editor.pos;
+		// Flag selection as being not empty
+        editor.selection.is_empty = false;
 	} else {
 		// Move right and get location
 		right_arrow(editor, config);
-		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let update = editor.pos;
 		// If last char
-		if update == editor.selection.1 {
+		if update == editor.selection.end {
 			// Reset selection
-			editor.selection = ((-1, -1), (-1, -1));
+			editor.selection.is_empty = true;
 		// If after on last line
-		} else if update.1 >= editor.selection.1.1 {
+		} else if update.1 >= editor.selection.end.1 {
 			// If before end of selection on last line
-			if update.0 < editor.selection.1.0 && update.1 == editor.selection.1.1 {
+			if update.0 < editor.selection.end.0 && update.1 == editor.selection.end.1 {
 				// Deselect
-				editor.selection = (update, editor.selection.1);
+				editor.selection.start = update;
 			// Otherwise, add to the front of the selection
 			} else {
-				editor.selection = (editor.selection.0, update);
+				editor.selection.end = update;
 			}
 		// If not on last line
 		} else {
-			editor.selection = (update, editor.selection.1);
+			editor.selection.start = update;
 		}
 	}
 }
@@ -49,36 +71,36 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 // Shift + Left_Arrow highlights (or un-highlights) a selection of text as moving left
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
-	if editor.selection == ((-1, -1), (-1, -1)) {
+	if editor.selection.is_empty {
 		// Get endpoint
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection.end = editor.pos;
 		// Move left
 		left_arrow(editor, config);
 		// Get start point
-		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
-		// Initialize selection
-		editor.selection = (start, end);
+		editor.selection.start = editor.pos;
+		// Flag selection as being not empty
+        editor.selection.is_empty = false;
 	} else {
 		// Move left and get location
 		left_arrow(editor, config);
-		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let update = editor.pos;
 		// If last char
-		if update == editor.selection.0 {
+		if update == editor.selection.start {
 			// Reset selection
-			editor.selection = ((-1, -1), (-1, -1));
+			editor.selection.is_empty = true;
 		// If before or on first line
-		} else if update.1 <= editor.selection.0.1 {
+		} else if update.1 <= editor.selection.start.1 {
 			// If after beginning of selection on first line
-			if update.0 > editor.selection.0.0 && update.1 == editor.selection.0.1 {
+			if update.0 > editor.selection.start.0 && update.1 == editor.selection.start.1 {
 				// Deselect
-				editor.selection = (editor.selection.0, update);
+				editor.selection.end = update;
 			// Otherwise, add to the front of the selection
 			} else {
-				editor.selection = (update, editor.selection.1);
+				editor.selection.start = update;
 			}
 		// If not on first line
 		} else {
-			editor.selection = (editor.selection.0, update);
+			editor.selection.end = update;
 		}
 	}
 }
@@ -86,33 +108,33 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 // Shift + Up_Arrow highlights (or un-highlights) lines above in the text
 pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
-	if editor.selection == ((-1, -1), (-1, -1)) {
+	if editor.selection.is_empty {
 		// Get endpoint
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection.end = editor.pos;
 		// Move up
 		up_arrow(editor, config);
 		// Get start point
-		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
-		// Initialize selection
-		editor.selection = (start, end);
+		editor.selection.start = editor.pos;
+		// Flag selection as being not empty
+        editor.selection.is_empty = false;
 	} else {
 		// Store the current location
-		let prior = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let prior = editor.pos;
 		// Move up and get location
 		up_arrow(editor, config);
-		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let update = editor.pos;
 		// If the selection is now empty
-		if update == editor.selection.0 {
+		if update == editor.selection.start {
 			// Reset selection
-			editor.selection = ((-1, -1), (-1, -1));
+			editor.selection.is_empty = true;
 		// If moving at the beginning of the selection
-		} else if prior.1 <= editor.selection.0.1 {
+		} else if prior.1 <= editor.selection.start.1 {
 			// Update the beginning of the selection
-			editor.selection = (update, editor.selection.1);
+			editor.selection.start = update;
 		// If moving at the end of the selection
 		} else {
 			// Deselect from the end
-			editor.selection = (editor.selection.0, update);
+			editor.selection.end = update;
 		}
 	}
 }
@@ -120,33 +142,33 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 // Shift + Down_Arrow highlights (or un-highlights) lines below in the text
 pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
-	if editor.selection == ((-1, -1), (-1, -1)) {
+	if editor.selection.is_empty {
 		// Get start point
-		let start = (editor.pos.0 as isize, editor.pos.1 as isize);
+		editor.selection.start = editor.pos;
 		// Move down
 		down_arrow(editor, config);
 		// Get endpoint
-		let end = (editor.pos.0 as isize, editor.pos.1 as isize);
-		// Initialize selection
-		editor.selection = (start, end);
+		editor.selection.end = editor.pos;
+		// Flag selection as being not empty
+        editor.selection.is_empty = false;
 	} else {
 		// Store the current location
-		let prior = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let prior = editor.pos;
 		// Move down and get location
 		down_arrow(editor, config);
-		let update = (editor.pos.0 as isize, editor.pos.1 as isize);
+		let update = editor.pos;
 		// If the selection is now empty
-		if update == editor.selection.1 {
+		if update == editor.selection.end {
 			// Reset selection
-			editor.selection = ((-1, -1), (-1, -1));
+			editor.selection.is_empty = true;
 		// If moving at the end of the selection
-		} else if prior.1 >= editor.selection.1.1 {
+		} else if prior.1 >= editor.selection.end.1 {
 			// Update the end of the selection
-			editor.selection = (editor.selection.0, update);
+			editor.selection.end = update;
 		// If moving at the beginning of the selection
 		} else {
 			// Deselect from the beginning
-			editor.selection = (update, editor.selection.1);
+			editor.selection.start = update;
 		}
 	}
 }
@@ -186,11 +208,12 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((0, 1), (3, 1)));
+		assert_eq!(editor.selection.start, (0, 1));
+        assert_eq!(editor.selection.end, (3, 1));
 
 		// Check that the content of the highlighted section is correct
 		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+			[(editor.selection.start).0..(editor.selection.end).0];
 		assert_eq!(selected_string, "abc");
 	}
 
@@ -211,11 +234,12 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((4, 0), (4, 1)));
+		assert_eq!(editor.selection.start, (4, 0));
+        assert_eq!(editor.selection.end, (4, 1));
 
 		// Check that the content of the highlighted section is correct
-		let selected_string_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let selected_string_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let selected_string_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let selected_string_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(selected_string_1);
 		selected_string.push_str(selected_string_2);
 
@@ -243,11 +267,12 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((1, 0), (4, 0)));
+		assert_eq!(editor.selection.start, (1, 0));
+        assert_eq!(editor.selection.end, (4, 0));
 
 		// Check that the content of the highlighted section is correct
 		let selected_string = &editor.content[editor.pos.1]
-			[(editor.selection.0).0 as usize..(editor.selection.1).0 as usize];
+			[(editor.selection.start).0..(editor.selection.end).0];
 		assert_eq!(selected_string, "234");
 	}
 
@@ -269,11 +294,12 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((4, 0), (4, 1)));
+		assert_eq!(editor.selection.start, (4, 0));
+        assert_eq!(editor.selection.end, (4, 1));
 
 		// Check that the content of the highlighted section is correct
-		let selected_string_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let selected_string_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let selected_string_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let selected_string_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(selected_string_1);
 		selected_string.push_str(selected_string_2);
 		
@@ -302,12 +328,13 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((5, 1), (5, 3)));
+		assert_eq!(editor.selection.start, (5, 1));
+        assert_eq!(editor.selection.end, (5, 3));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
-		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let temp_2 = &editor.content[editor.selection.start.1 + 1];
+		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(temp_1);
 		selected_string.push_str(temp_2);
 		selected_string.push_str(temp_3);
@@ -327,17 +354,20 @@ mod tests {
 		editor.cursor_pos = (5,7);
 		editor.pos = (5,3);
 		// Set starting selection
-		editor.selection = ((5, 1), (5, 3));
+		editor.selection.start = (5, 1);
+        editor.selection.end = (5, 3);
+        editor.selection.is_empty = false;
 
 		// Deselect one line
 		highlight_selection::highlight_up(&mut editor, &config);
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((5, 1), (5, 2)));
+		assert_eq!(editor.selection.start, (5, 1));
+        assert_eq!(editor.selection.end, (5, 2));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let temp_2 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let temp_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(temp_1);
 		selected_string.push_str(temp_2);
 
@@ -365,12 +395,13 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((5, 3), (5, 5)));
+		assert_eq!(editor.selection.start, (5, 3));
+        assert_eq!(editor.selection.end, (5, 5));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
-		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let temp_2 = &editor.content[editor.selection.start.1 + 1];
+		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(temp_1);
 		selected_string.push_str(temp_2);
 		selected_string.push_str(temp_3);
@@ -389,7 +420,9 @@ mod tests {
 		editor.set_starting_pos((1,1), 9, 6);
 		editor.pos = (5, 0);
 		// Set starting selection
-		editor.selection = ((5, 0), (5, 5));
+		editor.selection.start = (5, 0);
+        editor.selection.end = (5, 5);
+        editor.selection.is_empty = false;
 
 		// Deselect three lines
 		for _i in 0..3 {
@@ -397,12 +430,13 @@ mod tests {
 		}
 
 		// Check selection bounds
-		assert_eq!(editor.selection, ((5, 3), (5, 5)));
+		assert_eq!(editor.selection.start, (5, 3));
+        assert_eq!(editor.selection.end, (5, 5));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.0.1 as usize][editor.selection.0.0 as usize..];
-		let temp_2 = &editor.content[editor.selection.0.1 as usize + 1];
-		let temp_3 = &editor.content[editor.selection.1.1 as usize][..editor.selection.1.0 as usize];
+		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
+		let temp_2 = &editor.content[editor.selection.start.1 + 1];
+		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
 		let mut selected_string = String::from(temp_1);
 		selected_string.push_str(temp_2);
 		selected_string.push_str(temp_3);

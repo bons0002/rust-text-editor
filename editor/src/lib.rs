@@ -17,6 +17,7 @@ pub mod editor {
 
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
+	use key_functions::highlight_selection::Selection;
 
 	pub struct EditorSpace {
 		// Name of file opened in current editor frame
@@ -31,10 +32,9 @@ pub mod editor {
 		pub start_cursor_set: bool,
 		// TEMP bool to break the main loop
 		pub break_loop: bool,
-		// The starting and ending positions of the highlighted selection of text
-		// (Negative values indicate no selection)
-		pub selection: ((isize, isize), (isize, isize)),
 
+		// Track the coordinates of the highlighted selection of text
+		selection: Selection,
 		// Horizontal bounds of the editor block
 		width: (usize, usize),
 		// Vertical bounds of the editor block
@@ -57,7 +57,7 @@ pub mod editor {
 				pos: (0, 0),
 				start_cursor_set: false,
 				break_loop: false,
-				selection: ((-1, -1), (-1, -1)),
+				selection: Selection::new(),
 				width: (0, 0),
 				height: (0, 0),
 				scroll_offset: (0, 0),
@@ -164,34 +164,38 @@ pub mod editor {
 
 		// Highlight a specific character on the line within the highlighting selection
 		fn highlight_char(&self, config: &Config, idx: usize, loc: usize, character: String) -> Span {
-			// If only one line
-			if (idx as isize) == self.selection.0.1 && self.selection.0.1 == self.selection.1.1 {
-				// If within selection, highlight character
-				if (loc as isize) >= self.selection.0.0 && (loc as isize) < self.selection.1.0 {
+			if self.selection.is_empty {
+				// If only one line
+				if idx == self.selection.start.1 && self.selection.start.1 == self.selection.end.1 {
+					// If within selection, highlight character
+					if loc >= self.selection.start.0 && loc < self.selection.end.0 {
+						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+					} else {
+						Span::from(character)
+					}
+				// If on first line (and there are multiple lines in selection)
+				} else if idx == self.selection.start.1 {
+					// Highlight all characters on the line after the cursor
+					if loc >= self.selection.start.0 {
+						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+					} else {
+						Span::from(character)
+					}
+				// If on last line (and there are multiple lines in selection)
+				} else if idx == self.selection.end.1 {
+					// Highlight all characters on the line before the cursor
+					if loc < self.selection.end.0 {
+						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+					} else {
+						Span::from(character)
+					}
+				// If between first and last line in multine selection
+				} else if idx > self.selection.start.1 && idx < self.selection.end.1 {
 					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
+				// If not in selection
 				} else {
 					Span::from(character)
 				}
-			// If on first line (and there are multiple lines in selection)
-			} else if (idx as isize) == self.selection.0.1 {
-				// Highlight all characters on the line after the cursor
-				if (loc as isize) >= self.selection.0.0 {
-					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
-				} else {
-					Span::from(character)
-				}
-			// If on last line (and there are multiple lines in selection)
-			} else if (idx as isize) == self.selection.1.1 {
-				// Highlight all characters on the line before the cursor
-				if (loc as isize) < self.selection.1.0 {
-					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
-				} else {
-					Span::from(character)
-				}
-			// If between first and last line in multine selection
-			} else if (idx as isize) > self.selection.0.1 && (idx as isize) < self.selection.1.1 {
-				Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
-			// If not in selection
 			} else {
 				Span::from(character)
 			}
@@ -224,42 +228,42 @@ pub mod editor {
 							// Left arrow moves cursor left
 							KeyCode::Left => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// Left arrow functionality
 								key_functions::left_arrow(self, config);
 							}
 							// Right arrow moves cursor right
 							KeyCode::Right => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// Right arrow functionality
 								key_functions::right_arrow(self, config);
 							}
 							// Up arrow move cursor up one line
 							KeyCode::Up => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// Up arrow functionality
 								key_functions::up_arrow(self, config);
 							}
 							// Down arrow move cursor down one line
 							KeyCode::Down => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// Down arrow functionality
 								key_functions::down_arrow(self, config);
 							}
 							// Home button moves to beginning of line
 							KeyCode::Home => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// Home key functionality
 								key_functions::home_key(self);
 							}
 							// End button move to end of line
 							KeyCode::End => {
 								// Clear the highlighted selection of text
-								self.selection = ((-1, -1), (-1, -1));
+								self.selection.is_empty = true;
 								// End key functionality
 								key_functions::end_key(self, config);
 							}
