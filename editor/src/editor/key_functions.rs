@@ -229,16 +229,20 @@ pub fn end_key(editor: &mut EditorSpace, config: &Config) {
 	// Count the number of tab characters
 	let tab_chars = editor.content[editor.pos.1].matches('\t').count() * (config.tab_width - 1);
 
-	// Move to end of line if not past the end of the block
+	// Move to end of line if not past the end of the widget
 	if editor.content[editor.pos.1].len() < (editor.width.1 - editor.width.0) {
-		// Set the cursor to the end of the visual line in the block
+		// Set the cursor to the end of the visual line in the widget
 		editor.pos = (editor.content[editor.pos.1].len(), editor.pos.1);
+		// Set screen cursor to end of line
 		editor.cursor_pos = (
 			editor.width.0 + editor.content[editor.pos.1].len() + 1 + tab_chars,
 			editor.cursor_pos.1,
 		);
-	} else {	// If line longer than width of block, move to the end of the 'visible' line
+	// If line longer than width of widget, move to the end of the 'visible' line
+	} else {
+		// Set position in text
 		editor.pos = ((editor.width.1 - editor.width.0) - 1, editor.pos.1);
+		// Set screen cursor to end of widget
 		editor.cursor_pos = (
 			editor.width.0 + (editor.width.1 - editor.width.0) + tab_chars - 1,
 			editor.cursor_pos.1,
