@@ -41,15 +41,16 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		if editor.content.len() > 1 {
 			// Get the text from the rest of the line after the cursor
 			let after_cursor = get_after_cursor(&line, editor.pos.0);
-			// Remove the current line
-			editor.content.remove(editor.pos.1);
 			// Move up one line
 			up_arrow(editor, config);
 			end_key(editor, config);
+			// Remove the current line
+			editor.content.remove(editor.pos.1 + 1);
 			// Append the rest of the line to the previous line (where the cursor is moving to)
 			editor.content[editor.pos.1].push_str(after_cursor);
 		}
-	} else {    // Move cursor left
+	// Move cursor left
+	} else {
 		left_arrow(editor, config);
 		// Remove one character
 		editor.content[editor.pos.1].remove(editor.pos.0);
@@ -62,7 +63,8 @@ pub fn delete_key(editor: &mut EditorSpace) {
 	if editor.pos.0 < editor.content[editor.pos.1].len() {
 		// Delete next char
 		editor.content[editor.pos.1].remove(editor.pos.0);
-	} else if editor.pos.1 < editor.content.len() - 1 { // If not at end of last line
+	// If not at end of last line
+	} else if editor.pos.1 < editor.content.len() - 1 {
 		// Get entire next line
 		let appending_line = editor.content[editor.pos.1 + 1].clone();
 		// Append the next line to the current line
