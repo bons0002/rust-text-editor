@@ -58,8 +58,8 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 		// Move right and get location
 		right_arrow(editor, config);
 		let update = editor.pos;
-		// If last char
-		if update == editor.selection.end {
+		// If selection is now empty (but not at last char of file)
+		if update == editor.selection.end && update < (editor.content[editor.content.len() - 1].len(), editor.content.len() - 1) {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If after on last line
@@ -100,8 +100,8 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		// Move left and get location
 		left_arrow(editor, config);
 		let update = editor.pos;
-		// If last char
-		if update == editor.selection.start {
+		// If selection is now empty (but not at first char of the file)
+		if update == editor.selection.start && update > (0, 0) {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If before or on first line
@@ -144,8 +144,8 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 		// Move up and get location
 		up_arrow(editor, config);
 		let update = editor.pos;
-		// If the selection is now empty
-		if update == editor.selection.start {
+		// If the selection is now empty (but not on first line)
+		if update == editor.selection.start && update.1 > 0 {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If moving at the beginning of the selection
@@ -183,8 +183,8 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 		// Move down and get location
 		down_arrow(editor, config);
 		let update = editor.pos;
-		// If the selection is now empty
-		if update == editor.selection.end {
+		// If the selection is now empty (but not on last line)
+		if update == editor.selection.end && update.1 < editor.content.len() - 1 {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If moving at the end of the selection
