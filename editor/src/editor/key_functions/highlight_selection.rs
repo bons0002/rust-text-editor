@@ -2,12 +2,7 @@
 // Also defines the Selection struct for track the highlighted selection.
 
 use super::{
-    Config,
-    EditorSpace,
-    down_arrow,
-    left_arrow,
-    right_arrow,
-    up_arrow,
+    down_arrow, end_key, left_arrow, right_arrow, up_arrow, Config, EditorSpace
 };
 
 // Structure that keeps track of the highlighted selection of text
@@ -58,8 +53,8 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 		// Move right and get location
 		right_arrow(editor, config);
 		let update = editor.pos;
-		// If selection is now empty (but not at last char of file)
-		if update == editor.selection.end && update < (editor.content[editor.content.len() - 1].len(), editor.content.len() - 1) {
+		// If selection is now empty
+		if update == editor.selection.end {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If after on last line
@@ -100,8 +95,8 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		// Move left and get location
 		left_arrow(editor, config);
 		let update = editor.pos;
-		// If selection is now empty (but not at first char of the file)
-		if update == editor.selection.start && update > (0, 0) {
+		// If selection is now empty
+		if update == editor.selection.start {
 			// Reset selection
 			editor.selection.is_empty = true;
 		// If before or on first line
