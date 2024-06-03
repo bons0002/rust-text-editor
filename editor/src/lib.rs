@@ -164,7 +164,7 @@ pub mod editor {
 
 		// Highlight a specific character on the line within the highlighting selection
 		fn highlight_char(&self, config: &Config, idx: usize, loc: usize, character: String) -> Span {
-			if self.selection.is_empty {
+			if !self.selection.is_empty {
 				// If only one line
 				if idx == self.selection.start.1 && self.selection.start.1 == self.selection.end.1 {
 					// If within selection, highlight character
