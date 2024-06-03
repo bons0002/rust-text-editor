@@ -167,7 +167,7 @@ pub mod editor {
 			// If only one line
 			if (idx as isize) == self.selection.0.1 && self.selection.0.1 == self.selection.1.1 {
 				// If within selection, highlight character
-				if (loc as isize) >= self.selection.0.0 && (loc as isize) <= self.selection.1.0 {
+				if (loc as isize) >= self.selection.0.0 && (loc as isize) < self.selection.1.0 {
 					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 				} else {
 					Span::from(character)
@@ -183,7 +183,7 @@ pub mod editor {
 			// If on last line (and there are multiple lines in selection)
 			} else if (idx as isize) == self.selection.1.1 {
 				// Highlight all characters on the line before the cursor
-				if (loc as isize) <= self.selection.1.0 {
+				if (loc as isize) < self.selection.1.0 {
 					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 				} else {
 					Span::from(character)
