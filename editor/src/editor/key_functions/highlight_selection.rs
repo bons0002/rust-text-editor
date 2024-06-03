@@ -312,10 +312,8 @@ mod tests {
         assert_eq!(editor.selection.end, (4, 1));
 
 		// Check that the content of the highlighted section is correct
-		let selected_string_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let selected_string_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(selected_string_1);
-		selected_string.push_str(selected_string_2);
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "56789abcd");
 	}
@@ -372,10 +370,8 @@ mod tests {
         assert_eq!(editor.selection.end, (4, 1));
 
 		// Check that the content of the highlighted section is correct
-		let selected_string_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let selected_string_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(selected_string_1);
-		selected_string.push_str(selected_string_2);
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 		
 		assert_eq!(selected_string, "56789abcd");
 	}
@@ -406,12 +402,9 @@ mod tests {
         assert_eq!(editor.selection.end, (5, 3));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let temp_2 = &editor.content[editor.selection.start.1 + 1];
-		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(temp_1);
-		selected_string.push_str(temp_2);
-		selected_string.push_str(temp_3);
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "fghi!@#$%^&*(jklmn");
 	}
@@ -440,10 +433,8 @@ mod tests {
         assert_eq!(editor.selection.end, (5, 2));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let temp_2 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(temp_1);
-		selected_string.push_str(temp_2);
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "fghi!@#$%");
 	}
@@ -473,12 +464,10 @@ mod tests {
         assert_eq!(editor.selection.end, (5, 5));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let temp_2 = &editor.content[editor.selection.start.1 + 1];
-		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(temp_1);
-		selected_string.push_str(temp_2);
-		selected_string.push_str(temp_3);
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "opqr987654321+_)=-");
 	}
@@ -508,14 +497,106 @@ mod tests {
         assert_eq!(editor.selection.end, (5, 5));
 
 		// Check that the content of the highlighted section is correct
-		let temp_1 = &editor.content[editor.selection.start.1][editor.selection.start.0..];
-		let temp_2 = &editor.content[editor.selection.start.1 + 1];
-		let temp_3 = &editor.content[editor.selection.end.1][..editor.selection.end.0];
-		let mut selected_string = String::from(temp_1);
-		selected_string.push_str(temp_2);
-		selected_string.push_str(temp_3);
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "opqr987654321+_)=-");
+	}
+
+	// --------------------
+	// Highlight End Tests
+	// --------------------
+
+	// Select (and deselect) until end of line on one line
+	#[test]
+	fn highlight_end_one_line_select() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (3, 1);
+		editor.selection.original_pos = (6, 1);
+		editor.selection.start = (3, 1);
+        editor.selection.end = (6, 1);
+        editor.selection.is_empty = false;
+
+		// Highlight until the end of the line
+		highlight_selection::highlight_end(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (6, 1));
+		assert_eq!(editor.selection.end, (9, 1));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.selection.start.1]
+			[(editor.selection.start.0)..(editor.selection.end.0)];
+		assert_eq!(selected_string, "ghi");
+	}
+
+	// Select until end of line on last line of multiline selection
+	#[test]
+	fn highlight_end_multiline_last_select() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (4, 3);
+		editor.selection.original_pos = (4, 1);
+		editor.selection.start = (4, 1);
+        editor.selection.end = (4, 3);
+        editor.selection.is_empty = false;
+
+		// Highlight until the end of the line
+		highlight_selection::highlight_end(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (4, 1));
+		assert_eq!(editor.selection.end, (9, 3));
+
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
+
+		assert_eq!(selected_string, "efghi!@#$%^&*(jklmnopqr");
+	}
+
+	// Deselect until end of line on first line of multiline selection
+	#[test]
+	fn highlight_end_multiline_first_deselect() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (4, 1);
+		editor.selection.original_pos = (4, 5);
+		editor.selection.start = (4, 1);
+        editor.selection.end = (4, 5);
+        editor.selection.is_empty = false;
+
+		// Highlight until the end of the line
+		highlight_selection::highlight_end(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (9, 1));
+		assert_eq!(editor.selection.end, (4, 5));
+
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 2]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 3]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
+
+		assert_eq!(selected_string, "!@#$%^&*(jklmnopqr987654321+_)=");
 	}
 
 	// ----------------------------------
