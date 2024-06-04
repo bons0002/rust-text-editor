@@ -279,8 +279,7 @@ mod tests {
 	use crate::editor::EditorSpace;
 	use config::config::Config;
 
-	// Filenames for tests
-	const HIGHLIGHT_HORIZONTAL: &str = "../editor/test_files/highlight_horizontal.txt";
+	// Filename for tests
 	const HIGHLIGHT_VERTICAL: &str = "../editor/test_files/highlight_vertical.txt";
 
 	// ----------------------
@@ -291,7 +290,7 @@ mod tests {
 	#[test]
 	fn highlight_right_3_chars() {
 		let config = Config::default();
-		let filename = String::from(HIGHLIGHT_HORIZONTAL);
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -317,7 +316,7 @@ mod tests {
 	#[test]
 	fn highlight_right_wrap() {
 		let config = Config::default();
-		let filename = String::from(HIGHLIGHT_HORIZONTAL);
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -348,7 +347,7 @@ mod tests {
 	#[test]
 	fn highlight_left_3_chars() {
 		let config = Config::default();
-		let filename = String::from(HIGHLIGHT_HORIZONTAL);
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
@@ -374,7 +373,7 @@ mod tests {
 	#[test]
 	fn highlight_left_wrap() {
 		let config = Config::default();
-		let filename = String::from(HIGHLIGHT_HORIZONTAL);
+		let filename = String::from(HIGHLIGHT_VERTICAL);
 		let mut editor = EditorSpace::new(filename, &config);
 
 		// Set starting pos in text
