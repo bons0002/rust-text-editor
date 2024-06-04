@@ -76,7 +76,7 @@ impl PartialEq for Movement {
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_forward(editor, config, Movement::RIGHT);
+		init_selection(editor, config, Movement::RIGHT);
 	// Otherwise, add to the selection
 	} else {
 		// Move right and get location
@@ -107,7 +107,7 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_backward(editor, config, Movement::LEFT);
+		init_selection(editor, config, Movement::LEFT);
 	// Otherwise, add to the selection
 	} else {
 		// Move left and get location
@@ -138,7 +138,7 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_backward(editor, config, Movement::UP);
+		init_selection(editor, config, Movement::UP);
 	// Otherwise, add to the selection
 	} else {
 		// Store the current location
@@ -166,7 +166,7 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_forward(editor, config, Movement::DOWN);
+		init_selection(editor, config, Movement::DOWN);
 	// Otherwise, add to the selection
 	} else {
 		// Store the current location
@@ -194,7 +194,7 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_forward(editor, config, Movement::END);
+		init_selection(editor, config, Movement::END);
 	// Otherwise, add to the selection
 	} else {
 		end_helper(editor, config);
@@ -240,37 +240,33 @@ fn end_helper(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Initialize selection for right, down, or end
-fn init_forward(editor: &mut EditorSpace, config: &Config, movement: Movement) {
+fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement) {
 	// Store the starting position of the cursor
 	editor.selection.original_cursor = editor.cursor_pos;
 	// Store the original starting position in the text
 	editor.selection.original_pos = editor.pos;
 
-	// Get the start point
-	editor.selection.start = editor.pos;
-	// Move
-	movement.take_movement(editor, config);
-	// Get endpoint
-	editor.selection.end = editor.pos;
-	// Flag selection as being not empty
-	editor.selection.is_empty = false;
-}
-
-// Initialize selecton for left, up, or home
-fn init_backward(editor: &mut EditorSpace, config: &Config, movement: Movement) {
-	// Store the starting position of the cursor
-	editor.selection.original_cursor = editor.cursor_pos;
-	// Store the original starting position in the text
-	editor.selection.original_pos = editor.pos;
-
-	// Get endpoint
-	editor.selection.end = editor.pos;
-	// Move
-	movement.take_movement(editor, config);
-	// Get start point
-	editor.selection.start = editor.pos;
-	// Flag selection as being not empty
-	editor.selection.is_empty = false;
+	// Initialize highlighting forward
+	if movement == Movement::RIGHT || movement == Movement::DOWN || movement == Movement::END {
+		// Get the start point
+		editor.selection.start = editor.pos;
+		// Move
+		movement.take_movement(editor, config);
+		// Get endpoint
+		editor.selection.end = editor.pos;
+		// Flag selection as being not empty
+		editor.selection.is_empty = false;
+	// Initialize highlighting backwards
+	} else {
+		// Get endpoint
+		editor.selection.end = editor.pos;
+		// Move
+		movement.take_movement(editor, config);
+		// Get start point
+		editor.selection.start = editor.pos;
+		// Flag selection as being not empty
+		editor.selection.is_empty = false;
+	}
 }
 
 
