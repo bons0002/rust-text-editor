@@ -2,7 +2,7 @@
 // Also defines the Selection struct for track the highlighted selection.
 
 use super::{
-    down_arrow, end_key, left_arrow, right_arrow, up_arrow, Config, EditorSpace
+    down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, Config, EditorSpace
 };
 
 // Structure that keeps track of the highlighted selection of text
@@ -32,23 +32,52 @@ impl Selection {
     }
 }
 
+// Keep track of which movement key is used
+enum Movement {
+	UP,
+	DOWN,
+	LEFT,
+	RIGHT,
+	HOME,
+	END,
+}
+
+impl Movement {
+	// Uses a movement key based on the value of the enum
+	pub fn take_movement(&self, editor: &mut EditorSpace, config: &Config) {
+		match self {
+			Self::UP => up_arrow(editor, config),
+			Self::DOWN => down_arrow(editor, config),
+			Self::LEFT => left_arrow(editor, config),
+			Self::RIGHT => right_arrow(editor, config),
+			Self::HOME => home_key(editor),
+			Self::END => end_key(editor, config),
+		};
+	}
+}
+
+// Implement equality for the Movement enum
+impl PartialEq for Movement {
+	// Check whether the two enums are the same value
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::UP, Self::UP) => true,
+            (Self::DOWN, Self::DOWN) => true,
+			(Self::LEFT, Self::LEFT) => true,
+			(Self::RIGHT, Self::RIGHT) => true,
+			(Self::HOME, Self::HOME) => true,
+			(Self::END, Self::END) => true,
+            _ => false,
+        }
+    }
+}
+
 // Shift + Right_Arrow highlights (or un-highlights) a selection of text as moving right
 pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		// Store the starting position of the cursor
-		editor.selection.original_cursor = editor.cursor_pos;
-		// Store the original starting position in the text
-		editor.selection.original_pos = editor.pos;
-
-		// Get the start point
-		editor.selection.start = editor.pos;
-		// Move right
-		right_arrow(editor, config);
-		// Get endpoint
-		editor.selection.end = editor.pos;
-		// Flag selection as being not empty
-        editor.selection.is_empty = false;
+		init_forward(editor, config, Movement::RIGHT);
+	// Otherwise, add to the selection
 	} else {
 		// Move right and get location
 		right_arrow(editor, config);
@@ -78,19 +107,8 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		// Store the starting position of the cursor
-		editor.selection.original_cursor = editor.cursor_pos;
-		// Store the original starting position in the text
-		editor.selection.original_pos = editor.pos;
-
-		// Get endpoint
-		editor.selection.end = editor.pos;
-		// Move left
-		left_arrow(editor, config);
-		// Get start point
-		editor.selection.start = editor.pos;
-		// Flag selection as being not empty
-        editor.selection.is_empty = false;
+		init_backward(editor, config, Movement::LEFT);
+	// Otherwise, add to the selection
 	} else {
 		// Move left and get location
 		left_arrow(editor, config);
@@ -120,19 +138,8 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		// Store the starting position of the cursor
-		editor.selection.original_cursor = editor.cursor_pos;
-		// Store the original starting position in the text
-		editor.selection.original_pos = editor.pos;
-
-		// Get endpoint
-		editor.selection.end = editor.pos;
-		// Move up
-		up_arrow(editor, config);
-		// Get start point
-		editor.selection.start = editor.pos;
-		// Flag selection as being not empty
-        editor.selection.is_empty = false;
+		init_backward(editor, config, Movement::UP);
+	// Otherwise, add to the selection
 	} else {
 		// Store the current location
 		let prior = editor.pos;
@@ -159,19 +166,8 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		// Store the starting position of the cursor
-		editor.selection.original_cursor = editor.cursor_pos;
-		// Store the original starting position in the text
-		editor.selection.original_pos = editor.pos;
-
-		// Get start point
-		editor.selection.start = editor.pos;
-		// Move down
-		down_arrow(editor, config);
-		// Get endpoint
-		editor.selection.end = editor.pos;
-		// Flag selection as being not empty
-        editor.selection.is_empty = false;
+		init_forward(editor, config, Movement::DOWN);
+	// Otherwise, add to the selection
 	} else {
 		// Store the current location
 		let prior = editor.pos;
@@ -196,55 +192,85 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 
 // Shift + End will highlight (or un-highlight) until the end of the line
 pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
+	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		// Store the starting position of the cursor
-		editor.selection.original_cursor = editor.cursor_pos;
-		// Store the original starting position in the text
-		editor.selection.original_pos = editor.pos;
-
-		// Get start point
-		editor.selection.start = editor.pos;
-		// Move to end of line
-		end_key(editor, config);
-		// Get endpoint
-		editor.selection.end = editor.pos;
-		// Flag selection as being not empty
-        editor.selection.is_empty = false;
+		init_forward(editor, config, Movement::END);
+	// Otherwise, add to the selection
 	} else {
-		// Store the current location
-		let prior = editor.pos;
-		// Move to end of line and get location
-		end_key(editor, config);
-		let update = editor.pos;
-		
-		// If selection is now empty
-		if update == editor.selection.end {
-			// Reset selection
-			editor.selection.is_empty = true;
-		} else {
-			// If only one line
-			if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
-				// If cursor before selection
-				if prior.0 <= editor.selection.start.0 {
-					// Set start to original end
-					editor.selection.start = editor.selection.original_pos;
-					// Set end to end of line
-					editor.selection.end = update;
-				// Otherwise, update endpoint
-				} else {
-					editor.selection.end = update;
-				}
-			// If at last line
-			} else if prior.1 >= editor.selection.end.1 {
-				// Update end
+		end_helper(editor, config);
+	}
+}
+
+// The logic for the end_highlight if a selection already exists.
+// It's its own function to improve readability.
+fn end_helper(editor: &mut EditorSpace, config: &Config) {
+	// Store the current location
+	let prior = editor.pos;
+	// Move to end of line and get location
+	end_key(editor, config);
+	let update = editor.pos;
+	
+	// If selection is now empty
+	if update == editor.selection.end {
+		// Reset selection
+		editor.selection.is_empty = true;
+	} else {
+		// If only one line
+		if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
+			// If cursor before selection
+			if prior.0 <= editor.selection.start.0 {
+				// Set start to original end
+				editor.selection.start = editor.selection.original_pos;
+				// Set end to end of line
 				editor.selection.end = update;
-			// If at first line
+			// Otherwise, update endpoint
 			} else {
-				// Deselect start
-				editor.selection.start = update;
+				editor.selection.end = update;
 			}
+		// If at last line
+		} else if prior.1 >= editor.selection.end.1 {
+			// Update end
+			editor.selection.end = update;
+		// If at first line
+		} else {
+			// Deselect start
+			editor.selection.start = update;
 		}
 	}
+}
+
+// Initialize selection for right, down, or end
+fn init_forward(editor: &mut EditorSpace, config: &Config, movement: Movement) {
+	// Store the starting position of the cursor
+	editor.selection.original_cursor = editor.cursor_pos;
+	// Store the original starting position in the text
+	editor.selection.original_pos = editor.pos;
+
+	// Get the start point
+	editor.selection.start = editor.pos;
+	// Move
+	movement.take_movement(editor, config);
+	// Get endpoint
+	editor.selection.end = editor.pos;
+	// Flag selection as being not empty
+	editor.selection.is_empty = false;
+}
+
+// Initialize selecton for left, up, or home
+fn init_backward(editor: &mut EditorSpace, config: &Config, movement: Movement) {
+	// Store the starting position of the cursor
+	editor.selection.original_cursor = editor.cursor_pos;
+	// Store the original starting position in the text
+	editor.selection.original_pos = editor.pos;
+
+	// Get endpoint
+	editor.selection.end = editor.pos;
+	// Move
+	movement.take_movement(editor, config);
+	// Get start point
+	editor.selection.start = editor.pos;
+	// Flag selection as being not empty
+	editor.selection.is_empty = false;
 }
 
 
