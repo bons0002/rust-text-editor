@@ -197,44 +197,81 @@ pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
 		init_selection(editor, config, Movement::END);
 	// Otherwise, add to the selection
 	} else {
-		end_helper(editor, config);
+		// Store the current location
+		let prior = editor.pos;
+		// Move to end of line and get location
+		end_key(editor, config);
+		let update = editor.pos;
+		
+		// If selection is now empty
+		if update == editor.selection.end {
+			// Reset selection
+			editor.selection.is_empty = true;
+		} else {
+			// If only one line
+			if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
+				// If cursor before selection
+				if prior.0 <= editor.selection.start.0 {
+					// Set start to original end
+					editor.selection.start = editor.selection.original_pos;
+					// Set end to end of line
+					editor.selection.end = update;
+				// Otherwise, update endpoint
+				} else {
+					editor.selection.end = update;
+				}
+			// If at last line
+			} else if prior.1 >= editor.selection.end.1 {
+				// Update end
+				editor.selection.end = update;
+			// If at first line
+			} else {
+				// Deselect start
+				editor.selection.start = update;
+			}
+		}
 	}
 }
 
-// The logic for the end_highlight if a selection already exists.
-// It's its own function to improve readability.
-fn end_helper(editor: &mut EditorSpace, config: &Config) {
-	// Store the current location
-	let prior = editor.pos;
-	// Move to end of line and get location
-	end_key(editor, config);
-	let update = editor.pos;
-	
-	// If selection is now empty
-	if update == editor.selection.end {
-		// Reset selection
-		editor.selection.is_empty = true;
+// Shift + Home will highlight (or un-highlight) to the beginning of the line
+pub fn highlight_home(editor: &mut EditorSpace, config: &Config) {
+	// If there is no selection, initialize it
+	if editor.selection.is_empty {
+		init_selection(editor, config, Movement::HOME);
+	// Otherwise, add to the selection
 	} else {
-		// If only one line
-		if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
-			// If cursor before selection
-			if prior.0 <= editor.selection.start.0 {
-				// Set start to original end
-				editor.selection.start = editor.selection.original_pos;
-				// Set end to end of line
-				editor.selection.end = update;
-			// Otherwise, update endpoint
+		// Store the current location
+		let prior = editor.pos;
+		// Move to beginning of line and get location
+		home_key(editor);
+		let update = editor.pos;
+		
+		// If selection is now empty
+		if update == editor.selection.end {
+			// Reset selection
+			editor.selection.is_empty = true;
+		} else {
+			// If only one line
+			if editor.selection.start.1 == editor.selection.end.1 && update.1 == editor.selection.start.1 {
+				// If cursor after selection
+				if prior.0 >= editor.selection.start.0 {
+					// Set end to original start
+					editor.selection.end = editor.selection.original_pos;
+					// Set start to beginning of line
+					editor.selection.start = update;
+				// Otherwise, update beginning
+				} else {
+					editor.selection.start = update;
+				}
+			// If at first line
+			} else if prior.1 <= editor.selection.start.1 {
+				// Update end
+				editor.selection.start = update;
+			// If at last line
 			} else {
+				// Deselect start
 				editor.selection.end = update;
 			}
-		// If at last line
-		} else if prior.1 >= editor.selection.end.1 {
-			// Update end
-			editor.selection.end = update;
-		// If at first line
-		} else {
-			// Deselect start
-			editor.selection.start = update;
 		}
 	}
 }
@@ -618,6 +655,100 @@ mod tests {
 		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
 
 		assert_eq!(selected_string, "!@#$%^&*(jklmnopqr987654321+_)=");
+	}
+
+	// ---------------------
+	// Highlight Home Tests
+	// ---------------------
+
+	// Select (and deselect) to beginning of line on one line
+	#[test]
+	fn highlight_home_one_line_select() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (6, 1);
+		editor.selection.original_pos = (3, 1);
+		editor.selection.start = (3, 1);
+        editor.selection.end = (6, 1);
+        editor.selection.is_empty = false;
+
+		// Highlight to beginning of line
+		highlight_selection::highlight_home(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (0, 1));
+		assert_eq!(editor.selection.end, (3, 1));
+
+		// Check that the content of the highlighted section is correct
+		let selected_string = &editor.content[editor.selection.start.1]
+			[(editor.selection.start.0)..(editor.selection.end.0)];
+		assert_eq!(selected_string, "abc");
+	}
+
+	// Select to start of line on first line of multiline selection
+	#[test]
+	fn highlight_home_multiline_first_select() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (4, 1);
+		editor.selection.original_pos = (4, 5);
+		editor.selection.start = (4, 1);
+        editor.selection.end = (4, 5);
+        editor.selection.is_empty = false;
+
+		// Highlight to beginning of line
+		highlight_selection::highlight_home(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (0, 1));
+		assert_eq!(editor.selection.end, (4, 5));
+
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 2]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 3]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
+
+		assert_eq!(selected_string, "abcdefghi!@#$%^&*(jklmnopqr987654321+_)=");
+	}
+
+	// Deselect to beginning of line on last line of multiline selection
+	#[test]
+	fn highlight_home_multiline_last_deselect() {
+		let config = Config::default();
+		let filename = String::from(HIGHLIGHT_VERTICAL);
+		let mut editor = EditorSpace::new(filename, &config);
+
+		// Set starting selection
+		editor.set_starting_pos((0, 0), 100, 6);
+		editor.pos = (4, 3);
+		editor.selection.original_pos = (4, 1);
+		editor.selection.start = (4, 1);
+        editor.selection.end = (4, 3);
+        editor.selection.is_empty = false;
+
+		// Highlight to beginning of line
+		highlight_selection::highlight_home(&mut editor, &config);
+
+		// Check selection bounds
+		assert_eq!(editor.selection.start, (4, 1));
+		assert_eq!(editor.selection.end, (0, 3));
+
+		// Check that the content of the highlighted section is correct
+		let mut selected_string = String::from(&editor.content[editor.selection.start.1][editor.selection.start.0..]);
+		selected_string.push_str(&editor.content[editor.selection.start.1 + 1]);
+		selected_string.push_str(&editor.content[editor.selection.end.1][..editor.selection.end.0]);
+
+		assert_eq!(selected_string, "efghi!@#$%^&*(");
 	}
 
 	// ----------------------------------

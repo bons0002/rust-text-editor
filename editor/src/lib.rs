@@ -319,6 +319,8 @@ pub mod editor {
 							KeyCode::Down => key_functions::highlight_selection::highlight_down(self, config),
 							// End key highlights to end of line
 							KeyCode::End => key_functions::highlight_selection::highlight_end(self, config),
+							// Home key highlights to beginning of line
+							KeyCode::Home => key_functions::highlight_selection::highlight_home(self, config),
 							_ => (),
 						}
 					}
