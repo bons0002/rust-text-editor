@@ -1,46 +1,61 @@
 pub mod editor {
 
-	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+	use std::{
+		fs::{self, File},
+		io::{self, BufRead},
+		path::Path,
+		time::Duration,
+	};
+
+	use crossterm::event::{
+		self,
+		Event,
+		KeyCode,
+		KeyEvent,
+		KeyModifiers
+	};
 	use ratatui::{
 		style::Style,
 		text::{Line, Span, Text},
 		widgets::Paragraph,
 	};
-	use std::{
-		fs::{self, File},
-		path::Path,
-		time::Duration,
+	use rayon::iter::{
+		IndexedParallelIterator,
+		IntoParallelIterator,
+		ParallelBridge,
+		ParallelExtend,
+		ParallelIterator
 	};
 
 	use config::config::Config;
-	use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator};
 
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
 	use key_functions::highlight_selection::Selection;
 
 	pub struct EditorSpace {
+		// Text block of current frame
+		pub block: Vec<String>,
+		// Flag for whether to break rendering loop in main app
+		pub break_loop: bool,
+		// Position within the text (block vector)
+		pub text_position: [usize; 2],
+		// Position of cursor on the screen
+		pub cursor_position: [usize; 2],
 		// Name of file opened in current editor frame
 		pub filename: String,
-		// Text content of current frame
-		pub content: Vec<String>,
-		// Position of cursor on the screen
-		pub cursor_pos: (usize, usize),
-		// Position within the text (content vector)
-		pub pos: (usize, usize),
-		// Track if the starting cursor position has already been set
-		pub start_cursor_set: bool,
-		// TEMP bool to break the main loop
-		pub break_loop: bool,
-
-		// Track the coordinates of the highlighted selection of text
-		selection: Selection,
-		// Horizontal bounds of the editor block
-		width: (usize, usize),
+		// The length of the entire file that is being openned
+		pub file_length: usize,
 		// Vertical bounds of the editor block
 		height: (usize, usize),
+		// Horizontal bounds of the editor block
+		width: (usize, usize),
 		// Sets the amount to scroll the text
-		scroll_offset: (u16, u16),
+		scroll_offset: usize,
+		// Structure keeping track of the highlighted selection of text
+		selection: Selection,
+		// Track if the starting cursor position has already been set
+		pub start_cursor_set: bool,
 	}
 
 	impl EditorSpace {
@@ -50,148 +65,156 @@ pub mod editor {
 				File::create(&filename).unwrap();
 			}
 			EditorSpace {
-				// Read in the contents of the file
-				content: Self::parse_file(&filename, config),
-				filename,
-				cursor_pos: (0, 0),
-				pos: (0, 0),
-				start_cursor_set: false,
+				// Read in the blocks of the file
+				block: Self::parse_file(&filename, config),
 				break_loop: false,
-				selection: Selection::new(),
-				width: (0, 0),
+				text_position: [0, 0],
+				cursor_position: [0, 0],
+				filename,
+				file_length: 0,
 				height: (0, 0),
-				scroll_offset: (0, 0),
+				width: (0, 0),
+				scroll_offset: 0,
+				selection: Selection::new(),
+				start_cursor_set: false,
 			}
 		}
 
 		// Parse the specified file to a vector of strings (each element representing a line) as a string for the raw data
 		fn parse_file(filename: &String, config: &Config) -> Vec<String> {
 			// Read the file to a string
-			let content = fs::read_to_string(&filename).expect("Couldn't read file");
+			let block = fs::read_to_string(&filename).expect("Couldn't read file");
 
-			// Vector containing text lines
-			let mut result: Vec<String> = Vec::new();
-			// String of spaces of length tab_width. Used to replace space indentation with tab indentation
+			// String of spaces of length tab_width used to replace tab chars with
 			let tab_spaces = " ".repeat(config.tab_width);
 
-			if !content.is_empty() {
-				let line_split: Vec<&str> = content.split('\n').collect();
-				// Split the string into lines
-				let mut lines: Vec<String> = Vec::new();
-				// Convert this split lines into a vector of strings
-				lines.par_extend(
-					line_split
-						.into_par_iter() // Parallel iterator
-						.map(|line| {
-							// Operation
-							String::from(line)
-						}),
-				);
+			// If the file isn't empty
+			if !block.is_empty() {
+				// Get the lines of the block
+				let lines: Vec<String> = block
+					.lines()
+					.map(|line| {
+						// Convert to Strings and replace spaces to tabs
+						String::from(line).replace(&tab_spaces, "\t")
+					})
+					.collect();
 
-				// Add each line (with space indentation replaced with tabs) to the vector of strings
-				result.par_extend(
-					lines
-						.into_par_iter()
-						.map(|line| line.replace(&tab_spaces, "\t")),
-				);
 				// Return the vector and raw string
-				return result;
+				return lines;
 			}
 			// If there is no text in the file being opened, push an empty line to the vector
-			result.push(String::from(""));
-			result
+			vec![String::new()]
 		}
 
-		// Set the starting position of the editing space cursor
-		pub fn set_starting_pos(&mut self, start: (usize, usize), width: usize, height: usize) {
+		// Set the starting Position of the editing space cursor
+		pub fn set_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
 			// Set the bounds of the block
 			self.width = (start.0, start.0 + width);
 			self.height = (start.1, start.1 + height);
 
 			// Set the cursor to the beginning of the block
-			self.pos = (0, 0);
-			self.cursor_pos = (self.width.0 + 1, self.height.0 + 1);
+			self.cursor_position = [self.width.0 + 1, self.height.0 + 1];
 
 			// Flag that cursor has been initialized
 			self.start_cursor_set = true;
 		}
 
+		// Initialize the file length variable
+		pub fn init_file_length(&mut self) {
+			// Open the file
+			let file = File::open(&self.filename).unwrap();
+			// Count the lines of the file (in parallel)
+			self.file_length = io::BufReader::new(file)
+				.lines()
+				.par_bridge()
+				.count();
+		}
+
+		// Create a Line struct from the given String line
+		fn parse_line(&self, config: &Config, idx:usize, line: &String) -> Line {
+			// Split the line into individual words
+			let characters: Vec<char> = line.chars().collect();
+			let mut spans: Vec<Span> = Vec::new();
+			// Iterate through each character on the line
+			spans.par_extend(characters
+				.into_par_iter()
+				.enumerate()
+				.map(|(loc, character)| {
+					match character {
+						'\t' => {
+							// Start tab with a vertical line
+							let mut tab_char = String::from("\u{023D0}");
+							// Iterator to create a string of tab_width - 1 number of spaces
+							tab_char.push_str(&" ".repeat(config.tab_width - 1));
+							// Highlight this spaces representation of a tab
+							self.highlight_char(config, idx, loc, tab_char)
+						}
+						_ => {
+							// Highlight this (non-tab) character
+							self.highlight_char(config, idx, loc, String::from(character))
+						}
+					}
+				}));
+
+			// Return the line
+			Line::from(spans)
+		}
+
 		// Return the vector as a paragraph
 		pub fn get_paragraph(&self, config: &Config) -> Paragraph {
-			// Vector to store the lines
-			let mut lines: Vec<Line> = Vec::new();
-			let content = &self.content;
+			// Copy the text block
+			let block = &self.block;
+			
+			// Create a vector of Lines from the text
+			let mut lines: Vec<Line> = block
+				.into_par_iter()
+				.enumerate()
+				.map(|(idx, part)| self.parse_line(config, idx, &part))
+				.collect();
 
-			// Create a vector of Lines (in parallel)
-			lines.par_extend(content.into_par_iter().enumerate().map(|(idx, part)| {
-				self.parse_line(config, idx, part)
-			}));
+			// The current line number in the text
+			let line_num = self.text_position[1];
 
 			// Highlight the line that the cursor is on
-			lines[self.pos.1] = lines[self.pos.1].clone().style(
+			lines[line_num] = lines[line_num].clone().style(
 				Style::default()
 					.fg(config.theme.line_highlight_fg_color)
 					.bg(config.theme.line_highlight_bg_color),
 			);
 
 			// Return a paragraph from the lines
-			Paragraph::new(Text::from(lines)).scroll(self.scroll_offset)
-		}
-
-		// Get the line as a series of chars
-		fn parse_line(&self, config: &Config, idx:usize, line: &String) -> Line {
-			// Split the line into individual words
-			let characters: Vec<char> = line.chars().collect();
-			let mut spans: Vec<Span> = Vec::new();
-			// Iterate through each character on the line
-			spans.par_extend(characters.into_par_iter().enumerate().map(|(loc, character)| {
-				match character {
-					'\t' => {
-						// Start tab with a vertical line
-						let mut tab_char = String::from("\u{023D0}");
-						// Iterator to create a string of tab_width - 1 number of spaces
-						tab_char.push_str(&" ".repeat(config.tab_width - 1));
-
-						self.highlight_char(config, idx, loc, tab_char)
-					}
-					_ => {
-						self.highlight_char(config, idx, loc, String::from(character))
-					}
-				}
-			}));
-
-			Line::from(spans)
+			Paragraph::new(Text::from(lines))
 		}
 
 		// Highlight a specific character on the line within the highlighting selection
 		fn highlight_char(&self, config: &Config, idx: usize, loc: usize, character: String) -> Span {
 			if !self.selection.is_empty {
 				// If only one line
-				if idx == self.selection.start.1 && self.selection.start.1 == self.selection.end.1 {
+				if idx == self.selection.start[1] && self.selection.start[1] == self.selection.end[1] {
 					// If within selection, highlight character
-					if loc >= self.selection.start.0 && loc < self.selection.end.0 {
+					if loc >= self.selection.start[0] && loc < self.selection.end[0] {
 						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
 				// If on first line (and there are multiple lines in selection)
-				} else if idx == self.selection.start.1 {
+				} else if idx == self.selection.start[1] {
 					// Highlight all characters on the line after the cursor
-					if loc >= self.selection.start.0 {
+					if loc >= self.selection.start[0] {
 						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
 				// If on last line (and there are multiple lines in selection)
-				} else if idx == self.selection.end.1 {
+				} else if idx == self.selection.end[1] {
 					// Highlight all characters on the line before the cursor
-					if loc < self.selection.end.0 {
+					if loc < self.selection.end[0] {
 						Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
 				// If between first and last line in multine selection
-				} else if idx > self.selection.start.1 && idx < self.selection.end.1 {
+				} else if idx > self.selection.start[1] && idx < self.selection.end[1] {
 					Span::from(character).style(Style::default().bg(config.theme.selection_highlight))
 				// If not in selection
 				} else {
@@ -202,31 +225,38 @@ pub mod editor {
 			}
 		}
 
+		// TODO: UPDATE FILE LENGTH WHEN DELETING MULTILINE SELECTION
 		// Delete the highlighted selection of text
 		fn delete_selection(&mut self) {
 			// Get everything before the selected text on the beginning line
-			let mut before_selection = String::from(&self.content[self.selection.start.1][..self.selection.start.0]);
+			let mut before_selection = String::from(&self.block[self.selection.start[1]][..self.selection.start[0]]);
 			// Get everything after the selected text on the ending line
-			let after_selection = String::from(&self.content[self.selection.end.1][self.selection.end.0..]);
+			let after_selection = String::from(&self.block[self.selection.end[1]][self.selection.end[0]..]);
 
-			let idx = self.selection.start.1 + 1;
+			let idx = self.selection.start[1] + 1;
 			// Remove the middle lines of the selection
-			for _i in (self.selection.start.1 + 1)..(self.selection.end.1 + 1) {
-				self.content.remove(idx);
+			for _i in (self.selection.start[1] + 1)..(self.selection.end[1] + 1) {
+				self.block.remove(idx);
 			}
 			
-			// Concat the content after the selection to before the selection
+			// Concat the block after the selection to before the selection
 			before_selection.push_str(after_selection.as_str());
 			// Set the line to the new string
-			self.content[self.selection.start.1] = before_selection;
+			self.block[self.selection.start[1]] = before_selection;
 
 			// Reset the selection
 			self.selection.is_empty = true;
 			
-			// Move cursor back to original position
-			if self.pos == self.selection.end {
-				self.pos = self.selection.original_pos;
-				self.cursor_pos = self.selection.original_cursor;
+			// Move cursor back to original Position
+			if self.text_position == self.selection.end {
+				self.text_position = [
+					self.selection.original_text_position.0,
+					self.selection.original_text_position.1,
+					];
+				self.cursor_position = [
+					self.selection.original_cursor_position.0,
+					self.selection.original_cursor_position.1,
+					];
 			}
 		}
 

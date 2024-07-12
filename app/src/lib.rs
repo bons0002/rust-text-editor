@@ -8,7 +8,6 @@ use crossterm::{
 	terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 	execute,
 };
-
 use ratatui::{
 	prelude::*,
 	widgets::*,
@@ -64,13 +63,14 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 
 	// Struct to track the entire editing space
 	let mut editor_space = EditorSpace::new(filename, &config);
+	editor_space.init_file_length();
 
 	// Loop while editing
 	loop {
 		// Draw the frame
 		terminal.draw(|frame| {
 			ui(frame, &mut editor_space, &config);
-			frame.set_cursor(editor_space.cursor_pos.0 as u16, editor_space.cursor_pos.1 as u16);
+			frame.set_cursor(editor_space.cursor_position[0] as u16, editor_space.cursor_position[1] as u16);
 		})?;
 		// Get input and add to the string
 		editor_space.handle_input(&config);
@@ -124,7 +124,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
 	);
 	// Set the starting position for the cursor of the editor space if it hasn't been set
 	if editor_space.start_cursor_set == false {
-		editor_space.set_starting_pos(
+		editor_space.set_starting_position(
 			(main_layout[1].x as usize,
 				main_layout[1].y as usize),
 				main_layout[1].width as usize,
@@ -132,7 +132,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
 			);
 	}
 	// Main editor space
-	if !editor_space.content.is_empty() {
+	if !editor_space.block.is_empty() {
 		frame.render_widget(
 			editor_space.get_paragraph(config)
 				.block(Block::new()
@@ -149,7 +149,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
 			.bg(config.theme.app_bg)
 			.borders(Borders::ALL),
 			main_layout[1],
-		);
+		);	
 	}
 }
 
