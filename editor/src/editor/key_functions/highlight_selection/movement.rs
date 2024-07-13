@@ -27,15 +27,15 @@ impl Movement {
 // Implement equality for the Movement enum
 impl PartialEq for Movement {
 	// Check whether the two enums are the same value
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::UP, Self::UP) => true,
-            (Self::DOWN, Self::DOWN) => true,
+	fn eq(&self, other: &Self) -> bool {
+		match (self, other) {
+			(Self::UP, Self::UP) => true,
+			(Self::DOWN, Self::DOWN) => true,
 			(Self::LEFT, Self::LEFT) => true,
 			(Self::RIGHT, Self::RIGHT) => true,
 			(Self::HOME, Self::HOME) => true,
 			(Self::END, Self::END) => true,
-            _ => false,
-        }
-    }
+			_ => false,
+		}
+	}
 }

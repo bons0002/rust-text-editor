@@ -1,11 +1,7 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 // Contains the logic for all the keys pressed
 
-use super::{
-	Config,
-	EditorSpace,
-	File
-};
+use super::{Config, EditorSpace, File};
 use std::io::Write;
 
 mod cursor_line;
@@ -33,7 +29,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 }
 
 // Get the rest of the text on the line after the cursor
-fn get_after_cursor(line: &String, loc: usize) -> &str {
+fn get_after_cursor(line: &str, loc: usize) -> &str {
 	// Get the rest of the line and store
 	&line[loc..]
 }
@@ -57,7 +53,9 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	let after_cursor = get_after_cursor(text, line_position);
 
 	// Insert new row
-	editor.block.insert(line_num + 1, String::from(after_cursor));
+	editor
+		.block
+		.insert(line_num + 1, String::from(after_cursor));
 	// Remove the rest of the old row after the enter
 	editor.block[line_num].truncate(line_position);
 
@@ -80,10 +78,11 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		// The text of the current line
 		let text = &editor.block[line_num].clone();
 		// Remove empty line
-		if line_position <= 0 {  // If cursor at beginning of line, move to above line
+		// If cursor at beginning of line, move to above line
+		if line_position == 0 {
 			if editor.block.len() > 1 {
 				// Get the text from the rest of the line after the cursor
-				let after_cursor = get_after_cursor(&text, line_position);
+				let after_cursor = get_after_cursor(text, line_position);
 
 				// Move up one line
 				up_arrow(editor, config);
@@ -99,7 +98,7 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 				// Append the rest of the line to the previous line (where the cursor is moving to)
 				editor.block[line_num].push_str(after_cursor);
 			}
-		// Move cursor left
+		// Otherwise, just move cursor left
 		} else {
 			left_arrow(editor, config);
 			// Position on the current line
@@ -172,7 +171,7 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 	let line_position = editor.text_position[0];
 
 	// If the x position is before the start of the line, return false
-	if line_position <= 0 {
+	if line_position == 0 {
 		return false;
 	}
 	true
@@ -256,14 +255,14 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 	// Ensure that the cursor doesn't move above the editor block
 	if cursor_line_num > editor.height.0 + 1 {
 		// Move the cursor to the previous line
-		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::SUB, 1, 1);
+		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Sub, 1, 1);
 	// If the cursor moves beyond the bound, scroll up
 	} else if editor.scroll_offset > 0 {
 		// Scroll up
 		editor.scroll_offset -= 1;
 
 		// Move to the previous line in the text, but don't move the screen cursor
-		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::SUB, 1, 0);
+		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Sub, 1, 0);
 	}
 }
 
@@ -279,14 +278,14 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Ensure that the cursor doesn't move below the editor block
 		if cursor_line_num < ((editor.height.1 - editor.height.0) + 1) {
 			// Move the cursor to the next line
-			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::ADD, 1, 1);
+			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Add, 1, 1);
 		// If the cursor goes below the bound, scroll down
 		} else if editor.scroll_offset < editor.file_length {
 			// Scroll down
 			editor.scroll_offset += 1;
 
 			// Move the position in the text, but don't move the screen cursor
-			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::ADD, 1, 0);
+			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Add, 1, 0);
 		}
 	}
 }
@@ -316,7 +315,8 @@ pub fn end_key(editor: &mut EditorSpace, config: &Config) {
 		// Set position in text
 		editor.text_position[0] = (editor.width.1 - editor.width.0) - 1;
 		// Set screen cursor to end of widget
-		editor.cursor_position[0] = editor.width.0 + (editor.width.1 - editor.width.0) + tab_chars - 1;
+		editor.cursor_position[0] =
+			editor.width.0 + (editor.width.1 - editor.width.0) + tab_chars - 1;
 	}
 }
 
