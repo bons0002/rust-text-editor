@@ -1,8 +1,8 @@
 pub mod editor {
 
 	use std::{
-		fs::{self, File},
-		io::{self, BufRead},
+		fs::{self, File, OpenOptions},
+		io::{self, BufRead, Error},
 		path::Path,
 		time::Duration,
 	};
@@ -20,13 +20,16 @@ pub mod editor {
 
 	use config::config::Config;
 
+	mod blocks;
+	use blocks::Blocks;
+
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
 	use key_functions::highlight_selection::Selection;
 
 	pub struct EditorSpace {
 		// Text block of current frame
-		pub block: Vec<String>,
+		pub blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
 		// Position within the text (block vector)
@@ -35,6 +38,8 @@ pub mod editor {
 		pub cursor_position: [usize; 2],
 		// Name of file opened in current editor frame
 		pub filename: String,
+		// The file that is open
+		pub file: File,
 		// The length of the entire file that is being openned
 		pub file_length: usize,
 		// Vertical bounds of the editor block
@@ -50,18 +55,24 @@ pub mod editor {
 	}
 
 	impl EditorSpace {
-		pub fn new(filename: String, config: &Config) -> Self {
+		pub fn new(filename: String) -> Self {
 			// Check if a file exists, if not create it
 			if !Path::new(&filename).exists() {
 				File::create(&filename).unwrap();
 			}
+			// Open the file in read-write mode
+			let file = match OpenOptions::new().read(true).write(true).open(&filename) {
+				Ok(file) => file,
+				Err(err) => panic!("{}", err),
+			};
+			// Construct an EditorSpace
 			EditorSpace {
-				// Read in the blocks of the file
-				block: Self::parse_file(&filename, config),
+				blocks: None,
 				break_loop: false,
 				text_position: [0, 0],
 				cursor_position: [0, 0],
 				filename,
+				file,
 				file_length: 0,
 				height: (0, 0),
 				width: (0, 0),
@@ -71,39 +82,8 @@ pub mod editor {
 			}
 		}
 
-		// Parse the specified file to a vector of strings (each element representing a line) as a string for the raw data
-		fn parse_file(filename: &String, config: &Config) -> Vec<String> {
-			// Read the file to a string
-			let block = fs::read_to_string(filename).expect("Couldn't read file");
-
-			// String of spaces of length tab_width used to replace tab chars with
-			let tab_spaces = " ".repeat(config.tab_width);
-
-			// If the file isn't empty
-			if !block.is_empty() {
-				// Get the lines of the block
-				let lines: Vec<String> = block
-					.lines()
-					.map(|line| {
-						// Convert to Strings and replace spaces to tabs
-						String::from(line).replace(&tab_spaces, "\t")
-					})
-					.collect();
-
-				// Return the vector and raw string
-				return lines;
-			}
-			// If there is no text in the file being opened, push an empty line to the vector
-			vec![String::new()]
-		}
-
 		// Set the starting Position of the editing space cursor
-		pub fn set_starting_position(
-			&mut self,
-			start: (usize, usize),
-			width: usize,
-			height: usize,
-		) {
+		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
 			// Set the bounds of the block
 			self.width = (start.0, start.0 + width);
 			self.height = (start.1, start.1 + height);
@@ -116,11 +96,41 @@ pub mod editor {
 		}
 
 		// Initialize the file length variable
-		pub fn init_file_length(&mut self) {
+		fn init_file_length(&mut self) -> Result<usize, Error> {
 			// Open the file
-			let file = File::open(&self.filename).unwrap();
+			let file = File::open(&self.filename)?;
 			// Count the lines of the file (in parallel)
 			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
+			// Return the file length
+			Ok(self.file_length)
+		}
+
+		// Create the first block when the editor is opened
+		fn init_first_block(&mut self) -> Result<usize, Error> {
+			// Create a block at block number 0
+			let blocks = Blocks::new(self, 0)?;
+			// Wrap this Blocks in an Option
+			self.blocks = Some(blocks);
+			// Return 0 to indicate success
+			Ok(0)
+		}
+
+		// Initialize the editor
+		// TODO: use init_starting_position, init_file_length, and init_first_block
+		pub fn init_editor(
+			&mut self,
+			start: (usize, usize),
+			width: usize,
+			height: usize,
+		) -> Result<&str, Error> {
+			// Initialize the starting position of the screen cursor
+			self.init_starting_position(start, width, height);
+			// Initialize the file length
+			self.init_file_length()?;
+			// Create the first block of text in Blocks
+			self.init_first_block()?;
+			// Return the string "Success" (arbitrary)
+			Ok("Success")
 		}
 
 		// Create a Line struct from the given String line
