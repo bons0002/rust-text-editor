@@ -16,7 +16,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 		//editor.delete_selection();
 	}
 
-	// Line number of current line in the block
+	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
 	// Insert the character into the correct line in the correct block
@@ -39,7 +39,7 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 		//editor.delete_selection();
 	}
 
-	// Line number of current line in the block
+	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
 	// Insert tab character into the line
@@ -62,7 +62,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 		//editor.delete_selection();
 	}
 
-	// Line number of current line in the block
+	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
 	// Insert a new line and truncate the current one (after the cursor)
@@ -81,50 +81,41 @@ pub fn enter_key(editor: &mut EditorSpace) {
 
 // Functionality of the backspace key
 pub fn backspace(editor: &mut EditorSpace, config: &Config) {
-	// Position on the current line
-	let line_position = editor.text_position[0];
-	// Line number of current line in the block
-	let line_num = editor.text_position[1];
-
 	// If there is no highlighted selection, backspace normally
 	if editor.selection.is_empty {
-		// The text of the current line
-		let text = &editor.block[line_num].clone();
 		// Remove empty line
 		// If cursor at beginning of line, move to above line
-		if line_position == 0 {
-			if editor.block.len() > 1 {
-				// Get the text from the rest of the line after the cursor
-				let after_cursor = get_after_cursor(text, line_position);
-
+		if editor.text_position == 0 {
+			if editor.file_length > 1 {
 				// Move up one line
 				up_arrow(editor, config);
 				end_key(editor, config);
-
 				// Line number of current line in the block
-				let line_num = editor.text_position[1];
+				let line_num = editor.get_line_num();
 
-				// Remove the current line
-				editor.block.remove(line_num + 1);
+				// Delete the previous line and append its text content to the current line
+				editor.blocks.as_mut().unwrap().delete_line(line_num);
+
 				// Reduce the file length
 				editor.file_length -= 1;
-				// Append the rest of the line to the previous line (where the cursor is moving to)
-				editor.block[line_num].push_str(after_cursor);
 			}
 		// Otherwise, just move cursor left
 		} else {
+			// Move left
 			left_arrow(editor, config);
-			// Position on the current line
-			let line_position = editor.text_position[0];
 			// Line number of current line in the block
-			let line_num = editor.text_position[1];
+			let line_num = editor.get_line_num();
 
 			// Remove one character
-			editor.block[line_num].remove(line_position);
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.delete_char_in_line(line_num, editor.text_position);
 		}
 	} else {
 		// Delete the selection
-		editor.delete_selection();
+		//editor.delete_selection();
 	}
 }
 
@@ -132,29 +123,27 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 pub fn delete_key(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, delete normally
 	if editor.selection.is_empty {
-		// Position on the current line
-		let line_position = editor.text_position[0];
 		// Line number of current line in the block
-		let line_num = editor.text_position[1];
+		let line_num = editor.get_line_num();
 
 		// If not at the end of the current line
-		if line_position < editor.block[line_num].len() {
+		if editor.text_position < editor.blocks.as_ref().unwrap().get_line(line_num).len() {
 			// Delete next char
-			editor.block[line_num].remove(line_position);
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.delete_char_in_line(line_num, editor.text_position);
 		// If not at end of last line
 		} else if line_num < editor.file_length - 1 {
-			// Get entire next line
-			let appending_line = editor.block[line_num + 1].clone();
-			// Append the next line to the current line
-			editor.block[line_num].push_str(appending_line.as_str());
-			// Remove the next line
-			editor.block.remove(line_num + 1);
+			// Delete the below line and append its text content to the current line
+			editor.blocks.as_mut().unwrap().delete_line(line_num);
 			// Reduce the overall file length
 			editor.file_length -= 1;
 		}
 	} else {
 		// Delete the selection
-		editor.delete_selection();
+		//editor.delete_selection();
 	}
 }
 

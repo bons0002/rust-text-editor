@@ -78,7 +78,7 @@ impl Blocks {
 		// Insert this new head block
 		self.blocks_list.insert(0, block);
 		// Update the starting line number
-		self.starting_line_num -= Block::calc_line_num(editor, self.starting_block)?;
+		self.starting_line_num -= self.blocks_list[0].get_block_length();
 		// Return the block number
 		Ok(self.starting_block)
 	}
@@ -106,15 +106,13 @@ impl Blocks {
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
-		// Clone the blocks
-		let blocks = self.blocks_list.clone();
+	fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
 		// Track the lines over the blocks
 		let mut lines = self.starting_line_num;
 		let mut start;
 		let mut block_num: Option<usize> = None;
 		// Loop until correct block
-		for block in blocks {
+		for block in &self.blocks_list {
 			// Starting line of this block
 			start = lines;
 			// Starting line of next block
@@ -144,12 +142,6 @@ impl Blocks {
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
 	}
 
-	// Get the rest of the text on the line after the cursor
-	fn get_after_cursor(line: &str, loc: usize) -> &str {
-		// Get the rest of the line and store
-		&line[loc..]
-	}
-
 	// Insert a newline and truncate the current line
 	pub fn insert_new_line(&mut self, line_num: usize, text_position: usize) {
 		// Make a copy of the blocks
@@ -163,7 +155,7 @@ impl Blocks {
 		// The text of the current line
 		let text = self.blocks_list[location.0].content[location.1].clone();
 		// Get the rest of the line after the cursor
-		let after_cursor = Self::get_after_cursor(&text, text_position);
+		let after_cursor = &text[text_position..];
 
 		// Insert new row
 		self.blocks_list[location.0]
@@ -171,5 +163,63 @@ impl Blocks {
 			.insert(line_num + 1, String::from(after_cursor));
 		// Remove the rest of the old row after the enter
 		self.blocks_list[location.0].content[location.1].truncate(text_position);
+	}
+
+	// Delete a character from the given line at the given position
+	pub fn delete_char_in_line(&mut self, line_num: usize, text_position: usize) {
+		// Make a copy of the blocks
+		let blocks = self.clone();
+		// Get the (block num, line number) location
+		let location = match blocks.get_location(line_num) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+
+		// Remove a character from the line
+		self.blocks_list[location.0].content[location.1].remove(text_position);
+	}
+
+	// Delete the below line and append its text content to the end of the current line
+	pub fn delete_line(&mut self, line_num: usize) {
+		// Make a copy of the blocks
+		let blocks = self.clone();
+		// Get the (block num, line number) location
+		let prev_location = match blocks.get_location(line_num + 1) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+
+		// The text of the current line
+		let text = self.blocks_list[prev_location.0].content[prev_location.1].clone();
+		// Get the rest of the line after the cursor
+		let after_cursor = &text[0..];
+
+		// Get the (block num, line number) location
+		let curr_location = match blocks.get_location(line_num) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+
+		// Remove the below line
+		self.blocks_list[prev_location.0]
+			.content
+			.remove(prev_location.1);
+
+		// Append the rest of the below line to the current line (where the cursor is moving to)
+		self.blocks_list[curr_location.0].content[curr_location.1].push_str(after_cursor);
+	}
+
+	// Return the line at the given line number
+	pub fn get_line(&self, line_num: usize) -> String {
+		// Make a copy of the blocks
+		let blocks = self.clone();
+		// Get the (block num, line number) location
+		let location = match blocks.get_location(line_num) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+
+		// Return a copy of the line
+		self.blocks_list[location.0].content[location.1].clone()
 	}
 }
