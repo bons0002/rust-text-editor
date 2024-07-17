@@ -14,7 +14,7 @@ pub struct Blocks {
 	// The number of blocks
 	num_blocks: usize,
 	// The list of blocks
-	pub blocks: Vec<Block>,
+	pub blocks_list: Vec<Block>,
 	// Flag to check if any of the blocks have been edited
 	// If the is false, then the blocks can be refreshed freely
 	pub is_modified: bool,
@@ -59,7 +59,7 @@ impl Blocks {
 			starting_block: block_num,
 			starting_line_num,
 			num_blocks: 1,
-			blocks,
+			blocks_list: blocks,
 			is_modified: false,
 		})
 	}
@@ -76,7 +76,7 @@ impl Blocks {
 			block.content.pop();
 		}
 		// Insert this new head block
-		self.blocks.insert(0, block);
+		self.blocks_list.insert(0, block);
 		// Update the starting line number
 		self.starting_line_num -= Block::calc_line_num(editor, self.starting_block)?;
 		// Return the block number
@@ -86,11 +86,11 @@ impl Blocks {
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
 	pub fn insert_tail(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
 		// Get the block number of the new tail
-		let tail = self.starting_block + self.blocks.len();
+		let tail = self.starting_block + self.blocks_list.len();
 		// Create a new block at this new tail position
 		let mut block = Block::new(editor, tail)?;
 		// Check if the previous tail ends in a "complete" line
-		let prev_block = self.blocks[self.blocks.len() - 1].clone();
+		let prev_block = self.blocks_list[self.blocks_list.len() - 1].clone();
 		// If it doesn't, fix the first line of this new tail
 		if !prev_block.ends_with_newline {
 			// Construct this fixed line
@@ -100,15 +100,15 @@ impl Blocks {
 			block.content[0] = line1;
 		}
 		// Push this new tail
-		self.blocks.push(block);
+		self.blocks_list.push(block);
 		// Return this block number
 		Ok(tail)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&mut self, line_num: usize) -> Option<(usize, usize)> {
+	pub fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
 		// Clone the blocks
-		let blocks = self.blocks.clone();
+		let blocks = self.blocks_list.clone();
 		// Track the lines over the blocks
 		let mut lines = self.starting_line_num;
 		let mut start;
@@ -129,5 +129,47 @@ impl Blocks {
 			Some(num) => Some((num - self.starting_block, line_num - self.starting_line_num)),
 			None => None,
 		}
+	}
+
+	// Insert a character into the correct line in the correct block
+	pub fn insert_char_in_line(&mut self, line_num: usize, text_position: usize, character: char) {
+		// Make a copy of the blocks
+		let blocks = self.clone();
+		// Get the (block num, line number) location
+		let location = match blocks.get_location(line_num) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+		// Insert the character into the correct block on the correct line
+		self.blocks_list[location.0].content[location.1].insert(text_position, character);
+	}
+
+	// Get the rest of the text on the line after the cursor
+	fn get_after_cursor(line: &str, loc: usize) -> &str {
+		// Get the rest of the line and store
+		&line[loc..]
+	}
+
+	// Insert a newline and truncate the current line
+	pub fn insert_new_line(&mut self, line_num: usize, text_position: usize) {
+		// Make a copy of the blocks
+		let blocks = self.clone();
+		// Get the (block num, line number) location
+		let location = match blocks.get_location(line_num) {
+			Some(location) => location,
+			None => panic!("Couldn't retrieve location"),
+		};
+
+		// The text of the current line
+		let text = self.blocks_list[location.0].content[location.1].clone();
+		// Get the rest of the line after the cursor
+		let after_cursor = Self::get_after_cursor(&text, text_position);
+
+		// Insert new row
+		self.blocks_list[location.0]
+			.content
+			.insert(line_num + 1, String::from(after_cursor));
+		// Remove the rest of the old row after the enter
+		self.blocks_list[location.0].content[location.1].truncate(text_position);
 	}
 }

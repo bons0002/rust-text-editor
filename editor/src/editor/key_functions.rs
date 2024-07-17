@@ -13,25 +13,45 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
-		editor.delete_selection();
+		//editor.delete_selection();
 	}
 
-	// Position on the current line
-	let line_position = editor.text_position[0];
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	let line_num = editor.get_line_num();
 
-	// Insert the character
-	editor.block[line_num].insert(line_position, code);
+	// Insert the character into the correct line in the correct block
+	editor
+		.blocks
+		.as_mut()
+		.unwrap()
+		.insert_char_in_line(line_num, editor.text_position, code);
+
 	// Move cursor
-	editor.text_position[0] += 1;
+	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
 }
 
-// Get the rest of the text on the line after the cursor
-fn get_after_cursor(line: &str, loc: usize) -> &str {
-	// Get the rest of the line and store
-	&line[loc..]
+// Functionality for the tab key
+pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
+	// If there is a highlighted selection
+	if !editor.selection.is_empty {
+		// Delete the selection
+		//editor.delete_selection();
+	}
+
+	// Line number of current line in the block
+	let line_num = editor.get_line_num();
+
+	// Insert tab character into the line
+	editor
+		.blocks
+		.as_mut()
+		.unwrap()
+		.insert_char_in_line(line_num, editor.text_position, '\t');
+
+	// Move cursor
+	editor.text_position += 1;
+	editor.cursor_position[0] += config.tab_width;
 }
 
 // Functionality of pressing the enter key
@@ -39,28 +59,21 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
-		editor.delete_selection();
+		//editor.delete_selection();
 	}
 
-	// Position on the current line
-	let line_position = editor.text_position[0];
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
-	// The text of the current line
-	let text = &editor.block[line_num];
+	let line_num = editor.get_line_num();
 
-	// Get the rest of the line after the cursor
-	let after_cursor = get_after_cursor(text, line_position);
-
-	// Insert new row
+	// Insert a new line and truncate the current one (after the cursor)
 	editor
-		.block
-		.insert(line_num + 1, String::from(after_cursor));
-	// Remove the rest of the old row after the enter
-	editor.block[line_num].truncate(line_position);
+		.blocks
+		.as_mut()
+		.unwrap()
+		.insert_new_line(line_num, editor.text_position);
 
 	// Reset cursor to beginning of line
-	editor.text_position = [0, line_num + 1];
+	editor.text_position = 0;
 	editor.cursor_position = [editor.width.0 + 1, editor.cursor_position[1] + 1];
 	// Add a line to the overall file length
 	editor.file_length += 1;
@@ -143,26 +156,6 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// Delete the selection
 		editor.delete_selection();
 	}
-}
-
-// Functionality for the tab key
-pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
-	// If there is a highlighted selection
-	if !editor.selection.is_empty {
-		// Delete the selection
-		editor.delete_selection();
-	}
-
-	// Position on the current line
-	let line_position = editor.text_position[0];
-	// Line number of current line in the block
-	let line_num = editor.text_position[1];
-
-	// Insert tab character
-	editor.block[line_num].insert(line_position, '\t');
-	// Move cursor
-	editor.text_position[0] += 1;
-	editor.cursor_position[0] += config.tab_width;
 }
 
 // Check the beginning of line cursor condition

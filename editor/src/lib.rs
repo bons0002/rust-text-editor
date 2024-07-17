@@ -1,7 +1,7 @@
 pub mod editor {
 
 	use std::{
-		fs::{self, File, OpenOptions},
+		fs::{File, OpenOptions},
 		io::{self, BufRead, Error},
 		path::Path,
 		time::Duration,
@@ -116,7 +116,6 @@ pub mod editor {
 		}
 
 		// Initialize the editor
-		// TODO: use init_starting_position, init_file_length, and init_first_block
 		pub fn init_editor(
 			&mut self,
 			start: (usize, usize),
@@ -131,74 +130,6 @@ pub mod editor {
 			self.init_first_block()?;
 			// Return the string "Success" (arbitrary)
 			Ok("Success")
-		}
-
-		// Create a Line struct from the given String line
-		fn parse_line(&self, config: &Config, idx: usize, line: &str) -> Line {
-			// Split the line into individual words
-			let characters: Vec<char> = line.chars().collect();
-			let mut spans: Vec<Span> = Vec::new();
-			// Iterate through each character on the line
-			spans.par_extend(
-				characters
-					.into_par_iter()
-					.enumerate()
-					.map(|(loc, character)| {
-						match character {
-							'\t' => {
-								// Start tab with a vertical line
-								let mut tab_char = String::from("\u{023D0}");
-								// Iterator to create a string of tab_width - 1 number of spaces
-								tab_char.push_str(&" ".repeat(config.tab_width - 1));
-								// Highlight this spaces representation of a tab
-								self.highlight_char(config, idx, loc, tab_char)
-							}
-							_ => {
-								// Highlight this (non-tab) character
-								self.highlight_char(config, idx, loc, String::from(character))
-							}
-						}
-					}),
-			);
-
-			// Return the line
-			Line::from(spans)
-		}
-
-		// Return the vector as a paragraph
-		pub fn get_paragraph(&self, config: &Config) -> Paragraph {
-			// Clone the blocks of text
-			let blocks = self.blocks.clone();
-
-			// Convert the blocks into one text vector
-			let mut text: Vec<String> = Vec::new();
-			text.par_extend(
-				blocks
-					.unwrap()
-					.blocks
-					.into_par_iter()
-					.map(|block| block.content.into_par_iter().collect()),
-			);
-
-			// Create a vector of Lines from the text
-			let mut lines: Vec<Line> = text
-				.into_par_iter()
-				.enumerate()
-				.map(|(idx, line)| self.parse_line(config, idx, &line))
-				.collect();
-
-			// The current line number in the text
-			let line_num = self.cursor_position[1];
-
-			// Highlight the line that the cursor is on
-			lines[line_num] = lines[line_num].clone().style(
-				Style::default()
-					.fg(config.theme.line_highlight_fg_color)
-					.bg(config.theme.line_highlight_bg_color),
-			);
-
-			// Return a paragraph from the lines
-			Paragraph::new(Text::from(lines))
 		}
 
 		// Highlight a specific character on the line within the highlighting selection
@@ -252,6 +183,74 @@ pub mod editor {
 			}
 		}
 
+		// Create a Line struct from the given String line
+		fn parse_line(&self, config: &Config, idx: usize, line: &str) -> Line {
+			// Split the line into individual words
+			let characters: Vec<char> = line.chars().collect();
+			let mut spans: Vec<Span> = Vec::new();
+			// Iterate through each character on the line
+			spans.par_extend(
+				characters
+					.into_par_iter()
+					.enumerate()
+					.map(|(loc, character)| {
+						match character {
+							'\t' => {
+								// Start tab with a vertical line
+								let mut tab_char = String::from("\u{023D0}");
+								// Iterator to create a string of tab_width - 1 number of spaces
+								tab_char.push_str(&" ".repeat(config.tab_width - 1));
+								// Highlight this spaces representation of a tab
+								self.highlight_char(config, idx, loc, tab_char)
+							}
+							_ => {
+								// Highlight this (non-tab) character
+								self.highlight_char(config, idx, loc, String::from(character))
+							}
+						}
+					}),
+			);
+
+			// Return the line
+			Line::from(spans)
+		}
+
+		// Return the vector as a paragraph
+		pub fn get_paragraph(&self, config: &Config) -> Paragraph {
+			// Clone the blocks of text
+			let blocks = self.blocks.clone();
+
+			// Convert the blocks into one text vector
+			let mut text: Vec<String> = Vec::new();
+			text.par_extend(
+				blocks
+					.unwrap()
+					.blocks_list
+					.into_par_iter()
+					.map(|block| block.content.into_par_iter().collect()),
+			);
+
+			// Create a vector of Lines from the text
+			let mut lines: Vec<Line> = text
+				.into_par_iter()
+				.enumerate()
+				.map(|(idx, line)| self.parse_line(config, idx, &line))
+				.collect();
+
+			// The current line number in the text
+			let line_num = self.cursor_position[1];
+
+			// Highlight the line that the cursor is on
+			lines[line_num] = lines[line_num].clone().style(
+				Style::default()
+					.fg(config.theme.line_highlight_fg_color)
+					.bg(config.theme.line_highlight_bg_color),
+			);
+
+			// Return a paragraph from the lines
+			Paragraph::new(Text::from(lines))
+		}
+
 		// TODO: UPDATE FILE LENGTH WHEN DELETING MULTILINE SELECTION
 		// Delete the highlighted selection of text
 		/*
@@ -290,6 +289,11 @@ pub mod editor {
 			}
 		}
 		*/
+
+		// Get the current line number
+		pub fn get_line_num(&self) -> usize {
+			self.cursor_position[1] + self.scroll_offset
+		}
 
 		// Get the key pressed
 		pub fn handle_input(&mut self, config: &Config) {
