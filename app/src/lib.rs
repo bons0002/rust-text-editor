@@ -5,16 +5,13 @@ use std::{
 
 use crossterm::{
 	cursor::EnableBlinking,
-	terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 	execute,
+	terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{
-	prelude::*,
-	widgets::*,
-};
+use ratatui::{prelude::*, widgets::*};
 
-use editor::editor::*;
 use config::config::Config;
+use editor::editor::*;
 
 // Initialize the terminal
 pub fn init(filename: String) -> io::Result<()> {
@@ -37,10 +34,7 @@ pub fn init(filename: String) -> io::Result<()> {
 			// Turn off raw mode for stdout (enable canonical mode)
 			disable_raw_mode()?;
 			// Exit the alternate screen
-			execute!(
-				stdout(),
-				LeaveAlternateScreen,
-			)?;
+			execute!(stdout(), LeaveAlternateScreen,)?;
 			panic!("An error has occurred");
 		}
 	};
@@ -48,10 +42,7 @@ pub fn init(filename: String) -> io::Result<()> {
 	// Turn off raw mode for stdout (enable canonical mode)
 	disable_raw_mode()?;
 	// Exit the alternate screen
-	execute!(
-		stdout(),
-		LeaveAlternateScreen,
-	)?;
+	execute!(stdout(), LeaveAlternateScreen,)?;
 
 	Ok(())
 }
@@ -62,15 +53,17 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 	let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
 	// Struct to track the entire editing space
-	let mut editor_space = EditorSpace::new(filename, &config);
-	editor_space.init_file_length();
+	let mut editor_space = EditorSpace::new(filename);
 
 	// Loop while editing
 	loop {
 		// Draw the frame
 		terminal.draw(|frame| {
 			ui(frame, &mut editor_space, &config);
-			frame.set_cursor(editor_space.cursor_position[0] as u16, editor_space.cursor_position[1] as u16);
+			frame.set_cursor(
+				(editor_space.cursor_position[0] + editor_space.width.0 + 1) as u16,
+				(editor_space.cursor_position[1] + editor_space.height.0 + 1) as u16,
+			);
 		})?;
 		// Get input and add to the string
 		editor_space.handle_input(&config);
@@ -84,7 +77,7 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
+fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 	// Construct the layout of the frame
 	let layouts = create_layouts(frame);
 	// The layout for the tabs bar
@@ -95,23 +88,30 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
 	let tab_name = editor_space.filename.clone();
 	// Render tabs
 	frame.render_widget(
-		Tabs::new(vec![tab_name, String::from("Tab 2"), String::from("Tab 3"), String::from("Tab 4")])
-			.block(
-				Block::new()
-					.fg(config.theme.app_fg)
-					.bg(config.theme.app_bg)
-					.borders(Borders::ALL),
-			)
-			.style(Style::default().white())
-			.highlight_style(Style::default()
+		Tabs::new(vec![
+			tab_name,
+			String::from("Tab 2"),
+			String::from("Tab 3"),
+			String::from("Tab 4"),
+		])
+		.block(
+			Block::new()
+				.fg(config.theme.app_fg)
+				.bg(config.theme.app_bg)
+				.borders(Borders::ALL),
+		)
+		.style(Style::default().white())
+		.highlight_style(
+			Style::default()
 				.fg(config.theme.tab_fg)
 				.bg(config.theme.tab_bg)
 				.underline_color(config.theme.tab_fg)
-				.add_modifier(Modifier::BOLD))
-			.select(0)
-			.divider(symbols::DOT)
-			.padding(" ", " "),
-	tabs_layout[0]
+				.add_modifier(Modifier::BOLD),
+		)
+		.select(0)
+		.divider(symbols::DOT)
+		.padding(" ", " "),
+		tabs_layout[0],
 	);
 	// File explorer
 	frame.render_widget(
@@ -124,32 +124,32 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config:&Config) {
 	);
 	// Set the starting position for the cursor of the editor space if it hasn't been set
 	if editor_space.start_cursor_set == false {
-		editor_space.set_starting_position(
-			(main_layout[1].x as usize,
-				main_layout[1].y as usize),
-				main_layout[1].width as usize,
-				main_layout[1].height as usize
-			);
+		editor_space.init_editor(
+			(main_layout[1].x as usize, main_layout[1].y as usize),
+			main_layout[1].width as usize,
+			main_layout[1].height as usize,
+		);
 	}
 	// Main editor space
 	if !editor_space.block.is_empty() {
 		frame.render_widget(
-			editor_space.get_paragraph(config)
-				.block(Block::new()
+			editor_space.get_paragraph(config).block(
+				Block::new()
 					.fg(config.theme.app_fg)
 					.bg(config.theme.app_bg)
-					.borders(Borders::ALL)
-				),
+					.borders(Borders::ALL),
+			),
 			main_layout[1],
 		);
-	} else {	// If the file is empty, make an empty block
+	} else {
+		// If the file is empty, make an empty block
 		frame.render_widget(
 			Block::new()
-			.fg(config.theme.app_fg)
-			.bg(config.theme.app_bg)
-			.borders(Borders::ALL),
+				.fg(config.theme.app_fg)
+				.bg(config.theme.app_bg)
+				.borders(Borders::ALL),
 			main_layout[1],
-		);	
+		);
 	}
 }
 

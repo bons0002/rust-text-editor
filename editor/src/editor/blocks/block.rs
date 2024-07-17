@@ -57,18 +57,23 @@ impl Block {
 		})
 	}
 
-	// Get the length (in lines) of the specific block_num (even if the block doesn't exist)
-	pub fn block_length(editor: &mut EditorSpace, block_num: usize) -> Result<usize, Error> {
-		// Create the specific block
-		let block = Block::new(editor, block_num)?;
-
-		// Return the length of the block
-		match block.ends_with_newline {
-			// If the last line is complete, include it
-			true => Ok(block.content.len()),
-			// Otherwise, don't (it's included in the next block)
-			false => Ok(block.content.len() - 1),
+	// Calculate the starting line number of a block of text
+	pub fn calc_line_num(editor: &mut EditorSpace, block_num: usize) -> Result<usize, Error> {
+		let mut current_block = 0;
+		// Total length of all blocks before the current one
+		let mut total_length = 0;
+		// Loop until the given block number is reached
+		while current_block < block_num {
+			// Construct a block
+			let block = Block::new(editor, current_block)?;
+			// Update the total length of blocks
+			total_length += block.get_block_length();
+			// Update the current block to be counted
+			current_block += 1;
 		}
+
+		// Return the line number
+		Ok(total_length)
 	}
 
 	// Get the length (in lines) of the current block

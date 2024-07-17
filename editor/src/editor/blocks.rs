@@ -5,9 +5,12 @@ mod block;
 pub use block::Block;
 
 // Contains blocks of text from a file
+#[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
 	pub starting_block: usize,
+	// The line number of the first line in the first block
+	pub starting_line_num: usize,
 	// The number of blocks
 	num_blocks: usize,
 	// The list of blocks
@@ -46,37 +49,19 @@ impl Blocks {
 			// Construct block 0
 			block = Block::new(editor, block_num)?;
 		}
+		// Calculate the line_number of the first line
+		let starting_line_num = Block::calc_line_num(editor, block_num)?;
 		// Add the current block to the vector of blocks
 		blocks = vec![block];
 
 		// Construct the block
 		Ok(Blocks {
 			starting_block: block_num,
+			starting_line_num,
 			num_blocks: 1,
 			blocks,
 			is_modified: false,
 		})
-	}
-
-	// Calculate the block number of a block containing the given line number
-	pub fn calc_block_num(editor: &mut EditorSpace, line_num: usize) -> Result<usize, Error> {
-		// Track the current block
-		let mut block_num = 0;
-		// Track the total length up to the current block
-		let mut total_length = 0;
-
-		// Loop until the correct block is found
-		loop {
-			// Add to the running total of the length of blocks
-			total_length += Block::block_length(editor, block_num)?;
-			// If the length becomes larger than the line number, then return this
-			// block becuause it is the first block to contain the line number
-			if total_length > line_num {
-				return Ok(block_num);
-			}
-			// Otherwise, continue on with the next block
-			block_num += 1;
-		}
 	}
 
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
@@ -92,6 +77,8 @@ impl Blocks {
 		}
 		// Insert this new head block
 		self.blocks.insert(0, block);
+		// Update the starting line number
+		self.starting_line_num -= Block::calc_line_num(editor, self.starting_block)?;
 		// Return the block number
 		Ok(self.starting_block)
 	}
@@ -116,5 +103,31 @@ impl Blocks {
 		self.blocks.push(block);
 		// Return this block number
 		Ok(tail)
+	}
+
+	// Return a tuple containing (block number, line number) for accessing the block content
+	pub fn get_location(&mut self, line_num: usize) -> Option<(usize, usize)> {
+		// Clone the blocks
+		let blocks = self.blocks.clone();
+		// Track the lines over the blocks
+		let mut lines = self.starting_line_num;
+		let mut start;
+		let mut block_num: Option<usize> = None;
+		// Loop until correct block
+		for block in blocks {
+			// Starting line of this block
+			start = lines;
+			// Starting line of next block
+			lines += block.content.len();
+			// If the line number is in this block, break loop
+			if line_num >= start && line_num < lines {
+				block_num = Some(block.block_num);
+				break;
+			}
+		}
+		match block_num {
+			Some(num) => Some((num - self.starting_block, line_num - self.starting_line_num)),
+			None => None,
+		}
 	}
 }

@@ -32,9 +32,9 @@ pub mod editor {
 		pub blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
-		// Position within the text (block vector)
-		pub text_position: [usize; 2],
-		// Position of cursor on the screen
+		// Position on the current line of text
+		pub text_position: usize,
+		// Position of cursor on the screen (and in the text)
 		pub cursor_position: [usize; 2],
 		// Name of file opened in current editor frame
 		pub filename: String,
@@ -43,9 +43,9 @@ pub mod editor {
 		// The length of the entire file that is being openned
 		pub file_length: usize,
 		// Vertical bounds of the editor block
-		height: (usize, usize),
+		pub height: (usize, usize),
 		// Horizontal bounds of the editor block
-		width: (usize, usize),
+		pub width: (usize, usize),
 		// Sets the amount to scroll the text
 		scroll_offset: usize,
 		// Structure keeping track of the highlighted selection of text
@@ -69,7 +69,7 @@ pub mod editor {
 			EditorSpace {
 				blocks: None,
 				break_loop: false,
-				text_position: [0, 0],
+				text_position: 0,
 				cursor_position: [0, 0],
 				filename,
 				file,
@@ -89,7 +89,7 @@ pub mod editor {
 			self.height = (start.1, start.1 + height);
 
 			// Set the cursor to the beginning of the block
-			self.cursor_position = [self.width.0 + 1, self.height.0 + 1];
+			self.cursor_position = [0, 0];
 
 			// Flag that cursor has been initialized
 			self.start_cursor_set = true;
@@ -106,7 +106,7 @@ pub mod editor {
 		}
 
 		// Create the first block when the editor is opened
-		fn init_first_block(&mut self) -> Result<usize, Error> {
+		pub fn init_first_block(&mut self) -> Result<usize, Error> {
 			// Create a block at block number 0
 			let blocks = Blocks::new(self, 0)?;
 			// Wrap this Blocks in an Option
@@ -167,18 +167,28 @@ pub mod editor {
 
 		// Return the vector as a paragraph
 		pub fn get_paragraph(&self, config: &Config) -> Paragraph {
-			// Copy the text block
-			let block = &self.block;
+			// Clone the blocks of text
+			let blocks = self.blocks.clone();
+
+			// Convert the blocks into one text vector
+			let mut text: Vec<String> = Vec::new();
+			text.par_extend(
+				blocks
+					.unwrap()
+					.blocks
+					.into_par_iter()
+					.map(|block| block.content.into_par_iter().collect()),
+			);
 
 			// Create a vector of Lines from the text
-			let mut lines: Vec<Line> = block
+			let mut lines: Vec<Line> = text
 				.into_par_iter()
 				.enumerate()
-				.map(|(idx, part)| self.parse_line(config, idx, part))
+				.map(|(idx, line)| self.parse_line(config, idx, &line))
 				.collect();
 
 			// The current line number in the text
-			let line_num = self.text_position[1];
+			let line_num = self.cursor_position[1];
 
 			// Highlight the line that the cursor is on
 			lines[line_num] = lines[line_num].clone().style(
@@ -244,6 +254,7 @@ pub mod editor {
 
 		// TODO: UPDATE FILE LENGTH WHEN DELETING MULTILINE SELECTION
 		// Delete the highlighted selection of text
+		/*
 		fn delete_selection(&mut self) {
 			// Get everything before the selected text on the beginning line
 			let mut before_selection =
@@ -278,6 +289,7 @@ pub mod editor {
 				];
 			}
 		}
+		*/
 
 		// Get the key pressed
 		pub fn handle_input(&mut self, config: &Config) {
