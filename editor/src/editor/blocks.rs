@@ -1,5 +1,6 @@
 use super::EditorSpace;
 use std::io::Error;
+use unicode_segmentation::GraphemeCursor;
 
 mod block;
 pub use block::Block;
@@ -129,6 +130,26 @@ impl Blocks {
 		}
 	}
 
+	// Find the location in the grapheme cluster (String with unicode taken into account (sort of))
+	fn get_grapheme_location(text: &str, text_position: usize) -> usize {
+		// Create a cursor to navigate the grapheme cluster
+		let mut cursor = GraphemeCursor::new(0, text.len(), true);
+		// Iterate to the location
+		for _i in 0..text_position - 1 {
+			cursor.next_boundary(&text, 0);
+		}
+		// Store the location
+		let loc = cursor.next_boundary(&text, 0);
+		// Return the location
+		match loc {
+			Ok(num) => match num {
+				Some(num) => num,
+				None => panic!("Invalid location"),
+			},
+			Err(inc) => panic!("{:?}", inc),
+		}
+	}
+
 	// Insert a character into the correct line in the correct block
 	pub fn insert_char_in_line(&mut self, line_num: usize, text_position: usize, character: char) {
 		// Make a copy of the blocks
@@ -138,6 +159,10 @@ impl Blocks {
 			Some(location) => location,
 			None => panic!("Couldn't retrieve location"),
 		};
+		// Get the current line
+		let text = self.get_line(line_num);
+		// Find the position in the line
+		let text_position = Self::get_grapheme_location(&text, text_position);
 		// Insert the character into the correct block on the correct line
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
 	}
@@ -154,6 +179,8 @@ impl Blocks {
 
 		// The text of the current line
 		let text = self.blocks_list[location.0].content[location.1].clone();
+		// Find the position in the line
+		let text_position = Self::get_grapheme_location(&text, text_position);
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[text_position..];
 
@@ -174,6 +201,11 @@ impl Blocks {
 			Some(location) => location,
 			None => panic!("Couldn't retrieve location"),
 		};
+
+		// The text of the current line
+		let text = self.blocks_list[location.0].content[location.1].clone();
+		// Find the position in the line
+		let text_position = Self::get_grapheme_location(&text, text_position);
 
 		// Remove a character from the line
 		self.blocks_list[location.0].content[location.1].remove(text_position);

@@ -3,6 +3,7 @@
 
 use super::{Config, EditorSpace, File};
 use std::io::Write;
+use unicode_segmentation::UnicodeSegmentation;
 
 mod cursor_line;
 // Contains logic for all highlighting keys
@@ -29,6 +30,9 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
+
+	// Set block as modified
+	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality for the tab key
@@ -52,6 +56,9 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += config.tab_width;
+
+	// Set block as modified
+	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of pressing the enter key
@@ -77,6 +84,9 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	editor.cursor_position = [editor.width.0 + 1, editor.cursor_position[1] + 1];
 	// Add a line to the overall file length
 	editor.file_length += 1;
+
+	// Set block as modified
+	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of the backspace key
@@ -117,6 +127,9 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		// Delete the selection
 		//editor.delete_selection();
 	}
+
+	// Set block as modified
+	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of the delete key
@@ -127,7 +140,15 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		let line_num = editor.get_line_num();
 
 		// If not at the end of the current line
-		if editor.text_position < editor.blocks.as_ref().unwrap().get_line(line_num).len() {
+		if editor.text_position
+			< editor
+				.blocks
+				.as_ref()
+				.unwrap()
+				.get_line(line_num)
+				.chars()
+				.count()
+		{
 			// Delete next char
 			editor
 				.blocks
@@ -145,15 +166,15 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// Delete the selection
 		//editor.delete_selection();
 	}
+
+	// Set block as modified
+	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Check the beginning of line cursor condition
 fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
-	// Position on the current line
-	let line_position = editor.text_position[0];
-
 	// If the x position is before the start of the line, return false
-	if line_position == 0 {
+	if editor.text_position == 0 {
 		return false;
 	}
 	true
@@ -161,20 +182,26 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
-	// Position on the current line
-	let line_position = editor.text_position[0];
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	let line_num = editor.get_line_num();
 
 	// If the cursor doesn't move before the beginning of the editor block
 	if check_cursor_begin_line(editor) {
 		// If the next char isn't a tab, move normally
-		if editor.block[line_num].chars().nth(line_position - 1) != Some('\t') {
-			editor.text_position[0] -= 1;
+		if editor
+			.blocks
+			.as_ref()
+			.unwrap()
+			.get_line(line_num)
+			.graphemes(true)
+			.nth(editor.text_position - 1)
+			!= Some("\t")
+		{
+			editor.text_position -= 1;
 			editor.cursor_position[0] -= 1;
 		// Otherwise, move by the number of tab spaces
 		} else {
-			editor.text_position[0] -= 1;
+			editor.text_position -= 1;
 			editor.cursor_position[0] -= config.tab_width;
 		}
 	} else {
@@ -189,12 +216,17 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Check the end of line cursor condition
-fn check_cursor_end_line(editor: &mut EditorSpace, idx: usize) -> bool {
-	// Position on the current line
-	let line_position = editor.text_position[0];
-
+fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 	// If the x position is beyond the end of the line, return false
-	if line_position >= editor.block[idx].chars().count() {
+	if editor.text_position
+		>= editor
+			.blocks
+			.as_ref()
+			.unwrap()
+			.get_line(line_num)
+			.graphemes(true)
+			.count()
+	{
 		return false;
 	}
 	true
