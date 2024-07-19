@@ -1,8 +1,7 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 // Contains the logic for all the keys pressed
 
-use super::{Config, EditorSpace, File};
-use std::io::Write;
+use super::{Config, EditorSpace};
 use unicode_segmentation::UnicodeSegmentation;
 
 mod cursor_line;
@@ -100,7 +99,7 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 				// Move up one line
 				up_arrow(editor, config);
 				end_key(editor, config);
-				// Line number of current line in the block
+				// Line number of current line in the text
 				let line_num = editor.get_line_num();
 
 				// Delete the previous line and append its text content to the current line
@@ -113,7 +112,7 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		} else {
 			// Move left
 			left_arrow(editor, config);
-			// Line number of current line in the block
+			// Line number of current line in the text
 			let line_num = editor.get_line_num();
 
 			// Remove one character
@@ -136,19 +135,11 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 pub fn delete_key(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, delete normally
 	if editor.selection.is_empty {
-		// Line number of current line in the block
+		// Line number of current line in the text
 		let line_num = editor.get_line_num();
 
 		// If not at the end of the current line
-		if editor.text_position
-			< editor
-				.blocks
-				.as_ref()
-				.unwrap()
-				.get_line(line_num)
-				.chars()
-				.count()
-		{
+		if editor.text_position < editor.blocks.as_ref().unwrap().get_line_length(line_num) {
 			// Delete next char
 			editor
 				.blocks
@@ -182,10 +173,10 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
-	// Line number of current line in the block
+	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
-	// If the cursor doesn't move before the beginning of the editor block
+	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
 		// If the next char isn't a tab, move normally
 		if editor
@@ -218,15 +209,7 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 // Check the end of line cursor condition
 fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 	// If the x position is beyond the end of the line, return false
-	if editor.text_position
-		>= editor
-			.blocks
-			.as_ref()
-			.unwrap()
-			.get_line(line_num)
-			.graphemes(true)
-			.count()
-	{
+	if editor.text_position >= editor.blocks.as_ref().unwrap().get_line_length(line_num) {
 		return false;
 	}
 	true
@@ -234,20 +217,26 @@ fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 
 // Right arrow key functionality
 pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
-	// Position on the current line
-	let line_position = editor.text_position[0];
-	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
 
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
 		// If not a tab character, move normally
-		if editor.block[line_num].chars().nth(line_position) != Some('\t') {
-			editor.text_position[0] += 1;
+		if editor
+			.blocks
+			.as_ref()
+			.unwrap()
+			.get_line(line_num)
+			.graphemes(true)
+			.nth(editor.text_position)
+			!= Some("\t")
+		{
+			editor.text_position += 1;
 			editor.cursor_position[0] += 1;
 		// Otherwise, move the number of tab spaces
 		} else {
-			editor.text_position[0] += 1;
+			editor.text_position += 1;
 			editor.cursor_position[0] += config.tab_width;
 		}
 	} else {
@@ -267,7 +256,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 	let cursor_line_num = editor.cursor_position[1];
 
 	// Ensure that the cursor doesn't move above the editor block
-	if cursor_line_num > editor.height.0 + 1 {
+	if cursor_line_num > 0 {
 		// Move the cursor to the previous line
 		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Sub, 1, 1);
 	// If the cursor moves beyond the bound, scroll up
@@ -282,8 +271,8 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 
 // Down arrow key functionality
 pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
-	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 
@@ -307,42 +296,40 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 // Home key functionality
 pub fn home_key(editor: &mut EditorSpace) {
 	// Move to beginning of line
-	editor.text_position = [0, editor.text_position[1]];
-	editor.cursor_position = [editor.width.0 + 1, editor.cursor_position[1]];
+	editor.text_position = 0;
+	editor.cursor_position[0] = 0;
 }
 
 // End key functionality
 pub fn end_key(editor: &mut EditorSpace, config: &Config) {
-	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
 	// Count the number of tab characters
-	let tab_chars = editor.block[line_num].matches('\t').count() * (config.tab_width - 1);
+	let tab_chars = editor
+		.blocks
+		.as_ref()
+		.unwrap()
+		.get_line(line_num)
+		.matches('\t')
+		.count() * (config.tab_width - 1);
 
 	// Move to end of line if not past the end of the widget
-	if editor.block[line_num].len() < (editor.width.1 - editor.width.0) {
+	if editor.blocks.as_ref().unwrap().get_line_length(line_num) < (editor.width.1 - editor.width.0)
+	{
 		// Set the cursor to the end of the visual line in the widget
-		editor.text_position[0] = editor.block[line_num].len();
+		editor.text_position = editor.blocks.as_ref().unwrap().get_line_length(line_num);
 		// Set screen cursor to end of line
-		editor.cursor_position[0] = editor.width.0 + editor.block[line_num].len() + 1 + tab_chars;
+		editor.cursor_position[0] = editor.width.0
+			+ editor.blocks.as_ref().unwrap().get_line_length(line_num)
+			+ 1 + tab_chars;
 	// If line longer than width of widget, move to the end of the 'visible' line
 	} else {
 		// Set position in text
-		editor.text_position[0] = (editor.width.1 - editor.width.0) - 1;
+		editor.text_position = (editor.width.1 - editor.width.0) - 1;
 		// Set screen cursor to end of widget
-		editor.cursor_position[0] =
-			editor.width.0 + (editor.width.1 - editor.width.0) + tab_chars - 1;
+		editor.cursor_position[0] = (editor.width.1 - editor.width.0) + tab_chars - 1;
 	}
 }
 
 // Save key combo functionality
-pub fn save_key_combo(editor: &mut EditorSpace) {
-	// Create a blank file
-	let mut file = match File::create(&editor.filename) {
-		Ok(file) => file,
-		Err(_) => panic!("Could not open file"),
-	};
-	// Write the block to the new file
-	for line in &editor.block {
-		writeln!(file, "{}", line).unwrap();
-	}
-}
+pub fn save_key_combo(editor: &mut EditorSpace) {}

@@ -1,6 +1,6 @@
 use super::EditorSpace;
 use std::io::Error;
-use unicode_segmentation::GraphemeCursor;
+use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 mod block;
 pub use block::Block;
@@ -9,7 +9,9 @@ pub use block::Block;
 #[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
-	pub starting_block: usize,
+	pub head_block: usize,
+	// The ID number of the last block
+	pub tail_block: usize,
 	// The line number of the first line in the first block
 	pub starting_line_num: usize,
 	// The number of blocks
@@ -57,7 +59,8 @@ impl Blocks {
 
 		// Construct the block
 		Ok(Blocks {
-			starting_block: block_num,
+			head_block: block_num,
+			tail_block: block_num,
 			starting_line_num,
 			num_blocks: 1,
 			blocks_list: blocks,
@@ -68,9 +71,9 @@ impl Blocks {
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
 	pub fn insert_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
 		// Move the starting block to the previous block
-		self.starting_block -= 1;
+		self.head_block -= 1;
 		// Create a new block at the new starting block
-		let mut block = Block::new(editor, self.starting_block)?;
+		let mut block = Block::new(editor, self.head_block)?;
 		// If this new head doesn't end in a "complete" line, remove it
 		// The previous head would have already had its first line fixed
 		if !block.ends_with_newline {
@@ -81,15 +84,15 @@ impl Blocks {
 		// Update the starting line number
 		self.starting_line_num -= self.blocks_list[0].get_block_length();
 		// Return the block number
-		Ok(self.starting_block)
+		Ok(self.head_block)
 	}
 
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
 	pub fn insert_tail(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
-		// Get the block number of the new tail
-		let tail = self.starting_block + self.blocks_list.len();
+		// Update the tail block number
+		self.tail_block += 1;
 		// Create a new block at this new tail position
-		let mut block = Block::new(editor, tail)?;
+		let mut block = Block::new(editor, self.tail_block)?;
 		// Check if the previous tail ends in a "complete" line
 		let prev_block = self.blocks_list[self.blocks_list.len() - 1].clone();
 		// If it doesn't, fix the first line of this new tail
@@ -103,7 +106,7 @@ impl Blocks {
 		// Push this new tail
 		self.blocks_list.push(block);
 		// Return this block number
-		Ok(tail)
+		Ok(self.tail_block)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
@@ -125,7 +128,7 @@ impl Blocks {
 			}
 		}
 		match block_num {
-			Some(num) => Some((num - self.starting_block, line_num - self.starting_line_num)),
+			Some(num) => Some((num - self.head_block, line_num - self.starting_line_num)),
 			None => None,
 		}
 	}
@@ -253,5 +256,10 @@ impl Blocks {
 
 		// Return a copy of the line
 		self.blocks_list[location.0].content[location.1].clone()
+	}
+
+	// Return the length of the specified line
+	pub fn get_line_length(&self, line_num: usize) -> usize {
+		self.get_line(line_num).graphemes(true).count()
 	}
 }
