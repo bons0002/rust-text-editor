@@ -5,7 +5,7 @@ use std::{
 	str,
 };
 
-use rayon::iter::{IntoParallelIterator, ParallelBridge, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 #[derive(Clone)]
 pub struct Block {
@@ -20,8 +20,8 @@ pub struct Block {
 impl Block {
 	// Create a new block
 	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
-		// Number of bytes in a block of text (3 KiB)
-		const BLOCK_SIZE: u64 = 3072;
+		// Number of bytes in a block of text (5 KiB)
+		const BLOCK_SIZE: u64 = 5120;
 		// Buffer that the bytes of the file are read into
 		let mut buffer = [0; BLOCK_SIZE as usize];
 
@@ -36,7 +36,7 @@ impl Block {
 		let content: Vec<String> = str::from_utf8(&buffer[..num_bytes])
 			.unwrap()
 			.split_inclusive("\n")
-			.par_bridge()
+			.into_iter()
 			.map(String::from)
 			.collect();
 

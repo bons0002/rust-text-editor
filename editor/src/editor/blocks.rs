@@ -83,6 +83,8 @@ impl Blocks {
 		self.blocks_list.insert(0, block);
 		// Update the starting line number
 		self.starting_line_num -= self.blocks_list[0].get_block_length();
+		// Update the number of blocks
+		self.num_blocks += 1;
 		// Return the block number
 		Ok(self.head_block)
 	}
@@ -105,6 +107,8 @@ impl Blocks {
 		}
 		// Push this new tail
 		self.blocks_list.push(block);
+		// Update the number of blocks
+		self.num_blocks += 1;
 		// Return this block number
 		Ok(self.tail_block)
 	}
@@ -134,15 +138,14 @@ impl Blocks {
 	}
 
 	// Find the location in the grapheme cluster (String with unicode taken into account (sort of))
-	fn get_grapheme_location(text: &str, text_position: usize) -> usize {
+	pub fn get_grapheme_location(text: &str, text_position: usize) -> usize {
 		// Create a cursor to navigate the grapheme cluster
 		let mut cursor = GraphemeCursor::new(0, text.len(), true);
+		let mut loc = Ok(None);
 		// Iterate to the location
-		for _i in 0..text_position - 1 {
-			cursor.next_boundary(&text, 0);
+		for _i in 0..text_position {
+			loc = cursor.next_boundary(&text, 0);
 		}
-		// Store the location
-		let loc = cursor.next_boundary(&text, 0);
 		// Return the location
 		match loc {
 			Ok(num) => match num {
@@ -162,10 +165,6 @@ impl Blocks {
 			Some(location) => location,
 			None => panic!("Couldn't retrieve location"),
 		};
-		// Get the current line
-		let text = self.get_line(line_num);
-		// Find the position in the line
-		let text_position = Self::get_grapheme_location(&text, text_position);
 		// Insert the character into the correct block on the correct line
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
 	}
@@ -182,8 +181,6 @@ impl Blocks {
 
 		// The text of the current line
 		let text = self.blocks_list[location.0].content[location.1].clone();
-		// Find the position in the line
-		let text_position = Self::get_grapheme_location(&text, text_position);
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[text_position..];
 
@@ -204,11 +201,6 @@ impl Blocks {
 			Some(location) => location,
 			None => panic!("Couldn't retrieve location"),
 		};
-
-		// The text of the current line
-		let text = self.blocks_list[location.0].content[location.1].clone();
-		// Find the position in the line
-		let text_position = Self::get_grapheme_location(&text, text_position);
 
 		// Remove a character from the line
 		self.blocks_list[location.0].content[location.1].remove(text_position);

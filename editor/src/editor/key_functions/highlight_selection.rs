@@ -42,24 +42,24 @@ fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement)
 	editor.selection.original_cursor_position =
 		(editor.cursor_position[0], editor.cursor_position[1]);
 	// Store the original starting position in the text
-	editor.selection.original_text_position = (editor.text_position[0], editor.cursor_position[1]);
+	editor.selection.original_text_position = (editor.text_position, editor.get_line_num());
 
 	// Initialize highlighting forward
 	if movement == Movement::RIGHT || movement == Movement::DOWN || movement == Movement::END {
 		// Set the starting point of the selection
-		editor.selection.start = editor.text_position;
+		editor.selection.start = [editor.text_position, editor.get_line_num()];
 		// Use the corresponding movement key
 		movement.take_movement(editor, config);
 		// Set the endpoint of the selection
-		editor.selection.end = editor.text_position;
+		editor.selection.end = [editor.text_position, editor.get_line_num()];
 	// Initialize highlighting backwards
 	} else {
 		// Set the endpoint of the selection
-		editor.selection.end = editor.text_position;
+		editor.selection.end = [editor.text_position, editor.get_line_num()];
 		// Use the corresponding movement key
 		movement.take_movement(editor, config);
 		// Set the starting point of the selection
-		editor.selection.start = editor.text_position;
+		editor.selection.start = [editor.text_position, editor.get_line_num()];
 	}
 
 	// Flag selection as being not empty
@@ -76,7 +76,7 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 		// Move right
 		right_arrow(editor, config);
 		// Get the new location after the move
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 		// If the last character of the selection has been deselected
 		if update == editor.selection.end {
 			// Reset selection
@@ -109,7 +109,7 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 		// Move left
 		left_arrow(editor, config);
 		// Get the new location after the move
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 		// If the new location is at the start of the selection (de-selected last character)
 		if update == editor.selection.start {
 			// Reset selection
@@ -139,11 +139,11 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = editor.text_position;
+		let prior = [editor.text_position, editor.get_line_num()];
 		// Move up
 		up_arrow(editor, config);
 		// Get the new location after moving
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 		// If the selection is now empty (but not on first line)
 		if update == editor.selection.start && update[1] > 0 {
 			// Reset selection
@@ -168,11 +168,11 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = editor.text_position;
+		let prior = [editor.text_position, editor.get_line_num()];
 		// Move down
 		down_arrow(editor, config);
 		// Get the new location after moving
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 		// If the selection is now empty (but not on last line)
 		if update == editor.selection.end && update[1] < editor.file_length - 1 {
 			// Reset selection
@@ -197,11 +197,11 @@ pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = editor.text_position;
+		let prior = [editor.text_position, editor.get_line_num()];
 		// Move to end of line
 		end_key(editor, config);
 		// Get new location after moving
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 
 		// If selection is now empty
 		if update == editor.selection.end {
@@ -246,11 +246,11 @@ pub fn highlight_home(editor: &mut EditorSpace, config: &Config) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = editor.text_position;
+		let prior = [editor.text_position, editor.get_line_num()];
 		// Move to beginning of line
 		home_key(editor);
 		// Get the new location after moving
-		let update = editor.text_position;
+		let update = [editor.text_position, editor.get_line_num()];
 
 		// If selection is now empty
 		if update == editor.selection.end {

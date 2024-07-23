@@ -124,14 +124,14 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 	);
 	// Set the starting position for the cursor of the editor space if it hasn't been set
 	if editor_space.start_cursor_set == false {
-		editor_space.init_editor(
+		let _ = editor_space.init_editor(
 			(main_layout[1].x as usize, main_layout[1].y as usize),
 			main_layout[1].width as usize,
 			main_layout[1].height as usize,
 		);
 	}
 	// Main editor space
-	if !editor_space.block.is_empty() {
+	if !editor_space.blocks.as_ref().unwrap().blocks_list.is_empty() {
 		frame.render_widget(
 			editor_space.get_paragraph(config).block(
 				Block::new()

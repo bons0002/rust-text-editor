@@ -26,6 +26,7 @@ pub mod editor {
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
 	use key_functions::highlight_selection::Selection;
+	use unicode_segmentation::UnicodeSegmentation;
 
 	pub struct EditorSpace {
 		// Text block of current frame
@@ -186,7 +187,7 @@ pub mod editor {
 		// Create a Line struct from the given String line
 		fn parse_line(&self, config: &Config, idx: usize, line: &str) -> Line {
 			// Split the line into individual words
-			let characters: Vec<char> = line.chars().collect();
+			let characters: Vec<&str> = line.graphemes(true).collect();
 			let mut spans: Vec<Span> = Vec::new();
 			// Iterate through each character on the line
 			spans.par_extend(
@@ -195,7 +196,7 @@ pub mod editor {
 					.enumerate()
 					.map(|(loc, character)| {
 						match character {
-							'\t' => {
+							"\t" => {
 								// Start tab with a vertical line
 								let mut tab_char = String::from("\u{023D0}");
 								// Iterator to create a string of tab_width - 1 number of spaces
@@ -210,6 +211,7 @@ pub mod editor {
 						}
 					}),
 			);
+			spans.push(Span::from("\n"));
 
 			// Return the line
 			Line::from(spans)
@@ -222,13 +224,12 @@ pub mod editor {
 
 			// Convert the blocks into one text vector
 			let mut text: Vec<String> = Vec::new();
-			text.par_extend(
-				blocks
-					.unwrap()
-					.blocks_list
-					.into_par_iter()
-					.map(|block| block.content.into_par_iter().collect()),
-			);
+
+			// Iterate through the blocks that are currently loaded in
+			for block in blocks.unwrap().blocks_list {
+				// Add all of the lines in these blocks into the `text` vector
+				block.content.into_par_iter().collect_into_vec(&mut text);
+			}
 
 			// Create a vector of Lines from the text
 			let mut lines: Vec<Line> = text
@@ -412,7 +413,7 @@ pub mod editor {
 					}) => {
 						match code {
 							// Save the frame to the file
-							KeyCode::Char('s') => key_functions::save_key_combo(self),
+							KeyCode::Char('s') => key_functions::save_key_combo(),
 							// Break the loop to end the program
 							KeyCode::Char('c') => self.break_loop = true,
 							_ => (),

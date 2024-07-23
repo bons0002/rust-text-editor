@@ -43,7 +43,7 @@ fn add_branch(
 	cursor_position_operand: usize,
 ) {
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	let line_num = editor.get_line_num();
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 
@@ -57,13 +57,13 @@ fn add_branch(
 		// Get the x position on the next line (takes tabs into account)
 		let next_text_position = calc_next_line_pos(editor, config, next_text_line);
 		// Set position in text
-		editor.text_position = [next_text_position, next_text_line];
+		editor.text_position = next_text_position;
 		// Set screen cursor
 		editor.cursor_position[1] = next_cursor_line;
 	} else {
 		// After end of line
 		// Set cursor to beginning of line
-		editor.text_position = [1, next_text_line];
+		editor.text_position = 0;
 		editor.cursor_position[1] = next_cursor_line;
 		// Move cursor to end of line
 		end_key(editor, config);
@@ -78,7 +78,7 @@ fn sub_branch(
 	cursor_position_operand: usize,
 ) {
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	let line_num = editor.get_line_num();
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 
@@ -92,13 +92,13 @@ fn sub_branch(
 		// Get the x position on the previous line (takes tabs into account)
 		let next_text_position = calc_next_line_pos(editor, config, prev_text_line);
 		// Set position in text
-		editor.text_position = [next_text_position, prev_text_line];
+		editor.text_position = next_text_position;
 		// Set screen cursor
 		editor.cursor_position[1] = prev_cursor_line;
 	} else {
 		// After end of line
 		// Set cursor to beginning of line
-		editor.text_position = [0, prev_text_line];
+		editor.text_position = 0;
 		editor.cursor_position[1] = prev_cursor_line;
 		// Move cursor to end of line
 		end_key(editor, config);
@@ -107,24 +107,21 @@ fn sub_branch(
 
 // Calculate the x position of the cursor on the next line (accounting for tab character)
 fn calc_next_line_pos(editor: &mut EditorSpace, config: &Config, alt_line_num: usize) -> usize {
-	// Position on the current line
-	let line_position = editor.text_position[0];
 	// Line number of current line in the block
-	let line_num = editor.text_position[1];
+	let line_num = editor.get_line_num();
+	let curr_line = editor.blocks.as_ref().unwrap().get_line(line_num);
+	let alt_line = editor.blocks.as_ref().unwrap().get_line(alt_line_num);
+	let text_position = editor.text_position;
 
 	// Count the number of tab characters up to the current position on the current line
-	let curr_tab_chars = editor.block[line_num][0..line_position]
-		.matches('\t')
-		.count() as isize;
+	let curr_tab_chars = curr_line[0..text_position].matches('\t').count() as isize;
 	// Count the number of tab characters up to the current position on the next line
-	let next_tab_chars = editor.block[alt_line_num][0..line_position]
-		.matches('\t')
-		.count() as isize;
+	let next_tab_chars = alt_line[0..text_position].matches('\t').count() as isize;
 	// Difference in the number of tab chars between the two lines
 	let diff = curr_tab_chars - next_tab_chars;
 	// Calculate the position in the text when moving to the next line
 	// This is done to account for tabs on the next line and adjusting accordingly
-	let next_pos_0 = line_position as isize + (config.tab_width - 1) as isize * diff;
+	let next_pos_0 = editor.text_position as isize + (config.tab_width - 1) as isize * diff;
 	// If the resulting position is non-negative, return it
 	if next_pos_0 >= 0 {
 		return next_pos_0 as usize;
