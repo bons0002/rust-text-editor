@@ -322,6 +322,18 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		editor.scroll_offset -= 1;
 		// Line number of current line in the text
 		let line_num = editor.get_line_num();
+		// If moving before the start of the block, insert a new head
+		if line_num < editor.blocks.as_ref().unwrap().starting_line_num {
+			// Clone the blocks
+			let mut blocks = editor.blocks.clone();
+			// Insert a new block at the head
+			match blocks.as_mut().unwrap().insert_head(editor) {
+				Ok(_) => (),
+				Err(error) => panic!("{:?}", error),
+			}
+			// Set this blocks to the editor
+			editor.blocks = blocks;
+		}
 		// Save current position
 		let position = editor.cursor_position[0];
 		// Move cursor to beginning of line

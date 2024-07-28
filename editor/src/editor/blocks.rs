@@ -1,6 +1,6 @@
 use super::EditorSpace;
 use std::io::Error;
-use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
+use unicode_segmentation::UnicodeSegmentation;
 
 mod block;
 pub use block::Block;
@@ -134,25 +134,6 @@ impl Blocks {
 		match block_num {
 			Some(num) => Some((num - self.head_block, line_num - self.starting_line_num)),
 			None => None,
-		}
-	}
-
-	// Find the location in the grapheme cluster (String with unicode taken into account (sort of))
-	pub fn get_grapheme_location(text: &str, text_position: usize) -> usize {
-		// Create a cursor to navigate the grapheme cluster
-		let mut cursor = GraphemeCursor::new(0, text.len(), true);
-		let mut loc = Ok(None);
-		// Iterate to the location
-		for _i in 0..text_position {
-			loc = cursor.next_boundary(&text, 0);
-		}
-		// Return the location
-		match loc {
-			Ok(num) => match num {
-				Some(num) => num,
-				None => panic!("Invalid location"),
-			},
-			Err(inc) => panic!("{:?}", inc),
 		}
 	}
 

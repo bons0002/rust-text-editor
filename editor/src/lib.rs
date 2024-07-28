@@ -249,7 +249,7 @@ pub mod editor {
 			);
 
 			// Return a paragraph from the lines
-			Paragraph::new(Text::from(lines))
+			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
 		}
 
 		// TODO: UPDATE FILE LENGTH WHEN DELETING MULTILINE SELECTION
