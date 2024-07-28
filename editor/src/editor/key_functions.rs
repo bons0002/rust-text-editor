@@ -188,8 +188,31 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 			.nth(editor.text_position - 1)
 			!= Some("\t")
 		{
-			editor.text_position -= 1;
-			editor.cursor_position[0] -= 1;
+			// Line of text
+			let text = editor.blocks.as_ref().unwrap().get_line(line_num);
+			// Create a cursor to navigate the grapheme cluster
+			let mut cursor = GraphemeCursor::new(editor.text_position, text.len(), true);
+			// Get the previous location in the text
+			let loc = cursor.prev_boundary(&text, 0);
+			// Set the text position
+			let loc = match loc {
+				Ok(num) => match num {
+					Some(num) => num,
+					None => panic!("Invalid location"),
+				},
+				Err(_) => 0,
+			};
+			// Get the difference in the positions
+			let diff = editor.text_position - loc;
+			// Update editor text position
+			editor.text_position -= diff;
+			// Move the screen cursor
+			match diff > 1 {
+				// If there is a non ascii character there, the screen cursor needs to move two spaces
+				true => editor.cursor_position[0] -= 2,
+				// Otherwise, move one space
+				false => editor.cursor_position[0] -= 1,
+			}
 		// Otherwise, move by the number of tab spaces
 		} else {
 			editor.text_position -= 1;
@@ -250,12 +273,12 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 			let diff = loc - editor.text_position;
 			// Update editor text position
 			editor.text_position += diff;
-			// If there is a non ascii character there, the screen cursor needs to move two spaces
-			if diff > 1 {
-				editor.cursor_position[0] += 2;
-			// Otherwise, just move one space
-			} else {
-				editor.cursor_position[0] += 1;
+			// Move the screen cursor
+			match diff > 1 {
+				// If there is a non ascii character there, the screen cursor needs to move two spaces
+				true => editor.cursor_position[0] += 2,
+				// Otherwise, move one space
+				false => editor.cursor_position[0] += 1,
 			}
 		// Otherwise, move the number of tab spaces
 		} else {
