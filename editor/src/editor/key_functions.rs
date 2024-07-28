@@ -320,9 +320,17 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 	} else if editor.scroll_offset > 0 {
 		// Scroll up
 		editor.scroll_offset -= 1;
-
-		// Move to the previous line in the text, but don't move the screen cursor
-		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Sub, 1, 0);
+		// Line number of current line in the text
+		let line_num = editor.get_line_num();
+		// Save current position
+		let position = editor.cursor_position[0];
+		// Move cursor to beginning of line
+		home_key(editor);
+		// Loop until in correct position
+		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+			// Move right
+			right_arrow(editor, config);
+		}
 	}
 }
 
