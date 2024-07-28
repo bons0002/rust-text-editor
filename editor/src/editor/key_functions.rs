@@ -303,8 +303,19 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 
 	// Ensure that the cursor doesn't move above the editor block
 	if cursor_line_num > 0 {
-		// Move the cursor to the previous line
-		cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Sub, 1, 1);
+		// Move the cursor to the prev line
+		editor.cursor_position[1] -= 1;
+		// Line number of current line in the text
+		let line_num = editor.get_line_num();
+		// Save current position
+		let position = editor.cursor_position[0];
+		// Move cursor to beginning of line
+		home_key(editor);
+		// Loop until in correct position
+		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+			// Move right
+			right_arrow(editor, config);
+		}
 	// If the cursor moves beyond the bound, scroll up
 	} else if editor.scroll_offset > 0 {
 		// Scroll up
