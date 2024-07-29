@@ -61,7 +61,7 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Functionality of pressing the enter key
-pub fn enter_key(editor: &mut EditorSpace) {
+pub fn enter_key(editor: &mut EditorSpace, config: &Config) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
@@ -79,8 +79,8 @@ pub fn enter_key(editor: &mut EditorSpace) {
 		.insert_new_line(line_num, editor.text_position);
 
 	// Reset cursor to beginning of line
-	editor.text_position = 0;
-	editor.cursor_position = [editor.width.0 + 1, editor.cursor_position[1] + 1];
+	down_arrow(editor, config);
+	home_key(editor);
 	// Add a line to the overall file length
 	editor.file_length += 1;
 
@@ -350,22 +350,57 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
-	// Line number of the screen number
-	let cursor_line_num = editor.cursor_position[1];
 
 	// Make sure cursor doesn't move outside of text
 	if line_num < editor.file_length - 1 {
+		// Line number of the screen number
+		let cursor_line_num = editor.cursor_position[1];
 		// Ensure that the cursor doesn't move below the editor block
-		if cursor_line_num < ((editor.height.1 - editor.height.0) + 1) {
+		if cursor_line_num < (editor.height.1 - editor.height.0) - 3 {
 			// Move the cursor to the next line
-			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Add, 1, 1);
+			editor.cursor_position[1] += 1;
+			// Line number of current line in the text
+			let line_num = editor.get_line_num();
+			// Save current position
+			let position = editor.cursor_position[0];
+			// Move cursor to beginning of line
+			home_key(editor);
+			// Loop until in correct position
+			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+				// Move right
+				right_arrow(editor, config);
+			}
 		// If the cursor goes below the bound, scroll down
-		} else if editor.scroll_offset < editor.file_length {
+		} else {
 			// Scroll down
 			editor.scroll_offset += 1;
 
-			// Move the position in the text, but don't move the screen cursor
-			cursor_line::move_cursor_line(editor, config, cursor_line::Operation::Add, 1, 0);
+			// Line number of current line in the text
+			let line_num = editor.get_line_num();
+			// If moving after the end of the block, insert a new tail
+			if line_num
+				>= editor.blocks.as_ref().unwrap().starting_line_num
+					+ (editor.blocks.as_ref().unwrap().len() - 1)
+			{
+				// Clone the blocks
+				let mut blocks = editor.blocks.clone();
+				// Insert a new block at the head
+				match blocks.as_mut().unwrap().insert_tail(editor) {
+					Ok(_) => (),
+					Err(error) => panic!("{:?}", error),
+				}
+				// Set this blocks to the editor
+				editor.blocks = blocks;
+			}
+			// Save current position
+			let position = editor.cursor_position[0];
+			// Move cursor to beginning of line
+			home_key(editor);
+			// Loop until in correct position
+			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+				// Move right
+				right_arrow(editor, config);
+			}
 		}
 	}
 }
@@ -381,30 +416,8 @@ pub fn home_key(editor: &mut EditorSpace) {
 pub fn end_key(editor: &mut EditorSpace, config: &Config) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
-	// Count the number of tab characters
-	let tab_chars = editor
-		.blocks
-		.as_ref()
-		.unwrap()
-		.get_line(line_num)
-		.matches('\t')
-		.count() * (config.tab_width - 1);
-
-	// Move to end of line if not past the end of the widget
-	if editor.blocks.as_ref().unwrap().get_line_length(line_num) < (editor.width.1 - editor.width.0)
-	{
-		// Set the cursor to the end of the visual line in the widget
-		editor.text_position = editor.blocks.as_ref().unwrap().get_line_length(line_num);
-		// Set screen cursor to end of line
-		editor.cursor_position[0] = editor.width.0
-			+ editor.blocks.as_ref().unwrap().get_line_length(line_num)
-			+ 1 + tab_chars;
-	// If line longer than width of widget, move to the end of the 'visible' line
-	} else {
-		// Set position in text
-		editor.text_position = (editor.width.1 - editor.width.0) - 1;
-		// Set screen cursor to end of widget
-		editor.cursor_position[0] = (editor.width.1 - editor.width.0) + tab_chars - 1;
+	while check_cursor_end_line(editor, line_num) {
+		right_arrow(editor, config);
 	}
 }
 

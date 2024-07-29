@@ -239,7 +239,7 @@ pub mod editor {
 				.collect();
 
 			// The current line number in the text
-			let line_num = self.cursor_position[1];
+			let line_num = self.get_line_num() - self.blocks.as_ref().unwrap().starting_line_num;
 
 			// Highlight the line that the cursor is on
 			lines[line_num] = lines[line_num].clone().style(
@@ -313,7 +313,7 @@ pub mod editor {
 							// If normal character, insert that character
 							KeyCode::Char(code) => key_functions::char_key(self, code),
 							// If Enter was pressed, insert newline
-							KeyCode::Enter => key_functions::enter_key(self),
+							KeyCode::Enter => key_functions::enter_key(self, config),
 							// If tab was pressed, insert tab character
 							KeyCode::Tab => key_functions::tab_key(self, config),
 							// If backspace was pressed, remove the previous character

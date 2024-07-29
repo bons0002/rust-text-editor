@@ -235,4 +235,18 @@ impl Blocks {
 	pub fn get_line_length(&self, line_num: usize) -> usize {
 		self.get_line(line_num).graphemes(true).count()
 	}
+
+	// The number of lines in the entire Blocks
+	pub fn len(&self) -> usize {
+		// Clone the blocks
+		let blocks = self.blocks_list.clone();
+		// Variable to track the total length of all the blocks
+		let mut length = 0;
+		// Loop through the blocks
+		for block in blocks {
+			// Update the total length
+			length += block.get_block_length();
+		}
+		length
+	}
 }
