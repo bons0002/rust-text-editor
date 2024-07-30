@@ -18,8 +18,8 @@ pub struct Blocks {
 	num_blocks: usize,
 	// The list of blocks
 	pub blocks_list: Vec<Block>,
-	// Flag to check if any of the blocks have been edited
-	// If the is false, then the blocks can be refreshed freely
+	/* Flag to check if any of the blocks have been edited
+	If the is false, then the blocks can be refreshed freely */
 	pub is_modified: bool,
 }
 
@@ -38,8 +38,8 @@ impl Blocks {
 			// Construct the current block
 			block = Block::new(editor, block_num)?;
 
-			// If the last line of the previous block isn't "complete",
-			// then the first line of the current block isn't "complete"
+			/* If the last line of the previous block isn't "complete",
+			then the first line of the current block isn't "complete" */
 			if !prev_block.ends_with_newline {
 				// Construct a "complete" line
 				let line1 = prev_block.content[prev_block.content.len() - 1].clone()
@@ -74,8 +74,8 @@ impl Blocks {
 		self.head_block -= 1;
 		// Create a new block at the new starting block
 		let mut block = Block::new(editor, self.head_block)?;
-		// If this new head doesn't end in a "complete" line, remove it
-		// The previous head would have already had its first line fixed
+		/* If this new head doesn't end in a "complete" line, remove it
+		The previous head would have already had its first line fixed */
 		if !block.ends_with_newline {
 			block.content.pop();
 		}
@@ -104,6 +104,12 @@ impl Blocks {
 				+ block.content[0].as_str();
 			// Set the first line to this fixed line
 			block.content[0] = line1;
+			// Location of previous tail
+			let loc = self.blocks_list.len() - 1;
+			/* Remove last line of previous tail
+			because it is "incomplete" and the first line
+			of the next block "completes" it (done above) */
+			self.blocks_list[loc].content.pop();
 		}
 		// Push this new tail
 		self.blocks_list.push(block);
