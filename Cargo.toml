@@ -8,3 +8,9 @@ name = "rust-text-editor" # Temp
 version = "0.2.13"
 repository = "https://github.com/bons0002/rust-text-editor"
 license = "GPL OR MIT"
+
+[workspace.dependencies]
+rayon = "1.10"
+ratatui = "0.26"
+crossterm = "0.27"
+unicode-segmentation = "1.11"
