@@ -165,7 +165,7 @@ fn blocks_create_test() {
 
 // Test the insert_tail function to add a new block to the Blocks
 #[test]
-fn append_block() {
+fn insert_tail_test() {
 	// Create an editor over the genome file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
 	// Initialize the editor
@@ -175,6 +175,43 @@ fn append_block() {
 	// Insert a block into the new blocks
 	let _ = blocks.insert_tail(&mut editor);
 	// Set the blocks to the new copy
+	editor.blocks = Some(blocks);
+
+	// This should be the first two blocks of this file
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME;
+
+	// Create a vector of all the lines in the first two blocks
+	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
+		.content
+		.clone();
+	content.extend(
+		editor.blocks.as_ref().unwrap().blocks_list[1]
+			.content
+			.clone(),
+	);
+	// Convert this vector of lines to a string
+	let mut actual_text = String::new();
+	actual_text.par_extend(content.into_par_iter().map(|line| line));
+
+	// Compare the actual string to the expected
+	assert_eq!(actual_text, expected_text);
+}
+
+// Test the insert_head function to add a new block at the beginning of the Blocks struct
+#[test]
+fn insert_head_test() {
+	// Create an editor over the genome file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+
+	// Create a new Blocks struct starting at the second block of the file
+	let blocks = Blocks::new(&mut editor, 1).unwrap();
+	editor.blocks = Some(blocks);
+
+	// Create a copy of the Blocks
+	let mut blocks = editor.blocks.as_ref().unwrap().clone();
+	// Insert a new block at the front of the Blocks
+	let _ = blocks.insert_head(&mut editor);
+	// Set this copy as the new editor Blocks
 	editor.blocks = Some(blocks);
 
 	// This should be the first two blocks of this file
