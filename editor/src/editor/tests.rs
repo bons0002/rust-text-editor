@@ -4,6 +4,9 @@ use rayon::iter::{IntoParallelIterator, ParallelExtend, ParallelIterator};
 #[allow(unused_imports)]
 use super::*;
 
+// Small file with very little text
+const SMALL_FILE: &str = "../editor/test_files/small_text.txt";
+
 // Large file of part of the human genome
 const GENOME_FILE: &str = "../editor/test_files/GRCh38_50_rna.fna";
 
@@ -231,5 +234,41 @@ fn insert_head_test() {
 	actual_text.par_extend(content.into_par_iter().map(|line| line));
 
 	// Compare the actual string to the expected
+	assert_eq!(actual_text, expected_text);
+}
+
+// Test creating a block using a small file
+#[test]
+fn small_file_block_test() {
+	// Create an editor over the genome file
+	let mut editor = EditorSpace::new(String::from(SMALL_FILE));
+	// Initialize the block (among other things)
+	let _ = editor.init_editor((0, 0), 500, 500);
+
+	// Create a string from the content of the single block
+	let content: Vec<String> = editor.blocks.as_ref().unwrap().blocks_list[0]
+		.content
+		.clone();
+	let mut actual_text = String::new();
+	actual_text.extend(content.into_iter().map(|line| line));
+
+	// The expected contents of the small block
+	let expected_text = String::from(
+		"#include<stdio.h> 🥹🇺🇸🇳🇴\
+        \
+        void test_func() {\
+        \tprintf(\"Testing the save feature\\n\");\
+        }\
+        \
+        int main() {\
+        \tprintf(\"I've almost done it!\\n\");\
+        \ttest_func();\
+        \
+        \treturn 0;\
+        }\
+        ",
+	);
+
+	// Check that the expected equals the actual
 	assert_eq!(actual_text, expected_text);
 }

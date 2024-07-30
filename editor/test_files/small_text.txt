@@ -1,0 +1,12 @@
+#include<stdio.h> 🥹🇺🇸🇳🇴
+
+void test_func() {
+	printf("Testing the save feature\n");
+}
+
+int main() {
+	printf("I've almost done it!\n");
+	test_func();
+
+	return 0;
+}

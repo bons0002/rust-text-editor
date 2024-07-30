@@ -111,7 +111,7 @@ pub mod editor {
 		}
 
 		// Create the first block when the editor is opened
-		pub fn init_first_block(&mut self) -> Result<usize, Error> {
+		fn init_first_block(&mut self) -> Result<usize, Error> {
 			// Create a block at block number 0
 			let blocks = Blocks::new(self, 0)?;
 			// Wrap this Blocks in an Option
@@ -215,10 +215,14 @@ pub mod editor {
 						}
 					}),
 			);
-			spans.push(Span::from("\n"));
 
 			// Return the line
 			Line::from(spans)
+		}
+
+		// Get the current line number
+		fn get_line_num(&self) -> usize {
+			self.cursor_position[1] + self.scroll_offset
 		}
 
 		// Return the vector as a paragraph
@@ -294,11 +298,6 @@ pub mod editor {
 			}
 		}
 		*/
-
-		// Get the current line number
-		pub fn get_line_num(&self) -> usize {
-			self.cursor_position[1] + self.scroll_offset
-		}
 
 		// Get the key pressed
 		pub fn handle_input(&mut self, config: &Config) {
