@@ -4,7 +4,6 @@
 use super::{Config, EditorSpace};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
-mod cursor_line;
 // Contains logic for all highlighting keys
 pub mod highlight_selection;
 
