@@ -84,7 +84,7 @@ impl Blocks {
 		// Insert this new head block
 		self.blocks_list.insert(0, block);
 		// Update the starting line number
-		self.starting_line_num -= self.blocks_list[0].get_block_length();
+		self.starting_line_num -= self.blocks_list[0].len();
 		// Update the number of blocks
 		self.num_blocks += 1;
 		// Return the block number
@@ -102,10 +102,10 @@ impl Blocks {
 		// Check if the previous tail ends in a "complete" line
 		let prev_block = self.blocks_list[loc].clone();
 		// If it doesn't, fix the first line of this new tail
-		if !prev_block.ends_with_newline {
+		if !prev_block.ends_with_newline && prev_block.len() > 0 {
 			// Construct this fixed line
-			let line1 = prev_block.content[prev_block.content.len() - 1].clone()
-				+ block.content[0].as_str();
+			let line1 =
+				prev_block.content[prev_block.len() - 1].clone() + block.content[0].as_str();
 			// Set the first line to this fixed line
 			block.content[0] = line1;
 			/* Remove last line of previous tail
@@ -129,7 +129,7 @@ impl Blocks {
 	fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
 		// Track the lines over the blocks
 		let mut lines = self.starting_line_num;
-		let mut start;
+		let mut start = lines;
 		let mut block_num: Option<usize> = None;
 		// Loop until correct block
 		for block in &self.blocks_list {
@@ -144,7 +144,7 @@ impl Blocks {
 			}
 		}
 		match block_num {
-			Some(num) => Some((num - self.head_block, line_num - self.starting_line_num)),
+			Some(num) => Some((num - self.head_block, line_num - start)),
 			None => None,
 		}
 	}
@@ -180,7 +180,7 @@ impl Blocks {
 		// Insert new row
 		self.blocks_list[location.0]
 			.content
-			.insert(line_num + 1, String::from(after_cursor));
+			.insert(location.1 + 1, String::from(after_cursor));
 		// Remove the rest of the old row after the enter
 		self.blocks_list[location.0].content[location.1].truncate(text_position);
 	}
@@ -257,7 +257,7 @@ impl Blocks {
 		// Loop through the blocks
 		for block in blocks {
 			// Update the total length
-			length += block.get_block_length();
+			length += block.len();
 		}
 		length
 	}

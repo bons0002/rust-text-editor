@@ -77,11 +77,12 @@ pub fn enter_key(editor: &mut EditorSpace, config: &Config) {
 		.unwrap()
 		.insert_new_line(line_num, editor.text_position);
 
+	// Add a line to the overall file length
+	editor.file_length += 1;
+
 	// Reset cursor to beginning of line
 	down_arrow(editor, config);
 	home_key(editor);
-	// Add a line to the overall file length
-	editor.file_length += 1;
 
 	// Set block as modified
 	editor.blocks.as_mut().unwrap().is_modified = true;
