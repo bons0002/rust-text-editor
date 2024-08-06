@@ -202,8 +202,8 @@ pub mod editor {
 						match character {
 							"\t" => {
 								// Start tab with a vertical line
-								let mut tab_char = String::from("\u{023D0}");
-								// Iterator to create a string of tab_width - 1 number of spaces
+								let mut tab_char = String::from("\u{2502}");
+								// Iterator to create a string of tab_width - 1 number of	 spaces
 								tab_char.push_str(&" ".repeat(config.tab_width - 1));
 								// Highlight this spaces representation of a tab
 								self.highlight_char(config, idx, loc, tab_char)
@@ -236,14 +236,20 @@ pub mod editor {
 			// Iterate through the blocks that are currently loaded in
 			for block in blocks.unwrap().blocks_list {
 				// Add all of the lines in these blocks into the `text` vector
-				block.content.into_par_iter().collect_into_vec(&mut text);
+				text.extend(block.content);
 			}
 
 			// Create a vector of Lines from the text
 			let mut lines: Vec<Line> = text
 				.into_par_iter()
 				.enumerate()
-				.map(|(idx, line)| self.parse_line(config, idx, &line))
+				.map(|(idx, line)| {
+					// If the line is empty, return a blank line
+					if line.is_empty() {
+						return Line::from(String::new());
+					}
+					self.parse_line(config, idx, &line)
+				})
 				.collect();
 
 			// The current line number in the text
@@ -269,7 +275,8 @@ pub mod editor {
 				String::from(&self.block[self.selection.start[1]][..self.selection.start[0]]);
 			// Get everything after the selected text on the ending line
 			let after_selection =
-				String::from(&self.block[self.selection.end[1]][self.selection.end[0]..]);
+				String::from
+				(&self.block[self.selection.end[1]][self.selection.end[0]..]);
 
 			let idx = self.selection.start[1] + 1;
 			// Remove the middle lines of the selection

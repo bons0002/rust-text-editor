@@ -78,6 +78,8 @@ impl Blocks {
 		The previous head would have already had its first line fixed */
 		if !block.ends_with_newline {
 			block.content.pop();
+			// This block now ends with a "complete" line
+			block.ends_with_newline = true;
 		}
 		// Insert this new head block
 		self.blocks_list.insert(0, block);
@@ -95,8 +97,10 @@ impl Blocks {
 		self.tail_block += 1;
 		// Create a new block at this new tail position
 		let mut block = Block::new(editor, self.tail_block)?;
+		// Location of previous tail
+		let loc = self.blocks_list.len() - 1;
 		// Check if the previous tail ends in a "complete" line
-		let prev_block = self.blocks_list[self.blocks_list.len() - 1].clone();
+		let prev_block = self.blocks_list[loc].clone();
 		// If it doesn't, fix the first line of this new tail
 		if !prev_block.ends_with_newline {
 			// Construct this fixed line
@@ -104,12 +108,14 @@ impl Blocks {
 				+ block.content[0].as_str();
 			// Set the first line to this fixed line
 			block.content[0] = line1;
-			// Location of previous tail
-			let loc = self.blocks_list.len() - 1;
 			/* Remove last line of previous tail
 			because it is "incomplete" and the first line
 			of the next block "completes" it (done above) */
 			self.blocks_list[loc].content.pop();
+			/* The "incomplete" last line has been removed, so
+			the last line is now "complete" and ends with a
+			newline character */
+			self.blocks_list[loc].ends_with_newline = true;
 		}
 		// Push this new tail
 		self.blocks_list.push(block);
