@@ -40,14 +40,8 @@ impl Block {
 			.map(String::from)
 			.collect();
 
-		let ends_with_newline;
-		// Only check newline if the block has text in it (avoids overflow at end of file)
-		if content.len() > 0 {
-			// Check if the last line ends with a newline
-			ends_with_newline = content[content.len() - 1].ends_with("\n");
-		} else {
-			ends_with_newline = false;
-		}
+		// Check if the last line ends with a newline
+		let ends_with_newline = content[content.len() - 1].ends_with("\n");
 
 		// Trim the newlines
 		let content = content
@@ -84,18 +78,12 @@ impl Block {
 
 	// Get the length (in lines) of the current block
 	pub fn len(&self) -> usize {
-		// Only calculate length if block has text in it
-		if self.content.len() > 0 {
-			// Return the length of the block
-			match self.ends_with_newline {
-				// If the last line is complete, include it
-				true => self.content.len(),
-				// Otherwise, don't (it's included in the next block)
-				false => self.content.len() - 1,
-			}
-		// Otherwise, return 0
-		} else {
-			0
+		// Return the length of the block
+		match self.ends_with_newline {
+			// If the last line is complete, include it
+			true => self.content.len(),
+			// Otherwise, don't (it's included in the next block)
+			false => self.content.len() - 1,
 		}
 	}
 }

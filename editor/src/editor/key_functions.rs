@@ -323,7 +323,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Line number of current line in the text
 		let line_num = editor.get_line_num();
 		// If moving before the start of the block, insert a new head
-		if line_num < editor.blocks.as_ref().unwrap().starting_line_num {
+		if line_num < editor.blocks.as_ref().unwrap().starting_line_num && line_num > 0 {
 			// Clone the blocks
 			let mut blocks = editor.blocks.clone();
 			// Insert a new block at the head
@@ -381,6 +381,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 			if line_num
 				>= editor.blocks.as_ref().unwrap().starting_line_num
 					+ (editor.blocks.as_ref().unwrap().len() - 1)
+				&& line_num < editor.file_length - 1
 			{
 				// Clone the blocks
 				let mut blocks = editor.blocks.clone();

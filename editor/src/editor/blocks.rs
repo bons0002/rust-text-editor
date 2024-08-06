@@ -102,10 +102,10 @@ impl Blocks {
 		// Check if the previous tail ends in a "complete" line
 		let prev_block = self.blocks_list[loc].clone();
 		// If it doesn't, fix the first line of this new tail
-		if !prev_block.ends_with_newline && prev_block.len() > 0 {
+		if !prev_block.ends_with_newline {
 			// Construct this fixed line
 			let line1 =
-				prev_block.content[prev_block.len() - 1].clone() + block.content[0].as_str();
+				prev_block.content.into_iter().last().clone().unwrap() + block.content[0].as_str();
 			// Set the first line to this fixed line
 			block.content[0] = line1;
 			/* Remove last line of previous tail
