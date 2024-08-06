@@ -9,18 +9,15 @@ pub use block::Block;
 #[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
-	pub head_block: usize,
+	head_block: usize,
 	// The ID number of the last block
-	pub tail_block: usize,
+	tail_block: usize,
 	// The line number of the first line in the first block
 	pub starting_line_num: usize,
 	// The number of blocks
 	num_blocks: usize,
 	// The list of blocks
 	pub blocks_list: Vec<Block>,
-	/* Flag to check if any of the blocks have been edited
-	If the is false, then the blocks can be refreshed freely */
-	pub is_modified: bool,
 }
 
 impl Blocks {
@@ -64,12 +61,16 @@ impl Blocks {
 			starting_line_num,
 			num_blocks: 1,
 			blocks_list: blocks,
-			is_modified: false,
 		})
 	}
 
+	// Return the head block
+	pub fn get_head(&self) -> Block {
+		self.blocks_list[0].clone()
+	}
+
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
-	pub fn insert_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
+	pub fn push_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
 		// Move the starting block to the previous block
 		self.head_block -= 1;
 		// Create a new block at the new starting block
@@ -84,15 +85,32 @@ impl Blocks {
 		// Insert this new head block
 		self.blocks_list.insert(0, block);
 		// Update the starting line number
-		self.starting_line_num -= self.blocks_list[0].len();
+		self.starting_line_num -= self.get_head().len();
 		// Update the number of blocks
 		self.num_blocks += 1;
 		// Return the block number
 		Ok(self.head_block)
 	}
 
+	fn pop_head(&mut self) -> usize {
+		// Get the length of the first block
+		let length = self.get_head().len();
+		// Remove the first block
+		self.blocks_list.remove(0);
+
+		// There is now one less block
+		self.num_blocks -= 1;
+		// Move the head to the next block
+		self.head_block += 1;
+		// Update the starting line number to the beginning of the new head
+		self.starting_line_num += length;
+
+		// Return the length of the original head block
+		length
+	}
+
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
-	pub fn insert_tail(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
+	pub fn push_tail(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
 		// Update the tail block number
 		self.tail_block += 1;
 		// Create a new block at this new tail position
@@ -121,8 +139,18 @@ impl Blocks {
 		self.blocks_list.push(block);
 		// Update the number of blocks
 		self.num_blocks += 1;
-		// Return this block number
-		Ok(self.tail_block)
+
+		// Length of the head block
+		let mut head_length: usize = 0;
+		/* If there are more than three blocks loaded in and the head
+		block has not been modified, then remove the head */
+		if self.num_blocks > 3 && !self.get_head().is_modified {
+			self.pop_head();
+			head_length = self.get_head().len();
+		}
+
+		// Return the length of the head block (to be removed from the scroll offset)
+		Ok(head_length)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
@@ -160,6 +188,9 @@ impl Blocks {
 		};
 		// Insert the character into the correct block on the correct line
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
+
+		// Set this block as modified
+		self.blocks_list[location.0].is_modified = true;
 	}
 
 	// Insert a newline and truncate the current line
@@ -183,6 +214,9 @@ impl Blocks {
 			.insert(location.1 + 1, String::from(after_cursor));
 		// Remove the rest of the old row after the enter
 		self.blocks_list[location.0].content[location.1].truncate(text_position);
+
+		// Set this block as modified
+		self.blocks_list[location.0].is_modified = true;
 	}
 
 	// Delete a character from the given line at the given position
@@ -197,6 +231,9 @@ impl Blocks {
 
 		// Remove a character from the line
 		self.blocks_list[location.0].content[location.1].remove(text_position);
+
+		// Set this block as modified
+		self.blocks_list[location.0].is_modified = true;
 	}
 
 	// Delete the below line and append its text content to the end of the current line
@@ -227,6 +264,10 @@ impl Blocks {
 
 		// Append the rest of the below line to the current line (where the cursor is moving to)
 		self.blocks_list[curr_location.0].content[curr_location.1].push_str(after_cursor);
+
+		// Set both blocks as modified
+		self.blocks_list[prev_location.0].is_modified = true;
+		self.blocks_list[curr_location.0].is_modified = true;
 	}
 
 	// Return the line at the given line number

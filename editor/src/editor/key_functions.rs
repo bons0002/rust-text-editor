@@ -28,9 +28,6 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
-
-	// Set block as modified
-	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality for the tab key
@@ -54,9 +51,6 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += config.tab_width;
-
-	// Set block as modified
-	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of pressing the enter key
@@ -83,9 +77,6 @@ pub fn enter_key(editor: &mut EditorSpace, config: &Config) {
 	// Reset cursor to beginning of line
 	down_arrow(editor, config);
 	home_key(editor);
-
-	// Set block as modified
-	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of the backspace key
@@ -126,9 +117,6 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		// Delete the selection
 		//editor.delete_selection();
 	}
-
-	// Set block as modified
-	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Functionality of the delete key
@@ -157,9 +145,6 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// Delete the selection
 		//editor.delete_selection();
 	}
-
-	// Set block as modified
-	editor.blocks.as_mut().unwrap().is_modified = true;
 }
 
 // Check the beginning of line cursor condition
@@ -323,17 +308,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Line number of current line in the text
 		let line_num = editor.get_line_num();
 		// If moving before the start of the block, insert a new head
-		if line_num < editor.blocks.as_ref().unwrap().starting_line_num && line_num > 0 {
-			// Clone the blocks
-			let mut blocks = editor.blocks.clone();
-			// Insert a new block at the head
-			match blocks.as_mut().unwrap().insert_head(editor) {
-				Ok(_) => (),
-				Err(error) => panic!("{:?}", error),
-			}
-			// Set this blocks to the editor
-			editor.blocks = blocks;
-		}
+		if line_num < editor.blocks.as_ref().unwrap().starting_line_num + 1 {}
 		// Save current position
 		let position = editor.cursor_position[0];
 		// Move cursor to beginning of line
@@ -343,6 +318,21 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 			// Move right
 			right_arrow(editor, config);
 		}
+	} else if editor.get_line_num() < editor.blocks.as_ref().unwrap().starting_line_num + 1
+		&& editor.get_line_num() > 0
+	{
+		// Clone the blocks
+		let mut blocks = editor.blocks.clone();
+		// Insert a new block at the head
+		match blocks.as_mut().unwrap().push_head(editor) {
+			Ok(_) => (),
+			Err(error) => panic!("{:?}", error),
+		}
+		// Set this blocks to the editor
+		editor.blocks = blocks;
+
+		// Update scroll offset
+		editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len() - 1;
 	}
 }
 
@@ -385,11 +375,14 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 			{
 				// Clone the blocks
 				let mut blocks = editor.blocks.clone();
-				// Insert a new block at the head
-				match blocks.as_mut().unwrap().insert_tail(editor) {
-					Ok(_) => (),
+				// Insert a new block at the tail (and remove head if necessary)
+				let head_len = match blocks.as_mut().unwrap().push_tail(editor) {
+					Ok(length) => length,
 					Err(error) => panic!("{:?}", error),
-				}
+				};
+				/* Subtract length of original head from scroll offset.
+				This length is 0 if no head was removed and the length otherwise. */
+				editor.scroll_offset -= head_len;
 				// Set this blocks to the editor
 				editor.blocks = blocks;
 			}

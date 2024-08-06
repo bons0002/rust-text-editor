@@ -15,6 +15,8 @@ pub struct Block {
 	pub content: Vec<String>,
 	// Flag for whether the last line ends in a newline (complete line)
 	pub ends_with_newline: bool,
+	// Flag that tracks whether this block has been modified
+	pub is_modified: bool,
 }
 
 impl Block {
@@ -54,6 +56,7 @@ impl Block {
 			block_num,
 			content,
 			ends_with_newline,
+			is_modified: false,
 		})
 	}
 

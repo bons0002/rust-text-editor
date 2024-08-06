@@ -38,15 +38,15 @@ pub mod editor {
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
 		// Position on the current line of text
-		pub text_position: usize,
+		text_position: usize,
 		// Position of cursor on the screen (and in the text)
 		pub cursor_position: [usize; 2],
 		// Name of file opened in current editor frame
 		pub filename: String,
 		// The file that is open
-		pub file: File,
+		file: File,
 		// The length of the entire file that is being openned
-		pub file_length: usize,
+		file_length: usize,
 		// Vertical bounds of the editor block
 		pub height: (usize, usize),
 		// Horizontal bounds of the editor block
@@ -222,7 +222,9 @@ pub mod editor {
 
 		// Get the current line number
 		fn get_line_num(&self) -> usize {
-			self.cursor_position[1] + self.scroll_offset
+			self.cursor_position[1]
+				+ self.scroll_offset
+				+ self.blocks.as_ref().unwrap().starting_line_num
 		}
 
 		// Return the vector as a paragraph
