@@ -2,24 +2,24 @@ use super::*;
 
 // Keep track of which movement key is used
 pub enum Movement {
-	UP,
-	DOWN,
-	LEFT,
-	RIGHT,
-	HOME,
-	END,
+	Up,
+	Down,
+	Left,
+	Right,
+	Home,
+	End,
 }
 
 impl Movement {
 	// Uses a movement key based on the value of the enum
 	pub fn take_movement(&self, editor: &mut EditorSpace, config: &Config) {
 		match self {
-			Self::UP => up_arrow(editor, config),
-			Self::DOWN => down_arrow(editor, config),
-			Self::LEFT => left_arrow(editor, config),
-			Self::RIGHT => right_arrow(editor, config),
-			Self::HOME => home_key(editor),
-			Self::END => end_key(editor, config),
+			Self::Up => up_arrow(editor, config),
+			Self::Down => down_arrow(editor, config),
+			Self::Left => left_arrow(editor, config),
+			Self::Right => right_arrow(editor, config),
+			Self::Home => home_key(editor),
+			Self::End => end_key(editor, config),
 		};
 	}
 }
@@ -28,14 +28,14 @@ impl Movement {
 impl PartialEq for Movement {
 	// Check whether the two enums are the same value
 	fn eq(&self, other: &Self) -> bool {
-		match (self, other) {
-			(Self::UP, Self::UP) => true,
-			(Self::DOWN, Self::DOWN) => true,
-			(Self::LEFT, Self::LEFT) => true,
-			(Self::RIGHT, Self::RIGHT) => true,
-			(Self::HOME, Self::HOME) => true,
-			(Self::END, Self::END) => true,
-			_ => false,
-		}
+		matches!(
+			(self, other),
+			(Self::Up, Self::Up)
+				| (Self::Down, Self::Down)
+				| (Self::Left, Self::Left)
+				| (Self::Right, Self::Right)
+				| (Self::Home, Self::Home)
+				| (Self::End, Self::End)
+		)
 	}
 }

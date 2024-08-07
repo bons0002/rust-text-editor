@@ -1,6 +1,6 @@
 use crate::editor::EditorSpace;
 use key_functions::{down_arrow, up_arrow};
-use rayon::iter::{IntoParallelIterator, ParallelExtend, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelExtend};
 
 use super::*;
 
@@ -24,14 +24,15 @@ fn blocks_create_test() {
 		.clone();
     // The text that gets loaded in
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
 
-    // This should be the first block of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME);
+    /* This should be the first block of this file.
+    Remove the last line of the first block by taking a slice up
+    to (5053 - 62) (There are 62 newline characters). */
+	let expected_text = String::from(&FIRST_BLOCK_GENOME[..(5053 - 62)]);
 
 	// Check that these blocks are the same
 	assert_eq!(actual_text, expected_text);
-    assert_eq!(editor.blocks.as_ref().unwrap().blocks_list[0].ends_with_newline, false);
 }
 
 // Test the push_tail function to add a new block to the Blocks
@@ -59,10 +60,12 @@ fn push_tail_test() {
 	);
 	// Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
 
-    // This should be the first two blocks of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME;
+    /* This should be the first two blocks of this file.
+    Remove the last line of the second block by taking a slice up
+    to (5096 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + &SECOND_BLOCK_GENOME[..(5096 - 63)];
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
@@ -94,10 +97,12 @@ fn push_head_test() {
 	);
 	// Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
 
-    // This should be the first two blocks of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME;
+    /* This should be the first two blocks of this file.
+    Remove the last line of the second block by taking a slice up
+    to (5096 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + &SECOND_BLOCK_GENOME[..(5096 - 63)];
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
@@ -116,7 +121,7 @@ fn small_file_block_test() {
 		.content
 		.clone();
 	let mut actual_text = String::new();
-	actual_text.extend(content.into_iter().map(|line| line));
+	actual_text.extend(content);
 
 	// The expected contents of the small block
 	let expected_text = String::from(
@@ -155,9 +160,6 @@ fn down_arrow_block_load() {
         down_arrow(&mut editor, &config);
     }
 
-    // This should be the first two blocks of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME;
-
 	// Create a vector of all the lines in the first two blocks
 	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
 		.content
@@ -169,7 +171,12 @@ fn down_arrow_block_load() {
 	);
 	// Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
+
+    /* This should be the first two blocks of this file.
+    Remove the last line of the second block by taking a slice up
+    to (5096 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + &SECOND_BLOCK_GENOME[..(5096 - 63)];
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
@@ -187,16 +194,12 @@ fn up_arrow_block_load() {
 	// Create a new Blocks struct starting at the second block of the file
 	let blocks = Blocks::new(&mut editor, 1).unwrap();
 	editor.blocks = Some(blocks);
-    editor.scroll_offset = 0;
 
     /* Up Arrow into the previous block.
     This should load a new head block. */
     for _i in 0..5 {
         up_arrow(&mut editor, &config);
     }
-
-    // This should be the first two blocks of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME;
 
 	// Create a vector of all the lines in the first two blocks
 	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
@@ -209,7 +212,12 @@ fn up_arrow_block_load() {
 	);
 	// Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
+
+    /* This should be the first two blocks of this file.
+    Remove the last line of the second block by taking a slice up
+    to (5096 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + &SECOND_BLOCK_GENOME[..(5096 - 63)];
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
@@ -230,8 +238,10 @@ fn repeated_load_down() {
         down_arrow(&mut editor, &config);
     }
 
-    // This should be the first two blocks of this file
-	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME + THIRD_GENOME_BLOCK;
+    /* This should be the first two blocks of this file.
+    Remove the last line of the third block by taking a slice up
+    to (5106 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME + &THIRD_GENOME_BLOCK[..(5106 - 63)];
 
 	// Create a vector of all the lines in the first three blocks
 	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
@@ -246,23 +256,10 @@ fn repeated_load_down() {
     }
 	// Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
-}
-
-// Test that the ends_with_newline_flag is being set properly
-#[test]
-fn newline_test() {
-    // Editor that will load in one block from the genome file
-	let mut editor = EditorSpace::new(String::from(NEWLINE_FILE));
-	// Initialize the block (among other things)
-	let _ = editor.init_editor((0, 0), 500, 500);
-
-    // Check the newline flag
-    let block = editor.blocks.as_ref().unwrap().blocks_list[0].clone();
-    assert!(block.ends_with_newline);
 }
 
 // Test that the length of Blocks struct is correct
@@ -307,7 +304,7 @@ fn block_length() {
 
 // Test pop_head via the down arrow key
 #[test]
-fn pop_tail_down_arrow() {
+fn pop_head_down_arrow() {
     // Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
@@ -334,13 +331,142 @@ fn pop_tail_down_arrow() {
 
     // Convert this vector of lines to a string
 	let mut actual_text = String::new();
-	actual_text.par_extend(content.into_par_iter().map(|line| line));
+	actual_text.par_extend(content.into_par_iter());
 
-    // Have to start at the last line of the first block (5054 characters in, with 63 newlines removed)
-    let expected_text = String::from(&FIRST_BLOCK_GENOME[(5054 - 63)..]) + SECOND_BLOCK_GENOME + THIRD_GENOME_BLOCK + FOURTH_BLOCK_GENOME;
+    /* This should be the first two blocks of this file.
+    Remove the last line of the fourth block by taking a slice up
+    to (5106 - 63) (There are 63 newline characters).
+    Additionally, concatenate the last line of the first block 
+    with the second block in order to fix the first line of the
+    second block. */
+    let expected_text = String::from(&FIRST_BLOCK_GENOME[(5054 - 63)..]) 
+        + SECOND_BLOCK_GENOME + THIRD_GENOME_BLOCK + &FOURTH_BLOCK_GENOME[..(5101 - 63)];
 
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
+}
+
+// Test pop_tail via the up arrow key
+#[test]
+fn pop_tail_up_arrow() {
+    // Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+    // Create a default config
+    let config = Config::default();
+    // Initialize the block (among other things)
+	let _ = editor.init_editor((0, 0), 50, 50);
+    // Create a new Blocks struct starting at the fourth block of the file
+	let blocks = Blocks::new(&mut editor, 3).unwrap();
+	editor.blocks = Some(blocks);
+
+    /* Up arrow through multiple blocks. */
+    for _i in 0..150 {
+        up_arrow(&mut editor, &config);
+    }
+
+    // Create a vector of all the lines in the first three blocks
+	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
+        .content
+        .clone();
+    for i in 1..3 {
+        content.extend(
+            editor.blocks.as_ref().unwrap().blocks_list[i]
+                .content
+                .clone(),
+        );
+    }
+
+    // Convert this vector of lines to a string
+	let mut actual_text = String::new();
+	actual_text.par_extend(content.into_par_iter());
+
+    /* This should be the first two blocks of this file.
+    Remove the last line of the third block by taking a slice up
+    to (5106 - 63) (There are 63 newline characters). */
+	let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME + &THIRD_GENOME_BLOCK[..(5106 - 63)];
+
+    // Compare the actual string to the expected
+	assert_eq!(actual_text, expected_text);
+}
+
+#[test]
+fn unload_blocks_up_and_down() {
+    // Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+    // Create a default config
+    let config = Config::default();
+    // Initialize the block (among other things)
+	let _ = editor.init_editor((0, 0), 50, 50);
+
+    /* Down arrow through multiple blocks.
+    This should unload the first block. */
+    for _i in 0..210 {
+        down_arrow(&mut editor, &config);
+    }
+    /* Up arrow back to first block.
+    This should reload the first block and
+    unload the fourth block. */
+    for _i in 0..210 {
+        up_arrow(&mut editor, &config);
+    }
+
+    // Create a vector of all the lines in the first three blocks
+	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
+        .content
+        .clone();
+    for i in 1..3 {
+        content.extend(
+            editor.blocks.as_ref().unwrap().blocks_list[i]
+                .content
+                .clone(),
+        );
+    }
+
+    // Convert this vector of lines to a string
+    let mut actual_text = String::new();
+    actual_text.par_extend(content.into_par_iter());
+
+    /* This should be the first two blocks of this file.
+    Remove the last line of the third block by taking a slice up
+    to (5106 - 63) (There are 63 newline characters). */
+    let expected_text = String::from(FIRST_BLOCK_GENOME) + SECOND_BLOCK_GENOME + &THIRD_GENOME_BLOCK[..(5106 - 63)];
+
+    // Compare the actual string to the expected
+    assert_eq!(actual_text, expected_text);
+
+    /* Down arrow through multiple blocks.
+    This should unload the first block. */
+    for _i in 0..210 {
+        down_arrow(&mut editor, &config);
+    }
+
+    // Create a vector of all the lines in the first three blocks
+	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
+        .content
+        .clone();
+    for i in 1..3 {
+        content.extend(
+            editor.blocks.as_ref().unwrap().blocks_list[i]
+                .content
+                .clone(),
+        );
+    }
+
+    // Convert this vector of lines to a string
+    let mut actual_text = String::new();
+    actual_text.par_extend(content.into_par_iter());
+
+    /* This should be the first two blocks of this file.
+    Remove the last line of the fourth block by taking a slice up
+    to (5106 - 63) (There are 63 newline characters).
+    Additionally, concatenate the last line of the first block 
+    with the second block in order to fix the first line of the
+    second block. */
+    let expected_text = String::from(&FIRST_BLOCK_GENOME[(5054 - 63)..]) 
+        + SECOND_BLOCK_GENOME + THIRD_GENOME_BLOCK + &FOURTH_BLOCK_GENOME[..(5101 - 63)];
+
+    // Compare the actual string to the expected
+    assert_eq!(actual_text, expected_text);
 }
 
 
@@ -355,9 +481,6 @@ const SMALL_FILE: &str = "../editor/test_files/small_text.txt";
 
 // Large file of part of the human genome
 const GENOME_FILE: &str = "../editor/test_files/GRCh38_50_rna.fna";
-
-// File where the first 5KiB block ends in a newline
-const NEWLINE_FILE: &str = "../editor/test_files/ends_with_newline.txt";
 
 // The first block of the genome file
 const FIRST_BLOCK_GENOME: &str =

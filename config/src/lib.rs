@@ -1,4 +1,5 @@
 pub mod config {
+	use std::default::Default;
 
 	use crossterm::cursor::SetCursorStyle;
 
@@ -15,9 +16,9 @@ pub mod config {
 		pub theme: theme::Theme,
 	}
 
-	impl Config {
+	impl Default for Config {
 		// Create a new default config
-		pub fn default() -> Self {
+		fn default() -> Self {
 			Config {
 				// Use the terminal's default cursor
 				cursor_style: SetCursorStyle::DefaultUserShape,
@@ -29,4 +30,3 @@ pub mod config {
 		}
 	}
 }
-

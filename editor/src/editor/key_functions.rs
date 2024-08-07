@@ -307,8 +307,6 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		editor.scroll_offset -= 1;
 		// Line number of current line in the text
 		let line_num = editor.get_line_num();
-		// If moving before the start of the block, insert a new head
-		if line_num < editor.blocks.as_ref().unwrap().starting_line_num + 1 {}
 		// Save current position
 		let position = editor.cursor_position[0];
 		// Move cursor to beginning of line
@@ -318,6 +316,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 			// Move right
 			right_arrow(editor, config);
 		}
+	// If moving before the start of the block, insert a new head
 	} else if editor.get_line_num() < editor.blocks.as_ref().unwrap().starting_line_num + 1
 		&& editor.get_line_num() > 0
 	{

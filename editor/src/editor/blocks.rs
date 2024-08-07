@@ -23,44 +23,15 @@ pub struct Blocks {
 impl Blocks {
 	// Create a new Blocks struct with all blocks between starting and ending blocks (inclusive)
 	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
-		// The vector of blocks
-		let blocks: Vec<Block>;
-		// The current block
-		let mut block: Block;
-
-		// If non-zero block number
-		if block_num > 0 {
-			// Construct the previous block
-			let prev_block = Block::new(editor, block_num - 1)?;
-			// Construct the current block
-			block = Block::new(editor, block_num)?;
-
-			/* If the last line of the previous block isn't "complete",
-			then the first line of the current block isn't "complete" */
-			if !prev_block.ends_with_newline {
-				// Construct a "complete" line
-				let line1 = prev_block.content[prev_block.content.len() - 1].clone()
-					+ block.content[0].as_str();
-				// Set the first line of the current block to this corrected line
-				block.content[0] = line1;
-			}
-		// If zero block number, construct the first block
-		} else {
-			// Construct block 0
-			block = Block::new(editor, block_num)?;
-		}
-		// Calculate the line_number of the first line
-		let starting_line_num = Block::calc_line_num(editor, block_num)?;
-		// Add the current block to the vector of blocks
-		blocks = vec![block];
-
 		// Construct the block
 		Ok(Blocks {
 			head_block: block_num,
 			tail_block: block_num,
-			starting_line_num,
+			// Calculate the line number of the first line
+			starting_line_num: Block::calc_line_num(editor, block_num)?,
 			num_blocks: 1,
-			blocks_list: blocks,
+			// Add the current block to the vector of blocks
+			blocks_list: vec![Block::new(editor, block_num)?],
 		})
 	}
 
@@ -69,29 +40,43 @@ impl Blocks {
 		self.blocks_list[0].clone()
 	}
 
+	// Return the tail Block
+	fn get_tail(&self) -> Block {
+		self.blocks_list.iter().last().unwrap().clone()
+	}
+
+	// Remove the tail Block
+	fn pop_tail(&mut self) {
+		// Reduce the number of blocks
+		self.num_blocks -= 1;
+		// Move the tail
+		self.tail_block -= 1;
+		// Remove the tail
+		self.blocks_list.pop();
+	}
+
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
 	pub fn push_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
 		// Move the starting block to the previous block
 		self.head_block -= 1;
 		// Create a new block at the new starting block
-		let mut block = Block::new(editor, self.head_block)?;
-		/* If this new head doesn't end in a "complete" line, remove it
-		The previous head would have already had its first line fixed */
-		if !block.ends_with_newline {
-			block.content.pop();
-			// This block now ends with a "complete" line
-			block.ends_with_newline = true;
-		}
+		let block = Block::new(editor, self.head_block)?;
 		// Insert this new head block
 		self.blocks_list.insert(0, block);
 		// Update the starting line number
 		self.starting_line_num -= self.get_head().len();
 		// Update the number of blocks
 		self.num_blocks += 1;
+
+		if self.num_blocks > 3 && !self.get_tail().is_modified {
+			self.pop_tail();
+		}
+
 		// Return the block number
 		Ok(self.head_block)
 	}
 
+	// Remove the head Block
 	fn pop_head(&mut self) -> usize {
 		// Get the length of the first block
 		let length = self.get_head().len();
@@ -114,27 +99,7 @@ impl Blocks {
 		// Update the tail block number
 		self.tail_block += 1;
 		// Create a new block at this new tail position
-		let mut block = Block::new(editor, self.tail_block)?;
-		// Location of previous tail
-		let loc = self.blocks_list.len() - 1;
-		// Check if the previous tail ends in a "complete" line
-		let prev_block = self.blocks_list[loc].clone();
-		// If it doesn't, fix the first line of this new tail
-		if !prev_block.ends_with_newline {
-			// Construct this fixed line
-			let line1 =
-				prev_block.content.into_iter().last().clone().unwrap() + block.content[0].as_str();
-			// Set the first line to this fixed line
-			block.content[0] = line1;
-			/* Remove last line of previous tail
-			because it is "incomplete" and the first line
-			of the next block "completes" it (done above) */
-			self.blocks_list[loc].content.pop();
-			/* The "incomplete" last line has been removed, so
-			the last line is now "complete" and ends with a
-			newline character */
-			self.blocks_list[loc].ends_with_newline = true;
-		}
+		let block = Block::new(editor, self.tail_block)?;
 		// Push this new tail
 		self.blocks_list.push(block);
 		// Update the number of blocks
@@ -171,21 +136,16 @@ impl Blocks {
 				break;
 			}
 		}
-		match block_num {
-			Some(num) => Some((num - self.head_block, line_num - start)),
-			None => None,
-		}
+		// Return (block number, line number within block)
+		block_num
+			.map(|num| Some((num - self.head_block, line_num - start)))
+			.unwrap()
 	}
 
 	// Insert a character into the correct line in the correct block
 	pub fn insert_char_in_line(&mut self, line_num: usize, text_position: usize, character: char) {
-		// Make a copy of the blocks
-		let blocks = self.clone();
 		// Get the (block num, line number) location
-		let location = match blocks.get_location(line_num) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let location = self.get_location(line_num).unwrap();
 		// Insert the character into the correct block on the correct line
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
 
