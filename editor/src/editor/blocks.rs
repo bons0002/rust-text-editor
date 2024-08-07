@@ -155,13 +155,8 @@ impl Blocks {
 
 	// Insert a newline and truncate the current line
 	pub fn insert_new_line(&mut self, line_num: usize, text_position: usize) {
-		// Make a copy of the blocks
-		let blocks = self.clone();
 		// Get the (block num, line number) location
-		let location = match blocks.get_location(line_num) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let location = self.get_location(line_num).unwrap();
 
 		// The text of the current line
 		let text = self.blocks_list[location.0].content[location.1].clone();
@@ -181,13 +176,8 @@ impl Blocks {
 
 	// Delete a character from the given line at the given position
 	pub fn delete_char_in_line(&mut self, line_num: usize, text_position: usize) {
-		// Make a copy of the blocks
-		let blocks = self.clone();
 		// Get the (block num, line number) location
-		let location = match blocks.get_location(line_num) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let location = self.get_location(line_num).unwrap();
 
 		// Remove a character from the line
 		self.blocks_list[location.0].content[location.1].remove(text_position);
@@ -198,13 +188,8 @@ impl Blocks {
 
 	// Delete the below line and append its text content to the end of the current line
 	pub fn delete_line(&mut self, line_num: usize) {
-		// Make a copy of the blocks
-		let blocks = self.clone();
 		// Get the (block num, line number) location
-		let prev_location = match blocks.get_location(line_num + 1) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let prev_location = self.get_location(line_num + 1).unwrap();
 
 		// The text of the current line
 		let text = self.blocks_list[prev_location.0].content[prev_location.1].clone();
@@ -212,10 +197,7 @@ impl Blocks {
 		let after_cursor = &text[0..];
 
 		// Get the (block num, line number) location
-		let curr_location = match blocks.get_location(line_num) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let curr_location = self.get_location(line_num).unwrap();
 
 		// Remove the below line
 		self.blocks_list[prev_location.0]
@@ -232,13 +214,8 @@ impl Blocks {
 
 	// Return the line at the given line number
 	pub fn get_line(&self, line_num: usize) -> String {
-		// Make a copy of the blocks
-		let blocks = self.clone();
 		// Get the (block num, line number) location
-		let location = match blocks.get_location(line_num) {
-			Some(location) => location,
-			None => panic!("Couldn't retrieve location"),
-		};
+		let location = self.get_location(line_num).unwrap();
 
 		// Return a copy of the line
 		self.blocks_list[location.0].content[location.1].clone()
