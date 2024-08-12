@@ -186,29 +186,33 @@ impl Blocks {
 		self.blocks_list[location.0].is_modified = true;
 	}
 
-	// Delete the below line and append its text content to the end of the current line
-	pub fn delete_line(&mut self, line_num: usize) {
-		// Get the (block num, line number) location
-		let prev_location = self.get_location(line_num + 1).unwrap();
+	// Fully delete the below line
+	pub fn delete_line(&mut self, line_num: usize) -> String {
+		// Get the (block num, line num) location of the below line
+		let location = self.get_location(line_num + 1).unwrap();
 
-		// The text of the current line
-		let text = self.blocks_list[prev_location.0].content[prev_location.1].clone();
+		// Set block as modified
+		self.blocks_list[location.0].is_modified = true;
+
+		// Remove the below line
+		self.blocks_list[location.0].content.remove(location.1)
+	}
+
+	// Delete the below line and append its text content to the end of the current line
+	pub fn delete_and_append_line(&mut self, line_num: usize) {
+		// Delete the below line
+		let text = self.delete_line(line_num);
+
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[0..];
 
 		// Get the (block num, line number) location
 		let curr_location = self.get_location(line_num).unwrap();
 
-		// Remove the below line
-		self.blocks_list[prev_location.0]
-			.content
-			.remove(prev_location.1);
-
 		// Append the rest of the below line to the current line (where the cursor is moving to)
 		self.blocks_list[curr_location.0].content[curr_location.1].push_str(after_cursor);
 
-		// Set both blocks as modified
-		self.blocks_list[prev_location.0].is_modified = true;
+		// Set the current block as modified
 		self.blocks_list[curr_location.0].is_modified = true;
 	}
 
@@ -219,6 +223,15 @@ impl Blocks {
 
 		// Return a copy of the line
 		self.blocks_list[location.0].content[location.1].clone()
+	}
+
+	// Set the line in the Blocks
+	pub fn set_line(&mut self, line_num: usize, text: &str) {
+		// Get the (block num, line number) location
+		let location = self.get_location(line_num).unwrap();
+
+		// Set the line in the block to the given line
+		self.blocks_list[location.0].content[location.1] = String::from(text);
 	}
 
 	// Return the length of the specified line

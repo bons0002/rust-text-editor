@@ -39,6 +39,8 @@ pub mod editor {
 		pub break_loop: bool,
 		// Position on the current line of text
 		text_position: usize,
+		// The config of the editor
+		pub config: Config,
 		// Position of cursor on the screen (and in the text)
 		pub cursor_position: [usize; 2],
 		// Name of file opened in current editor frame
@@ -60,7 +62,7 @@ pub mod editor {
 	}
 
 	impl EditorSpace {
-		pub fn new(filename: String) -> Self {
+		pub fn new(filename: String, config: Config) -> Self {
 			// Check if a file exists, if not create it
 			if !Path::new(&filename).exists() {
 				File::create(&filename).unwrap();
@@ -75,6 +77,7 @@ pub mod editor {
 				blocks: None,
 				break_loop: false,
 				text_position: 0,
+				config,
 				cursor_position: [0, 0],
 				filename,
 				file,
@@ -138,13 +141,7 @@ pub mod editor {
 		}
 
 		// Highlight a specific character on the line within the highlighting selection
-		fn highlight_char(
-			&self,
-			config: &Config,
-			idx: usize,
-			loc: usize,
-			character: String,
-		) -> Span {
+		fn highlight_char(&self, idx: usize, loc: usize, character: String) -> Span {
 			if !self.selection.is_empty {
 				// If only one line
 				if idx == self.selection.start[1]
@@ -153,7 +150,7 @@ pub mod editor {
 					// If within selection, highlight character
 					if loc >= self.selection.start[0] && loc < self.selection.end[0] {
 						Span::from(character)
-							.style(Style::default().bg(config.theme.selection_highlight))
+							.style(Style::default().bg(self.config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
@@ -162,7 +159,7 @@ pub mod editor {
 					// Highlight all characters on the line after the cursor
 					if loc >= self.selection.start[0] {
 						Span::from(character)
-							.style(Style::default().bg(config.theme.selection_highlight))
+							.style(Style::default().bg(self.config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
@@ -171,14 +168,14 @@ pub mod editor {
 					// Highlight all characters on the line before the cursor
 					if loc < self.selection.end[0] {
 						Span::from(character)
-							.style(Style::default().bg(config.theme.selection_highlight))
+							.style(Style::default().bg(self.config.theme.selection_highlight))
 					} else {
 						Span::from(character)
 					}
 				// If between first and last line in multine selection
 				} else if idx > self.selection.start[1] && idx < self.selection.end[1] {
 					Span::from(character)
-						.style(Style::default().bg(config.theme.selection_highlight))
+						.style(Style::default().bg(self.config.theme.selection_highlight))
 				// If not in selection
 				} else {
 					Span::from(character)
@@ -189,7 +186,7 @@ pub mod editor {
 		}
 
 		// Create a Line struct from the given String line
-		fn parse_line(&self, config: &Config, idx: usize, line: &str) -> Line {
+		fn parse_line(&self, idx: usize, line: &str) -> Line {
 			// Split the line into individual words
 			let characters: Vec<&str> = line.graphemes(true).collect();
 			let mut spans: Vec<Span> = Vec::new();
@@ -204,13 +201,13 @@ pub mod editor {
 								// Start tab with a vertical line
 								let mut tab_char = String::from("\u{2502}");
 								// Iterator to create a string of tab_width - 1 number of	 spaces
-								tab_char.push_str(&" ".repeat(config.tab_width - 1));
+								tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
 								// Highlight this spaces representation of a tab
-								self.highlight_char(config, idx, loc, tab_char)
+								self.highlight_char(idx, loc, tab_char)
 							}
 							_ => {
 								// Highlight this (non-tab) character
-								self.highlight_char(config, idx, loc, String::from(character))
+								self.highlight_char(idx, loc, String::from(character))
 							}
 						}
 					}),
@@ -228,7 +225,7 @@ pub mod editor {
 		}
 
 		// Return the vector as a paragraph
-		pub fn get_paragraph(&self, config: &Config) -> Paragraph {
+		pub fn get_paragraph(&self) -> Paragraph {
 			// Clone the blocks of text
 			let blocks = self.blocks.clone();
 
@@ -250,7 +247,7 @@ pub mod editor {
 					if line.is_empty() {
 						return Line::from(String::new());
 					}
-					self.parse_line(config, idx, &line)
+					self.parse_line(idx, &line)
 				})
 				.collect();
 
@@ -260,56 +257,57 @@ pub mod editor {
 			// Highlight the line that the cursor is on
 			lines[line_num] = lines[line_num].clone().style(
 				Style::default()
-					.fg(config.theme.line_highlight_fg_color)
-					.bg(config.theme.line_highlight_bg_color),
+					.fg(self.config.theme.line_highlight_fg_color)
+					.bg(self.config.theme.line_highlight_bg_color),
 			);
 
 			// Return a paragraph from the lines
 			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
 		}
 
-		// TODO: UPDATE FILE LENGTH WHEN DELETING MULTILINE SELECTION
-		// Delete the highlighted selection of text
-		/*
 		fn delete_selection(&mut self) {
-			// Get everything before the selected text on the beginning line
-			let mut before_selection =
-				String::from(&self.block[self.selection.start[1]][..self.selection.start[0]]);
-			// Get everything after the selected text on the ending line
-			let after_selection =
-				String::from
-				(&self.block[self.selection.end[1]][self.selection.end[0]..]);
+			// Start point of the selection (as an immutable tuple)
+			let start = (self.selection.start[0], self.selection.start[1]);
+			// End point of the selection (as an immutable tuple)
+			let end = (self.selection.end[0], self.selection.end[1]);
 
-			let idx = self.selection.start[1] + 1;
-			// Remove the middle lines of the selection
-			for _i in (self.selection.start[1] + 1)..(self.selection.end[1] + 1) {
-				self.block.remove(idx);
+			// The first line in the selection
+			let start_line = self.blocks.as_ref().unwrap().get_line(start.1);
+			// The text on the line before the starting point
+			let before_selection = &start_line[..start.0];
+			// The last line in the selection
+			let end_line = self.blocks.as_ref().unwrap().get_line(end.1);
+			// The text on the line after the starting point
+			let after_selection = &end_line[end.0..];
+
+			// Delete all lines after the first one in the selection
+			for _line_num in start.1..end.1 {
+				// Delete the whole line
+				self.blocks.as_mut().unwrap().delete_line(start.1);
+				// Reduce the length of the file
+				self.file_length -= 1;
 			}
 
-			// Concat the block after the selection to before the selection
-			before_selection.push_str(after_selection.as_str());
-			// Set the line to the new string
-			self.block[self.selection.start[1]] = before_selection;
+			// Concatenate the remaining text on the first and last line
+			let text = String::from(before_selection) + after_selection;
+			// Set the first line of the selection (only remaining line) to this new text
+			self.blocks.as_mut().unwrap().set_line(start.1, &text);
 
-			// Reset the selection
+			// Ensure that the cursor is on the first line of the selection after deletion
+			self.cursor_position[1] = start.1;
+			// Reset to beginning of line
+			key_functions::home_key(self);
+			// Move right until at the correct position
+			while self.text_position < start.0 {
+				key_functions::right_arrow(self);
+			}
+
+			// Clear the selection
 			self.selection.is_empty = true;
-
-			// Move cursor back to original Position
-			if self.text_position == self.selection.end {
-				self.text_position = [
-					self.selection.original_text_position.0,
-					self.selection.original_text_position.1,
-				];
-				self.cursor_position = [
-					self.selection.original_cursor_position.0,
-					self.selection.original_cursor_position.1,
-				];
-			}
 		}
-		*/
 
 		// Get the key pressed
-		pub fn handle_input(&mut self, config: &Config) {
+		pub fn handle_input(&mut self) {
 			// Non-blocking read
 			if event::poll(Duration::from_millis(50)).unwrap() {
 				// Read input
@@ -325,11 +323,11 @@ pub mod editor {
 							// If normal character, insert that character
 							KeyCode::Char(code) => key_functions::char_key(self, code),
 							// If Enter was pressed, insert newline
-							KeyCode::Enter => key_functions::enter_key(self, config),
+							KeyCode::Enter => key_functions::enter_key(self),
 							// If tab was pressed, insert tab character
-							KeyCode::Tab => key_functions::tab_key(self, config),
+							KeyCode::Tab => key_functions::tab_key(self),
 							// If backspace was pressed, remove the previous character
-							KeyCode::Backspace => key_functions::backspace(self, config),
+							KeyCode::Backspace => key_functions::backspace(self),
 							// If delete was pressed, remove the next character
 							KeyCode::Delete => key_functions::delete_key(self),
 							// Left arrow moves cursor left
@@ -337,28 +335,28 @@ pub mod editor {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Left arrow functionality
-								key_functions::left_arrow(self, config);
+								key_functions::left_arrow(self);
 							}
 							// Right arrow moves cursor right
 							KeyCode::Right => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Right arrow functionality
-								key_functions::right_arrow(self, config);
+								key_functions::right_arrow(self);
 							}
 							// Up arrow move cursor up one line
 							KeyCode::Up => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Up arrow functionality
-								key_functions::up_arrow(self, config);
+								key_functions::up_arrow(self);
 							}
 							// Down arrow move cursor down one line
 							KeyCode::Down => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Down arrow functionality
-								key_functions::down_arrow(self, config);
+								key_functions::down_arrow(self);
 							}
 							// Home button moves to beginning of line
 							KeyCode::Home => {
@@ -372,7 +370,7 @@ pub mod editor {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// End key functionality
-								key_functions::end_key(self, config);
+								key_functions::end_key(self);
 							}
 							_ => (),
 						}
@@ -391,27 +389,23 @@ pub mod editor {
 							}
 							// Right arrow highlight text to the right
 							KeyCode::Right => {
-								key_functions::highlight_selection::highlight_right(self, config)
+								key_functions::highlight_selection::highlight_right(self)
 							}
 							// Left arrow highlight text to the left
 							KeyCode::Left => {
-								key_functions::highlight_selection::highlight_left(self, config)
+								key_functions::highlight_selection::highlight_left(self)
 							}
 							// Up arrow highlights text upwards
-							KeyCode::Up => {
-								key_functions::highlight_selection::highlight_up(self, config)
-							}
+							KeyCode::Up => key_functions::highlight_selection::highlight_up(self),
 							// Down arrow highlights text downwards
 							KeyCode::Down => {
-								key_functions::highlight_selection::highlight_down(self, config)
+								key_functions::highlight_selection::highlight_down(self)
 							}
 							// End key highlights to end of line
-							KeyCode::End => {
-								key_functions::highlight_selection::highlight_end(self, config)
-							}
+							KeyCode::End => key_functions::highlight_selection::highlight_end(self),
 							// Home key highlights to beginning of line
 							KeyCode::Home => {
-								key_functions::highlight_selection::highlight_home(self, config)
+								key_functions::highlight_selection::highlight_home(self)
 							}
 							_ => (),
 						}
@@ -427,7 +421,7 @@ pub mod editor {
 							// Save the frame to the file
 							KeyCode::Char('s') => key_functions::save_key_combo(),
 							// Break the loop to end the program
-							KeyCode::Char('c') => self.break_loop = true,
+							KeyCode::Char('q') => self.break_loop = true,
 							_ => (),
 						}
 					}

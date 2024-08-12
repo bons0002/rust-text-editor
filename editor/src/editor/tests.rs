@@ -13,8 +13,10 @@ use super::*;
 // Test that initializing a Blocks struct correctly loads in the first block
 #[test]
 fn blocks_create_test() {
+    // Create a default config
+    let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 500, 500);
 
@@ -38,8 +40,10 @@ fn blocks_create_test() {
 // Test the push_tail function to add a new block to the Blocks
 #[test]
 fn push_tail_test() {
+    // Create a default config
+    let config = Config::default();
 	// Create an editor over the genome file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
 	// Initialize the editor
 	let _ = editor.init_editor((0, 0), 500, 500);
 	// Clone the blocks
@@ -74,8 +78,10 @@ fn push_tail_test() {
 // Test the push_head function to add a new block at the beginning of the Blocks struct
 #[test]
 fn push_head_test() {
+    // Create a default config
+    let config = Config::default();
 	// Create an editor over the genome file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
 	// Create a new Blocks struct starting at the second block of the file
 	let blocks = Blocks::new(&mut editor, 1).unwrap();
 	editor.blocks = Some(blocks);
@@ -111,8 +117,10 @@ fn push_head_test() {
 // Test creating a block using a small file
 #[test]
 fn small_file_block_test() {
+    // Create a default config
+    let config = Config::default();
 	// Create an editor over the small file
-	let mut editor = EditorSpace::new(String::from(SMALL_FILE));
+	let mut editor = EditorSpace::new(String::from(SMALL_FILE), config);
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 500, 500);
 
@@ -147,17 +155,18 @@ fn small_file_block_test() {
 // Test that pressing down arrow past the end of the current block loads a new tail block
 #[test]
 fn down_arrow_block_load() {
-    // Create an editor over the genome file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
     let config = Config::default();
+    // Create an editor over the genome file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+    
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
     /* Down arrow into the next block (current block is 63 lines long).
     This should cause a second block to be loaded into the Blocks struct. */
     for _i in 0..70 {
-        down_arrow(&mut editor, &config);
+        down_arrow(&mut editor);
     }
 
 	// Create a vector of all the lines in the first two blocks
@@ -185,10 +194,10 @@ fn down_arrow_block_load() {
 // Test that pressing the up arrow before the beginning of the head block will load a new head
 #[test]
 fn up_arrow_block_load() {
-    // Create an editor over the genome file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
-    // Create a config
+    // Create a default config
     let config = Config::default();
+    // Create an editor over the genome file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
     // Initialize the block (among other things)
     let _ = editor.init_editor((0, 0), 50, 50);
 	// Create a new Blocks struct starting at the second block of the file
@@ -198,7 +207,7 @@ fn up_arrow_block_load() {
     /* Up Arrow into the previous block.
     This should load a new head block. */
     for _i in 0..5 {
-        up_arrow(&mut editor, &config);
+        up_arrow(&mut editor);
     }
 
 	// Create a vector of all the lines in the first two blocks
@@ -226,16 +235,17 @@ fn up_arrow_block_load() {
 // Test that multiple blocks can be loaded in succession from the down arrow
 #[test]
 fn repeated_load_down() {
-    // Create an editor over the genome file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
     let config = Config::default();
+    // Create an editor over the genome file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+    
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
     /* Down arrow through multiple blocks. */
     for _i in 0..140 {
-        down_arrow(&mut editor, &config);
+        down_arrow(&mut editor);
     }
 
     /* This should be the first two blocks of this file.
@@ -265,8 +275,10 @@ fn repeated_load_down() {
 // Test that the length of Blocks struct is correct
 #[test]
 fn block_length() {
+    // Create a default config
+    let config = Config::default();
     // Editor that will load in one block from the `GRCh38_50_rna` file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 500, 500);
 
@@ -305,16 +317,17 @@ fn block_length() {
 // Test pop_head via the down arrow key
 #[test]
 fn pop_head_down_arrow() {
-    // Editor that will load in one block from the `GRCh38_50_rna` file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
     let config = Config::default();
+    // Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+    
     // Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
     /* Down arrow through multiple blocks. */
     for _i in 0..210 {
-        down_arrow(&mut editor, &config);
+        down_arrow(&mut editor);
     }
 
     // Create a vector of all the lines in the first three blocks
@@ -349,10 +362,11 @@ fn pop_head_down_arrow() {
 // Test pop_tail via the up arrow key
 #[test]
 fn pop_tail_up_arrow() {
-    // Editor that will load in one block from the `GRCh38_50_rna` file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
     let config = Config::default();
+    // Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+    
     // Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
     // Create a new Blocks struct starting at the fourth block of the file
@@ -361,7 +375,7 @@ fn pop_tail_up_arrow() {
 
     /* Up arrow through multiple blocks. */
     for _i in 0..150 {
-        up_arrow(&mut editor, &config);
+        up_arrow(&mut editor);
     }
 
     // Create a vector of all the lines in the first three blocks
@@ -391,23 +405,24 @@ fn pop_tail_up_arrow() {
 
 #[test]
 fn unload_blocks_up_and_down() {
-    // Editor that will load in one block from the `GRCh38_50_rna` file
-	let mut editor = EditorSpace::new(String::from(GENOME_FILE));
     // Create a default config
     let config = Config::default();
+    // Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+    
     // Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
     /* Down arrow through multiple blocks.
     This should unload the first block. */
     for _i in 0..210 {
-        down_arrow(&mut editor, &config);
+        down_arrow(&mut editor);
     }
     /* Up arrow back to first block.
     This should reload the first block and
     unload the fourth block. */
     for _i in 0..210 {
-        up_arrow(&mut editor, &config);
+        up_arrow(&mut editor);
     }
 
     // Create a vector of all the lines in the first three blocks
@@ -437,7 +452,7 @@ fn unload_blocks_up_and_down() {
     /* Down arrow through multiple blocks.
     This should unload the first block. */
     for _i in 0..210 {
-        down_arrow(&mut editor, &config);
+        down_arrow(&mut editor);
     }
 
     // Create a vector of all the lines in the first three blocks

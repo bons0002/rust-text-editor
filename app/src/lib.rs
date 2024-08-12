@@ -53,20 +53,20 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 	let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
 	// Struct to track the entire editing space
-	let mut editor_space = EditorSpace::new(filename);
+	let mut editor_space = EditorSpace::new(filename, config);
 
 	// Loop while editing
 	loop {
 		// Draw the frame
 		terminal.draw(|frame| {
-			ui(frame, &mut editor_space, &config);
+			ui(frame, &mut editor_space);
 			frame.set_cursor(
 				(editor_space.cursor_position[0] + editor_space.width.0 + 1) as u16,
 				(editor_space.cursor_position[1] + editor_space.height.0 + 1) as u16,
 			);
 		})?;
 		// Get input and add to the string
-		editor_space.handle_input(&config);
+		editor_space.handle_input();
 		// Check if break loop
 		if editor_space.break_loop {
 			break;
@@ -77,7 +77,7 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 }
 
 // Define the frame ui
-fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
+fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
 	// Construct the layout of the frame
 	let layouts = create_layouts(frame);
 	// The layout for the tabs bar
@@ -85,7 +85,7 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 	// The layout for the editor space and the explorer
 	let main_layout = &layouts[1];
 
-	let tab_name = editor_space.filename.clone();
+	let tab_name = editor.filename.clone();
 	// Render tabs
 	frame.render_widget(
 		Tabs::new(vec![
@@ -96,16 +96,16 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 		])
 		.block(
 			Block::new()
-				.fg(config.theme.app_fg)
-				.bg(config.theme.app_bg)
+				.fg(editor.config.theme.app_fg)
+				.bg(editor.config.theme.app_bg)
 				.borders(Borders::ALL),
 		)
 		.style(Style::default().white())
 		.highlight_style(
 			Style::default()
-				.fg(config.theme.tab_fg)
-				.bg(config.theme.tab_bg)
-				.underline_color(config.theme.tab_fg)
+				.fg(editor.config.theme.tab_fg)
+				.bg(editor.config.theme.tab_bg)
+				.underline_color(editor.config.theme.tab_fg)
 				.add_modifier(Modifier::BOLD),
 		)
 		.select(0)
@@ -117,26 +117,26 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 	frame.render_widget(
 		Block::new()
 			.title("Explorer")
-			.fg(config.theme.app_fg)
-			.bg(config.theme.app_bg)
+			.fg(editor.config.theme.app_fg)
+			.bg(editor.config.theme.app_bg)
 			.borders(Borders::ALL),
 		main_layout[0],
 	);
 	// Set the starting position for the cursor of the editor space if it hasn't been set
-	if !editor_space.start_cursor_set {
-		let _ = editor_space.init_editor(
+	if !editor.start_cursor_set {
+		let _ = editor.init_editor(
 			(main_layout[1].x as usize, main_layout[1].y as usize),
 			main_layout[1].width as usize,
 			main_layout[1].height as usize,
 		);
 	}
 	// Main editor space
-	if !editor_space.blocks.as_ref().unwrap().blocks_list.is_empty() {
+	if !editor.blocks.as_ref().unwrap().blocks_list.is_empty() {
 		frame.render_widget(
-			editor_space.get_paragraph(config).block(
+			editor.get_paragraph().block(
 				Block::new()
-					.fg(config.theme.app_fg)
-					.bg(config.theme.app_bg)
+					.fg(editor.config.theme.app_fg)
+					.bg(editor.config.theme.app_bg)
 					.borders(Borders::ALL),
 			),
 			main_layout[1],
@@ -145,8 +145,8 @@ fn ui(frame: &mut Frame, editor_space: &mut EditorSpace, config: &Config) {
 		// If the file is empty, make an empty block
 		frame.render_widget(
 			Block::new()
-				.fg(config.theme.app_fg)
-				.bg(config.theme.app_bg)
+				.fg(editor.config.theme.app_fg)
+				.bg(editor.config.theme.app_bg)
 				.borders(Borders::ALL),
 			main_layout[1],
 		);

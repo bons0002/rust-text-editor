@@ -12,14 +12,14 @@ pub enum Movement {
 
 impl Movement {
 	// Uses a movement key based on the value of the enum
-	pub fn take_movement(&self, editor: &mut EditorSpace, config: &Config) {
+	pub fn take_movement(&self, editor: &mut EditorSpace) {
 		match self {
-			Self::Up => up_arrow(editor, config),
-			Self::Down => down_arrow(editor, config),
-			Self::Left => left_arrow(editor, config),
-			Self::Right => right_arrow(editor, config),
+			Self::Up => up_arrow(editor),
+			Self::Down => down_arrow(editor),
+			Self::Left => left_arrow(editor),
+			Self::Right => right_arrow(editor),
 			Self::Home => home_key(editor),
-			Self::End => end_key(editor, config),
+			Self::End => end_key(editor),
 		};
 	}
 }

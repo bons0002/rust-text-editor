@@ -1,9 +1,7 @@
 // Defines the logic of the movement keys that highlight selections of text.
 // Also defines the Selection struct for track the highlighted selection.
 
-use super::{
-	down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, Config, EditorSpace,
-};
+use super::{down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, EditorSpace};
 
 // Module containing direction keys to track movement
 mod movement;
@@ -37,7 +35,7 @@ impl Selection {
 }
 
 // Initialize selection if there currently is no selection
-fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement) {
+fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 	// Store the starting position of the cursor
 	editor.selection.original_cursor_position =
 		(editor.cursor_position[0], editor.cursor_position[1]);
@@ -49,7 +47,7 @@ fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement)
 		// Set the starting point of the selection
 		editor.selection.start = [editor.text_position, editor.get_line_num()];
 		// Use the corresponding movement key
-		movement.take_movement(editor, config);
+		movement.take_movement(editor);
 		// Set the endpoint of the selection
 		editor.selection.end = [editor.text_position, editor.get_line_num()];
 	// Initialize highlighting backwards
@@ -57,7 +55,7 @@ fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement)
 		// Set the endpoint of the selection
 		editor.selection.end = [editor.text_position, editor.get_line_num()];
 		// Use the corresponding movement key
-		movement.take_movement(editor, config);
+		movement.take_movement(editor);
 		// Set the starting point of the selection
 		editor.selection.start = [editor.text_position, editor.get_line_num()];
 	}
@@ -67,14 +65,14 @@ fn init_selection(editor: &mut EditorSpace, config: &Config, movement: Movement)
 }
 
 // Highlight (or un-highlight) to the right of the cursor
-pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_right(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::Right);
+		init_selection(editor, Movement::Right);
 	// Otherwise, add to the existing selection
 	} else {
 		// Move right
-		right_arrow(editor, config);
+		right_arrow(editor);
 		// Get the new location after the move
 		let update = [editor.text_position, editor.get_line_num()];
 		// If the last character of the selection has been deselected
@@ -100,14 +98,14 @@ pub fn highlight_right(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Highlight (or un-highlight) to the left of the cursor
-pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_left(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::Left);
+		init_selection(editor, Movement::Left);
 	// Otherwise, add to the existing selection
 	} else {
 		// Move left
-		left_arrow(editor, config);
+		left_arrow(editor);
 		// Get the new location after the move
 		let update = [editor.text_position, editor.get_line_num()];
 		// If the new location is at the start of the selection (de-selected last character)
@@ -132,16 +130,16 @@ pub fn highlight_left(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Highlight (or un-highlight) up to the cursor position on the above line
-pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_up(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::Up);
+		init_selection(editor, Movement::Up);
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
 		let prior = [editor.text_position, editor.get_line_num()];
 		// Move up
-		up_arrow(editor, config);
+		up_arrow(editor);
 		// Get the new location after moving
 		let update = [editor.text_position, editor.get_line_num()];
 		// If the selection is now empty (but not on first line)
@@ -161,16 +159,16 @@ pub fn highlight_up(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Highlight (or un-highlight) up to the cursor position on the below line
-pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_down(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::Down);
+		init_selection(editor, Movement::Down);
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
 		let prior = [editor.text_position, editor.get_line_num()];
 		// Move down
-		down_arrow(editor, config);
+		down_arrow(editor);
 		// Get the new location after moving
 		let update = [editor.text_position, editor.get_line_num()];
 		// If the selection is now empty (but not on last line)
@@ -190,16 +188,16 @@ pub fn highlight_down(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Highlight (or un-highlight) to the end of the line
-pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_end(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::End);
+		init_selection(editor, Movement::End);
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
 		let prior = [editor.text_position, editor.get_line_num()];
 		// Move to end of line
-		end_key(editor, config);
+		end_key(editor);
 		// Get new location after moving
 		let update = [editor.text_position, editor.get_line_num()];
 
@@ -239,10 +237,10 @@ pub fn highlight_end(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Highlight (or un-highlight) to the beginning of the line
-pub fn highlight_home(editor: &mut EditorSpace, config: &Config) {
+pub fn highlight_home(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
-		init_selection(editor, config, Movement::Home);
+		init_selection(editor, Movement::Home);
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location

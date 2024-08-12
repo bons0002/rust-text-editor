@@ -1,7 +1,7 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 // Contains the logic for all the keys pressed
 
-use super::{Config, EditorSpace};
+use super::EditorSpace;
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 // Contains logic for all highlighting keys
@@ -12,7 +12,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
-		//editor.delete_selection();
+		editor.delete_selection();
 	}
 
 	// Line number of current line in the text
@@ -31,11 +31,11 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 }
 
 // Functionality for the tab key
-pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
+pub fn tab_key(editor: &mut EditorSpace) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
-		//editor.delete_selection();
+		editor.delete_selection();
 	}
 
 	// Line number of current line in the text
@@ -50,15 +50,15 @@ pub fn tab_key(editor: &mut EditorSpace, config: &Config) {
 
 	// Move cursor
 	editor.text_position += 1;
-	editor.cursor_position[0] += config.tab_width;
+	editor.cursor_position[0] += editor.config.tab_width;
 }
 
 // Functionality of pressing the enter key
-pub fn enter_key(editor: &mut EditorSpace, config: &Config) {
+pub fn enter_key(editor: &mut EditorSpace) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
-		//editor.delete_selection();
+		editor.delete_selection();
 	}
 
 	// Line number of current line in the text
@@ -75,12 +75,12 @@ pub fn enter_key(editor: &mut EditorSpace, config: &Config) {
 	editor.file_length += 1;
 
 	// Reset cursor to beginning of line
-	down_arrow(editor, config);
+	down_arrow(editor);
 	home_key(editor);
 }
 
 // Functionality of the backspace key
-pub fn backspace(editor: &mut EditorSpace, config: &Config) {
+pub fn backspace(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, backspace normally
 	if editor.selection.is_empty {
 		// Remove empty line
@@ -88,13 +88,17 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		if editor.text_position == 0 {
 			if editor.file_length > 1 {
 				// Move up one line
-				up_arrow(editor, config);
-				end_key(editor, config);
+				up_arrow(editor);
+				end_key(editor);
 				// Line number of current line in the text
 				let line_num = editor.get_line_num();
 
 				// Delete the previous line and append its text content to the current line
-				editor.blocks.as_mut().unwrap().delete_line(line_num);
+				editor
+					.blocks
+					.as_mut()
+					.unwrap()
+					.delete_and_append_line(line_num);
 
 				// Reduce the file length
 				editor.file_length -= 1;
@@ -102,7 +106,7 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		// Otherwise, just move cursor left
 		} else {
 			// Move left
-			left_arrow(editor, config);
+			left_arrow(editor);
 			// Line number of current line in the text
 			let line_num = editor.get_line_num();
 
@@ -115,7 +119,7 @@ pub fn backspace(editor: &mut EditorSpace, config: &Config) {
 		}
 	} else {
 		// Delete the selection
-		//editor.delete_selection();
+		editor.delete_selection();
 	}
 }
 
@@ -137,13 +141,17 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// If not at end of last line
 		} else if line_num < editor.file_length - 1 {
 			// Delete the below line and append its text content to the current line
-			editor.blocks.as_mut().unwrap().delete_line(line_num);
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.delete_and_append_line(line_num);
 			// Reduce the overall file length
 			editor.file_length -= 1;
 		}
 	} else {
 		// Delete the selection
-		//editor.delete_selection();
+		editor.delete_selection();
 	}
 }
 
@@ -157,7 +165,7 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 }
 
 // Left arrow key functionality
-pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
+pub fn left_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
@@ -201,13 +209,13 @@ pub fn left_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Otherwise, move by the number of tab spaces
 		} else {
 			editor.text_position -= 1;
-			editor.cursor_position[0] -= config.tab_width;
+			editor.cursor_position[0] -= editor.config.tab_width;
 		}
 	} else {
 		// Move to above line
 		if line_num > 0 {
-			up_arrow(editor, config);
-			end_key(editor, config);
+			up_arrow(editor);
+			end_key(editor);
 		} else {
 			home_key(editor);
 		}
@@ -224,7 +232,7 @@ fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 }
 
 // Right arrow key functionality
-pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
+pub fn right_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
@@ -268,21 +276,21 @@ pub fn right_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Otherwise, move the number of tab spaces
 		} else {
 			editor.text_position += 1;
-			editor.cursor_position[0] += config.tab_width;
+			editor.cursor_position[0] += editor.config.tab_width;
 		}
 	} else {
 		// Move to next line
 		if line_num < editor.file_length - 1 {
-			down_arrow(editor, config);
+			down_arrow(editor);
 			home_key(editor);
 		} else {
-			end_key(editor, config);
+			end_key(editor);
 		}
 	}
 }
 
 // Up arrow key functionality
-pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
+pub fn up_arrow(editor: &mut EditorSpace) {
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 
@@ -299,7 +307,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Loop until in correct position
 		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 			// Move right
-			right_arrow(editor, config);
+			right_arrow(editor);
 		}
 	// If the cursor moves beyond the bound, scroll up
 	} else if editor.scroll_offset > 0 {
@@ -314,7 +322,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 		// Loop until in correct position
 		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 			// Move right
-			right_arrow(editor, config);
+			right_arrow(editor);
 		}
 	// If moving before the start of the block, insert a new head
 	} else if editor.get_line_num() < editor.blocks.as_ref().unwrap().starting_line_num + 1
@@ -336,7 +344,7 @@ pub fn up_arrow(editor: &mut EditorSpace, config: &Config) {
 }
 
 // Down arrow key functionality
-pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
+pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
@@ -357,7 +365,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 			// Loop until in correct position
 			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 				// Move right
-				right_arrow(editor, config);
+				right_arrow(editor);
 			}
 		// If the cursor goes below the bound, scroll down
 		} else {
@@ -392,7 +400,7 @@ pub fn down_arrow(editor: &mut EditorSpace, config: &Config) {
 			// Loop until in correct position
 			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 				// Move right
-				right_arrow(editor, config);
+				right_arrow(editor);
 			}
 		}
 	}
@@ -406,11 +414,11 @@ pub fn home_key(editor: &mut EditorSpace) {
 }
 
 // End key functionality
-pub fn end_key(editor: &mut EditorSpace, config: &Config) {
+pub fn end_key(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 	while check_cursor_end_line(editor, line_num) {
-		right_arrow(editor, config);
+		right_arrow(editor);
 	}
 }
 
