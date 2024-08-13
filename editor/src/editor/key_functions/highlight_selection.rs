@@ -16,7 +16,7 @@ pub struct Selection {
 	// Flag to track if selection is empty or not
 	pub is_empty: bool,
 	// Store the original position of the cursor before highlighting
-	original_cursor_position: (usize, usize),
+	pub original_cursor_position: (usize, usize),
 	// Store the original position in the text before highlighting
 	original_text_position: (usize, usize),
 }

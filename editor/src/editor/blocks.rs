@@ -68,7 +68,10 @@ impl Blocks {
 		// Update the number of blocks
 		self.num_blocks += 1;
 
-		if self.num_blocks > 3 && !self.get_tail().is_modified {
+		/* If there are more than three blocks loaded in and the tail
+		block has not been modified, then remove the tail.
+		Also, if there is a highlighted selection, don't unload blocks. */
+		if self.num_blocks > 3 && !self.get_tail().is_modified && editor.selection.is_empty {
 			self.pop_tail();
 		}
 
@@ -106,12 +109,14 @@ impl Blocks {
 		self.num_blocks += 1;
 
 		// Length of the head block
-		let mut head_length: usize = 0;
+		let head_length: usize = self.get_head().len();
 		/* If there are more than three blocks loaded in and the head
-		block has not been modified, then remove the head */
-		if self.num_blocks > 3 && !self.get_head().is_modified {
+		block has not been modified, then remove the head.
+		Also, if there is a highlighted selection, don't unload blocks. */
+		if self.num_blocks > 3 && !self.get_head().is_modified && editor.selection.is_empty {
 			self.pop_head();
-			head_length = self.get_head().len();
+			// Subtract length of original head from scroll offset
+			editor.scroll_offset -= head_length;
 		}
 
 		// Return the length of the head block (to be removed from the scroll offset)
@@ -120,11 +125,12 @@ impl Blocks {
 
 	// Return a tuple containing (block number, line number) for accessing the block content
 	fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
-		// Track the lines over the blocks
+		// Track the total lines over the blocks
 		let mut lines = self.starting_line_num;
+		// The starting line
 		let mut start = lines;
 		let mut block_num: Option<usize> = None;
-		// Loop until correct block
+		// Loop until within the correct block
 		for block in &self.blocks_list {
 			// Starting line of this block
 			start = lines;
@@ -186,10 +192,10 @@ impl Blocks {
 		self.blocks_list[location.0].is_modified = true;
 	}
 
-	// Fully delete the below line
+	// Fully delete the given line
 	pub fn delete_line(&mut self, line_num: usize) -> String {
 		// Get the (block num, line num) location of the below line
-		let location = self.get_location(line_num + 1).unwrap();
+		let location = self.get_location(line_num).unwrap();
 
 		// Set block as modified
 		self.blocks_list[location.0].is_modified = true;
@@ -201,7 +207,7 @@ impl Blocks {
 	// Delete the below line and append its text content to the end of the current line
 	pub fn delete_and_append_line(&mut self, line_num: usize) {
 		// Delete the below line
-		let text = self.delete_line(line_num);
+		let text = self.delete_line(line_num + 1);
 
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[0..];

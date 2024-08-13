@@ -280,23 +280,29 @@ pub mod editor {
 			// The text on the line after the starting point
 			let after_selection = &end_line[end.0..];
 
-			// Delete all lines after the first one in the selection
-			for _line_num in start.1..end.1 {
-				// Delete the whole line
-				self.blocks.as_mut().unwrap().delete_line(start.1);
-				// Reduce the length of the file
-				self.file_length -= 1;
-			}
-
 			// Concatenate the remaining text on the first and last line
 			let text = String::from(before_selection) + after_selection;
 			// Set the first line of the selection (only remaining line) to this new text
 			self.blocks.as_mut().unwrap().set_line(start.1, &text);
 
-			// Ensure that the cursor is on the first line of the selection after deletion
-			self.cursor_position[1] = start.1;
+			// Delete all lines after the first one in the selection
+			for _line_num in start.1..end.1 {
+				// Delete the whole line
+				self.blocks.as_mut().unwrap().delete_line(start.1 + 1);
+				// Reduce the length of the file
+				self.file_length -= 1;
+			}
+
 			// Reset to beginning of line
 			key_functions::home_key(self);
+			// Ensure that the cursor is on the first line of the selection after deletion
+			if self.cursor_position[1] > self.selection.original_cursor_position.1 {
+				self.cursor_position[1] = self.selection.original_cursor_position.1;
+				// Fix the scroll offset
+				self.scroll_offset -= self.get_line_num()
+					- self.cursor_position[1]
+					- self.blocks.as_ref().unwrap().starting_line_num;
+			}
 			// Move right until at the correct position
 			while self.text_position < start.0 {
 				key_functions::right_arrow(self);

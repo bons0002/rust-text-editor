@@ -1,9 +1,9 @@
 [workspace]
 members = ["editor", "app", "config"]
+resolver = "2"
 
 [workspace.package]
-name = "rust-text-editor" # Temp
-version = "0.2.26"
+version = "0.2.29"
 repository = "https://github.com/bons0002/rust-text-editor"
 license = "GPL OR MIT"
 
