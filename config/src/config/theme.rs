@@ -1,6 +1,7 @@
 use ratatui::style::Color;
 
 // Contains the colors of the editor
+#[derive(Clone)]
 pub struct Theme {
 	// Entire app's foreground (text) color
 	pub app_fg: Color,
@@ -45,4 +46,3 @@ impl Theme {
 		}
 	}
 }
-

@@ -9,11 +9,13 @@ pub use block::Block;
 #[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
-	head_block: usize,
+	pub head_block: usize,
 	// The ID number of the last block
-	tail_block: usize,
+	pub tail_block: usize,
 	// The line number of the first line in the first block
 	pub starting_line_num: usize,
+	// The maximum number of blocks for the file
+	pub max_blocks: usize,
 	// The number of blocks
 	num_blocks: usize,
 	// The list of blocks
@@ -23,6 +25,12 @@ pub struct Blocks {
 impl Blocks {
 	// Create a new Blocks struct with all blocks between starting and ending blocks (inclusive)
 	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
+		// Ensure that the metadata of the file is up to date
+		editor.file.sync_all()?;
+		// Get the number of bytes in the file
+		let size = editor.file.metadata()?.len() as usize;
+		// Find the max number of blocks for this file
+		let max_blocks = size.div_ceil(block::BLOCK_SIZE as usize);
 		// Construct the block
 		Ok(Blocks {
 			head_block: block_num,
@@ -30,6 +38,7 @@ impl Blocks {
 			// Calculate the line number of the first line
 			starting_line_num: Block::calc_line_num(editor, block_num)?,
 			num_blocks: 1,
+			max_blocks,
 			// Add the current block to the vector of blocks
 			blocks_list: vec![Block::new(editor, block_num)?],
 		})
@@ -57,22 +66,25 @@ impl Blocks {
 
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
 	pub fn push_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
-		// Move the starting block to the previous block
-		self.head_block -= 1;
-		// Create a new block at the new starting block
-		let block = Block::new(editor, self.head_block)?;
-		// Insert this new head block
-		self.blocks_list.insert(0, block);
-		// Update the starting line number
-		self.starting_line_num -= self.get_head().len();
-		// Update the number of blocks
-		self.num_blocks += 1;
+		// Make sure that too many blocks aren't loaded
+		if self.num_blocks < self.max_blocks {
+			// Move the starting block to the previous block
+			self.head_block -= 1;
+			// Create a new block at the new starting block
+			let block = Block::new(editor, self.head_block)?;
+			// Insert this new head block
+			self.blocks_list.insert(0, block);
+			// Update the starting line number
+			self.starting_line_num -= self.get_head().len();
+			// Update the number of blocks
+			self.num_blocks += 1;
 
-		/* If there are more than three blocks loaded in and the tail
-		block has not been modified, then remove the tail.
-		Also, if there is a highlighted selection, don't unload blocks. */
-		if self.num_blocks > 3 && !self.get_tail().is_modified && editor.selection.is_empty {
-			self.pop_tail();
+			/* If there are more than three blocks loaded in and the tail
+			block has not been modified, then remove the tail.
+			Also, if there is a highlighted selection, don't unload blocks. */
+			if self.num_blocks > 3 && !self.get_tail().is_modified && editor.selection.is_empty {
+				self.pop_tail();
+			}
 		}
 
 		// Return the block number
@@ -98,33 +110,37 @@ impl Blocks {
 	}
 
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
-	pub fn push_tail(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
-		// Update the tail block number
-		self.tail_block += 1;
-		// Create a new block at this new tail position
-		let block = Block::new(editor, self.tail_block)?;
-		// Push this new tail
-		self.blocks_list.push(block);
-		// Update the number of blocks
-		self.num_blocks += 1;
+	pub fn push_tail(&mut self, editor: &mut EditorSpace) -> Result<isize, Error> {
+		// Make sure that too many blocks aren't loaded
+		if self.num_blocks < self.max_blocks {
+			// Update the tail block number
+			self.tail_block += 1;
+			// Create a new block at this new tail position
+			let block = Block::new(editor, self.tail_block)?;
+			// Push this new tail
+			self.blocks_list.push(block);
+			// Update the number of blocks
+			self.num_blocks += 1;
 
-		// Length of the head block
-		let head_length: usize = self.get_head().len();
-		/* If there are more than three blocks loaded in and the head
-		block has not been modified, then remove the head.
-		Also, if there is a highlighted selection, don't unload blocks. */
-		if self.num_blocks > 3 && !self.get_head().is_modified && editor.selection.is_empty {
-			self.pop_head();
-			// Subtract length of original head from scroll offset
-			editor.scroll_offset -= head_length;
+			// Length of the head block
+			let head_length: usize = self.get_head().len();
+			/* If there are more than three blocks loaded in and the head
+			block has not been modified, then remove the head.
+			Also, if there is a highlighted selection, don't unload blocks. */
+			if self.num_blocks > 3 && !self.get_head().is_modified && editor.selection.is_empty {
+				self.pop_head();
+				// Subtract length of original head from scroll offset
+				editor.scroll_offset -= head_length;
+			}
+			// No error
+			return Ok(0);
 		}
-
-		// Return the length of the head block (to be removed from the scroll offset)
-		Ok(head_length)
+		// Error
+		Ok(-1)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
+	pub fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
 		// Track the total lines over the blocks
 		let mut lines = self.starting_line_num;
 		// The starting line
@@ -132,6 +148,10 @@ impl Blocks {
 		let mut block_num: Option<usize> = None;
 		// Loop until within the correct block
 		for block in &self.blocks_list {
+			// Skip over empty blocks
+			if block.content.is_empty() {
+				continue;
+			}
 			// Starting line of this block
 			start = lines;
 			// Starting line of next block
@@ -238,6 +258,9 @@ impl Blocks {
 
 		// Set the line in the block to the given line
 		self.blocks_list[location.0].content[location.1] = String::from(text);
+
+		// Set block as modified
+		self.blocks_list[location.0].is_modified = true;
 	}
 
 	// Return the length of the specified line

@@ -7,6 +7,7 @@ pub mod config {
 	mod theme;
 
 	// Contains user configuration for the app
+	#[derive(Clone)]
 	pub struct Config {
 		// The cursor style for the editor
 		pub cursor_style: SetCursorStyle,

@@ -132,11 +132,12 @@ fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
 	}
 	// Main editor space
 	if !editor.blocks.as_ref().unwrap().blocks_list.is_empty() {
+		let config = editor.config.clone();
 		frame.render_widget(
 			editor.get_paragraph().block(
 				Block::new()
-					.fg(editor.config.theme.app_fg)
-					.bg(editor.config.theme.app_bg)
+					.fg(config.theme.app_fg)
+					.bg(config.theme.app_bg)
 					.borders(Borders::ALL),
 			),
 			main_layout[1],

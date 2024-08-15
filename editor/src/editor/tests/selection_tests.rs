@@ -139,13 +139,14 @@ fn delete_end_selection_large_file() {
 		key_functions::right_arrow(&mut editor);
 	}
 
-	// Highlight left 10 characters
-	for _i in 0..10 {
-		key_functions::highlight_selection::highlight_left(&mut editor);
-	}
 	// Highlight up
 	for _i in 0..(2419 - 49) {
 		key_functions::highlight_selection::highlight_up(&mut editor);
+	}
+	key_functions::highlight_selection::highlight_end(&mut editor);
+	// Highlight left 10 characters
+	for _i in 0..10 {
+		key_functions::highlight_selection::highlight_left(&mut editor);
 	}
 
 	// Delete the highlighted selection

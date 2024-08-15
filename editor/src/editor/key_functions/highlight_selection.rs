@@ -19,6 +19,8 @@ pub struct Selection {
 	pub original_cursor_position: (usize, usize),
 	// Store the original position in the text before highlighting
 	original_text_position: (usize, usize),
+	// Store the original scroll offset of the text
+	pub original_scroll_offset: usize,
 }
 
 impl Selection {
@@ -30,6 +32,7 @@ impl Selection {
 			is_empty: true,
 			original_cursor_position: (0, 0),
 			original_text_position: (0, 0),
+			original_scroll_offset: 0,
 		}
 	}
 }
@@ -41,6 +44,8 @@ fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 		(editor.cursor_position[0], editor.cursor_position[1]);
 	// Store the original starting position in the text
 	editor.selection.original_text_position = (editor.text_position, editor.get_line_num());
+	// Store the original scroll offset of the text
+	editor.selection.original_scroll_offset = editor.scroll_offset;
 
 	// Initialize highlighting forward
 	if movement == Movement::Right || movement == Movement::Down || movement == Movement::End {

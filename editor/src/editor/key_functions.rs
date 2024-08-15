@@ -169,19 +169,6 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new head block
-		match blocks.push_head(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
-
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
 		// If the next char isn't a tab, move normally
@@ -249,19 +236,6 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new tail block
-		match blocks.push_tail(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
-
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
 		// If not a tab character, move normally
@@ -320,19 +294,6 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new head block
-		match blocks.push_head(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
-
 	// Ensure that the cursor doesn't move above the editor block
 	if cursor_line_num > 0 {
 		// Move the cursor to the prev line
@@ -370,10 +331,7 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 		// Clone the blocks
 		let mut blocks = editor.blocks.clone();
 		// Insert a new block at the head
-		match blocks.as_mut().unwrap().push_head(editor) {
-			Ok(_) => (),
-			Err(error) => panic!("{:?}", error),
-		}
+		blocks.as_mut().unwrap().push_head(editor).unwrap();
 		// Set this blocks to the editor
 		editor.blocks = blocks;
 
@@ -386,19 +344,6 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
-
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new tail block
-		match blocks.push_tail(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
 
 	// Make sure cursor doesn't move outside of text
 	if line_num < editor.file_length - 1 {
@@ -435,10 +380,7 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 				// Clone the blocks
 				let mut blocks = editor.blocks.clone();
 				// Insert a new block at the tail (and remove head if necessary)
-				match blocks.as_mut().unwrap().push_tail(editor) {
-					Ok(_) => (),
-					Err(error) => panic!("{:?}", error),
-				};
+				blocks.as_mut().unwrap().push_tail(editor).unwrap();
 				// Set this blocks to the editor
 				editor.blocks = blocks;
 			}
@@ -457,19 +399,6 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 
 // Home key functionality
 pub fn home_key(editor: &mut EditorSpace) {
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new tail block
-		match blocks.push_tail(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
-
 	// Move to beginning of line
 	editor.text_position = 0;
 	editor.cursor_position[0] = 0;
@@ -477,19 +406,6 @@ pub fn home_key(editor: &mut EditorSpace) {
 
 // End key functionality
 pub fn end_key(editor: &mut EditorSpace) {
-	// If the Blocks is shorter than the editor widget, add a new block at the tail
-	if editor.blocks.as_ref().unwrap().len() < editor.height.1 - editor.height.0 {
-		// Clone the blocks
-		let mut blocks = editor.blocks.as_ref().unwrap().clone();
-		// Add new tail block
-		match blocks.push_tail(editor) {
-			Ok(_) => (),
-			Err(err) => panic!("{}", err),
-		}
-		// Update the Blocks
-		editor.blocks = Some(blocks);
-	}
-
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 	while check_cursor_end_line(editor, line_num) {

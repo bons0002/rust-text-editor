@@ -7,6 +7,9 @@ use std::{
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
+// Number of bytes in a block of text (5 KiB)
+pub const BLOCK_SIZE: u64 = 5120;
+
 #[derive(Clone)]
 pub struct Block {
 	// ID number of the current block
@@ -21,8 +24,6 @@ impl Block {
 	/* Create a new block.
 	This function is disgustingly long. */
 	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
-		// Number of bytes in a block of text (5 KiB)
-		const BLOCK_SIZE: u64 = 5120;
 		// Buffer that the bytes of the file are read into
 		let mut buffer = [0; BLOCK_SIZE as usize];
 
@@ -39,7 +40,10 @@ impl Block {
 			.map(String::from)
 			.collect();
 		// Check if the last line ends with a newline
-		let ends_with_newline = content[content.len() - 1].ends_with('\n');
+		let ends_with_newline = match content.last() {
+			Some(line) => line.ends_with('\n'),
+			None => true,
+		};
 
 		// For any block after the first one
 		if block_num > 0 {
@@ -56,12 +60,14 @@ impl Block {
 				.map(String::from)
 				.collect();
 			// Check if the previous block ends in a "complete" line
-			let prev_newline = prev_block_content.iter().last().unwrap().ends_with('\n');
+			let prev_newline = match prev_block_content.last() {
+				Some(line) => line.ends_with('\n'),
+				None => true,
+			};
 			// If it doesn't end in a newline, fix the first line of this block
 			if !prev_newline {
 				// Construct a "complete" line
-				let line1 =
-					prev_block_content[prev_block_content.len() - 1].clone() + content[0].as_str();
+				let line1 = prev_block_content.last().unwrap().clone() + content[0].as_str();
 				// Set the first line of the block to this "fixed" first line
 				content[0] = line1;
 			}

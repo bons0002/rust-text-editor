@@ -487,3 +487,63 @@ fn unload_blocks_up_and_down() {
 	// Compare the actual string to the expected
 	assert_eq!(actual_text, expected_text);
 }
+
+// Test deleting a large number of lines
+#[test]
+fn delete_lines_test() {
+	// Create a default config
+	let config = Config::default();
+	// Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the block (among other things)
+	let _ = editor.init_editor((0, 0), 50, 50);
+
+	for _i in 0..2398 {
+		editor.blocks.as_mut().unwrap().delete_line(0);
+	}
+
+	// Create a vector of all the lines in the first three blocks
+	let mut content = editor.blocks.as_ref().unwrap().blocks_list[0]
+		.content
+		.clone();
+	for i in 1..3 {
+		content.extend(
+			editor.blocks.as_ref().unwrap().blocks_list[i]
+				.content
+				.clone(),
+		);
+	}
+
+	// Convert this vector of lines to a string
+	let mut actual_text = String::new();
+	actual_text.par_extend(content.into_par_iter());
+
+	assert_eq!(actual_text, DELETE_LINES_TEST_RESULT);
+}
+
+#[test]
+fn get_location_test() {
+	// Create a default config
+	let config = Config::default();
+	// Editor that will load in one block from the `GRCh38_50_rna` file
+	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the block (among other things)
+	let _ = editor.init_editor((0, 0), 50, 50);
+
+	for _i in 0..640 {
+		key_functions::down_arrow(&mut editor);
+	}
+	// Should return block 2, line 1
+	let loc = editor.blocks.as_ref().unwrap().get_location(640).unwrap();
+
+	// Should be equal
+	assert_eq!(loc, (2, 1));
+
+	// Delete a line
+	editor.blocks.as_mut().unwrap().delete_line(630);
+
+	// Should return block 2, line 2
+	let loc = editor.blocks.as_ref().unwrap().get_location(640).unwrap();
+
+	assert_eq!(loc, (2, 2));
+}
