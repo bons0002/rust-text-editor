@@ -1,4 +1,5 @@
 use super::EditorSpace;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::io::Error;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -75,7 +76,7 @@ impl Blocks {
 			// Insert this new head block
 			self.blocks_list.insert(0, block);
 			// Update the starting line number
-			self.starting_line_num -= self.get_head().len();
+			self.starting_line_num -= self.get_head().len;
 			// Update the number of blocks
 			self.num_blocks += 1;
 
@@ -94,7 +95,7 @@ impl Blocks {
 	// Remove the head Block
 	fn pop_head(&mut self) -> usize {
 		// Get the length of the first block
-		let length = self.get_head().len();
+		let length = self.get_head().len;
 		// Remove the first block
 		self.blocks_list.remove(0);
 
@@ -124,7 +125,7 @@ impl Blocks {
 			self.num_blocks += 1;
 
 			// Length of the head block
-			let head_length: usize = self.get_head().len();
+			let head_length: usize = self.get_head().len;
 			/* If there are more than three blocks loaded in and the head
 			block has not been modified, then remove the head.
 			Also, if there is a highlighted selection, don't unload blocks. */
@@ -150,13 +151,13 @@ impl Blocks {
 		// Loop until within the correct block
 		for block in &self.blocks_list {
 			// Skip over empty blocks
-			if block.content.is_empty() {
+			if block.len == 0 {
 				continue;
 			}
 			// Starting line of this block
 			start = lines;
 			// Starting line of next block
-			lines += block.content.len();
+			lines += block.len;
 			// If the line number is in this block, break loop
 			if line_num >= start && line_num < lines {
 				block_num = Some(block.block_num);
@@ -221,6 +222,9 @@ impl Blocks {
 		// Set this block as modified
 		self.blocks_list[location.0].is_modified = true;
 
+		// Increase the length of the Block
+		self.blocks_list[location.0].len += 1;
+
 		// Return true if no error
 		Ok(true)
 	}
@@ -251,6 +255,9 @@ impl Blocks {
 
 		// Set block as modified
 		self.blocks_list[location.0].is_modified = true;
+
+		// Reduce the length of this block
+		self.blocks_list[location.0].len -= 1;
 
 		// Remove (and return) the below line
 		Ok(self.blocks_list[location.0].content.remove(location.1))
@@ -309,13 +316,13 @@ impl Blocks {
 
 	// The number of lines in the entire Blocks
 	pub fn len(&self) -> usize {
-		// Variable to track the total length of all the blocks
-		let mut length = 0;
-		// Loop through the blocks
-		for block in &self.blocks_list {
-			// Update the total length
-			length += block.len();
-		}
-		length
+		/* Map reduce to sum the length of all the blocks' lengths.
+		Not a huge advantage to parallelize this most of the time, but if
+		a lot of blocks are loaded in at once, this could provide a small
+		performance boost. */
+		self.blocks_list
+			.par_iter()
+			.map(|block| block.len)
+			.reduce(|| 0, |a, b| a + b)
 	}
 }

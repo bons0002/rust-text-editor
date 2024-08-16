@@ -18,6 +18,8 @@ pub struct Block {
 	pub content: Vec<String>,
 	// Flag that tracks whether this block has been modified
 	pub is_modified: bool,
+	// Length of the Block (in lines)
+	pub len: usize,
 }
 
 impl Block {
@@ -81,13 +83,18 @@ impl Block {
 			.into_par_iter()
 			.map(|line| String::from(line.trim_end()))
 			.collect();
-		// Return the block
-		Ok(Block {
+		// Create the block
+		let mut block = Block {
 			block_num,
 			content,
 			// Can't be modified if new
 			is_modified: false,
-		})
+			len: 0,
+		};
+		// Calculate the length of the block
+		block.len = block.calc_len();
+		// Return the block
+		Ok(block)
 	}
 
 	// Calculate the starting line number of a block of text
@@ -100,7 +107,7 @@ impl Block {
 			// Construct a block
 			let block = Block::new(editor, current_block)?;
 			// Update the total length of blocks
-			total_length += block.len();
+			total_length += block.len;
 			// Update the current block to be counted
 			current_block += 1;
 		}
@@ -110,7 +117,7 @@ impl Block {
 	}
 
 	// Get the length (in lines) of the current block
-	pub fn len(&self) -> usize {
+	fn calc_len(&self) -> usize {
 		self.content.len()
 	}
 }

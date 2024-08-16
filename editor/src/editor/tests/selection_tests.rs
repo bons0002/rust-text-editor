@@ -131,7 +131,7 @@ fn delete_end_selection_large_file() {
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
 	// Initialize the block (among other things)
-	let _ = editor.init_editor((0, 0), 50, 50);
+	let _ = editor.init_editor((0, 0), 200, 50);
 
 	// Move to the end of the file
 	for _i in 0..3000 {

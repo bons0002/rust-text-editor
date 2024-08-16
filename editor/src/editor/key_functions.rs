@@ -370,7 +370,7 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 		editor.blocks = blocks;
 
 		// Update scroll offset
-		editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len() - 1;
+		editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len - 1;
 	}
 }
 

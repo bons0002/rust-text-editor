@@ -271,7 +271,7 @@ fn repeated_load_down() {
 
 // Test that the length of Blocks struct is correct
 #[test]
-fn block_length() {
+fn blocks_length() {
 	// Create a default config
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
