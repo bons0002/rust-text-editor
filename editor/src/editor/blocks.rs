@@ -110,6 +110,7 @@ impl Blocks {
 	}
 
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
+	// Returns the tail block number if successful and -1 if failure
 	pub fn push_tail(&mut self, editor: &mut EditorSpace) -> Result<isize, Error> {
 		// Make sure that too many blocks aren't loaded
 		if self.num_blocks < self.max_blocks {
@@ -133,14 +134,14 @@ impl Blocks {
 				editor.scroll_offset -= head_length;
 			}
 			// No error
-			return Ok(0);
+			return Ok(self.tail_block as isize);
 		}
 		// Error
 		Ok(-1)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&self, line_num: usize) -> Option<(usize, usize)> {
+	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
 		// Track the total lines over the blocks
 		let mut lines = self.starting_line_num;
 		// The starting line
@@ -163,26 +164,47 @@ impl Blocks {
 			}
 		}
 		// Return (block number, line number within block)
-		block_num
-			.map(|num| Some((num - self.head_block, line_num - start)))
-			.unwrap()
+		match block_num.map(|num| (num - self.head_block, line_num - start)) {
+			Some(location) => Ok(location),
+			None => Err(Error::other(format!(
+				/* Return the source file name, line number error occurred in this source file,
+				and line_num argument that was passed to this function. */
+				"{}::get_location: line {}. Couldn't get location for `line_num = {}`",
+				file!(),
+				line!(),
+				line_num
+			))),
+		}
 	}
 
 	// Insert a character into the correct line in the correct block
-	pub fn insert_char_in_line(&mut self, line_num: usize, text_position: usize, character: char) {
+	// Returns true if successful
+	pub fn insert_char_in_line(
+		&mut self,
+		line_num: usize,
+		text_position: usize,
+		character: char,
+	) -> Result<bool, Error> {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 		// Insert the character into the correct block on the correct line
 		self.blocks_list[location.0].content[location.1].insert(text_position, character);
 
 		// Set this block as modified
 		self.blocks_list[location.0].is_modified = true;
+
+		// Return true to denote success
+		Ok(true)
 	}
 
-	// Insert a newline and truncate the current line
-	pub fn insert_new_line(&mut self, line_num: usize, text_position: usize) {
+	// Insert a newline and truncate the current line (returns true if successful)
+	pub fn insert_new_line(
+		&mut self,
+		line_num: usize,
+		text_position: usize,
+	) -> Result<bool, Error> {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 
 		// The text of the current line
 		let text = self.blocks_list[location.0].content[location.1].clone();
@@ -198,74 +220,91 @@ impl Blocks {
 
 		// Set this block as modified
 		self.blocks_list[location.0].is_modified = true;
+
+		// Return true if no error
+		Ok(true)
 	}
 
 	// Delete a character from the given line at the given position
-	pub fn delete_char_in_line(&mut self, line_num: usize, text_position: usize) {
+	pub fn delete_char_in_line(
+		&mut self,
+		line_num: usize,
+		text_position: usize,
+	) -> Result<bool, Error> {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 
 		// Remove a character from the line
 		self.blocks_list[location.0].content[location.1].remove(text_position);
 
 		// Set this block as modified
 		self.blocks_list[location.0].is_modified = true;
+
+		// Return true to denote no error
+		Ok(true)
 	}
 
 	// Fully delete the given line
-	pub fn delete_line(&mut self, line_num: usize) -> String {
+	pub fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
 		// Get the (block num, line num) location of the below line
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 
 		// Set block as modified
 		self.blocks_list[location.0].is_modified = true;
 
-		// Remove the below line
-		self.blocks_list[location.0].content.remove(location.1)
+		// Remove (and return) the below line
+		Ok(self.blocks_list[location.0].content.remove(location.1))
 	}
 
 	// Delete the below line and append its text content to the end of the current line
-	pub fn delete_and_append_line(&mut self, line_num: usize) {
+	// Returns true if successful
+	pub fn delete_and_append_line(&mut self, line_num: usize) -> Result<bool, Error> {
 		// Delete the below line
-		let text = self.delete_line(line_num + 1);
+		let text = self.delete_line(line_num + 1)?;
 
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[0..];
 
 		// Get the (block num, line number) location
-		let curr_location = self.get_location(line_num).unwrap();
+		let curr_location = self.get_location(line_num)?;
 
 		// Append the rest of the below line to the current line (where the cursor is moving to)
 		self.blocks_list[curr_location.0].content[curr_location.1].push_str(after_cursor);
 
 		// Set the current block as modified
 		self.blocks_list[curr_location.0].is_modified = true;
+
+		// Return true to denote no error
+		Ok(true)
 	}
 
 	// Return the line at the given line number
-	pub fn get_line(&self, line_num: usize) -> String {
+	pub fn get_line(&self, line_num: usize) -> Result<String, Error> {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 
 		// Return a copy of the line
-		self.blocks_list[location.0].content[location.1].clone()
+		Ok(self.blocks_list[location.0].content[location.1].clone())
 	}
 
-	// Set the line in the Blocks
-	pub fn set_line(&mut self, line_num: usize, text: &str) {
+	// Set the line in the Blocks (returns true if successful)
+	pub fn set_line(&mut self, line_num: usize, text: &str) -> Result<bool, Error> {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num).unwrap();
+		let location = self.get_location(line_num)?;
 
 		// Set the line in the block to the given line
 		self.blocks_list[location.0].content[location.1] = String::from(text);
 
 		// Set block as modified
 		self.blocks_list[location.0].is_modified = true;
+
+		// Return true to denote no error
+		Ok(true)
 	}
 
 	// Return the length of the specified line
-	pub fn get_line_length(&self, line_num: usize) -> usize {
-		self.get_line(line_num).graphemes(true).count()
+	pub fn get_line_length(&self, line_num: usize) -> Result<usize, Error> {
+		Ok(self.get_line(line_num)?.graphemes(true).count())
 	}
 
 	// The number of lines in the entire Blocks

@@ -299,23 +299,37 @@ pub mod editor {
 			let end = (self.selection.end[0], self.selection.end[1]);
 
 			// The first line in the selection
-			let start_line = self.blocks.as_ref().unwrap().get_line(start.1);
+			let start_line = match self.blocks.as_ref().unwrap().get_line(start.1) {
+				Ok(line) => line,
+				Err(err) => panic!("Couldn't get line {} | {}", start.1, err),
+			};
 			// The text on the line before the starting point
 			let before_selection = &start_line[..start.0];
 			// The last line in the selection
-			let end_line = self.blocks.as_ref().unwrap().get_line(end.1);
+			let end_line = match self.blocks.as_ref().unwrap().get_line(end.1) {
+				Ok(line) => line,
+				Err(err) => panic!("Couldn't get line {} | {}", end.1, err),
+			};
 			// The text on the line after the starting point
 			let after_selection = &end_line[end.0..];
 
 			// Concatenate the remaining text on the first and last line
 			let text = String::from(before_selection) + after_selection;
 			// Set the first line of the selection (only remaining line) to this new text
-			self.blocks.as_mut().unwrap().set_line(start.1, &text);
+			self.blocks
+				.as_mut()
+				.unwrap()
+				.set_line(start.1, &text)
+				.unwrap_or_else(|err| panic!("Couldn't set text on line {} | {}", start.1, err));
 
 			// Delete all lines after the first one in the selection
 			for _line_num in start.1..end.1 {
 				// Delete the whole line
-				self.blocks.as_mut().unwrap().delete_line(start.1 + 1);
+				self.blocks
+					.as_mut()
+					.unwrap()
+					.delete_line(start.1 + 1)
+					.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", start.1 + 2, err));
 				// Reduce the length of the file
 				self.file_length -= 1;
 			}

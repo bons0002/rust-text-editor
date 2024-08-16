@@ -23,7 +23,8 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_char_in_line(line_num, editor.text_position, code);
+		.insert_char_in_line(line_num, editor.text_position, code)
+		.unwrap_or_else(|err| panic!("Couldn't insert char on line {} | {}", line_num, err));
 
 	// Move cursor
 	editor.text_position += 1;
@@ -46,7 +47,8 @@ pub fn tab_key(editor: &mut EditorSpace) {
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_char_in_line(line_num, editor.text_position, '\t');
+		.insert_char_in_line(line_num, editor.text_position, '\t')
+		.unwrap_or_else(|err| panic!("Couldn't insert char on line {} | {}", line_num, err));
 
 	// Move cursor
 	editor.text_position += 1;
@@ -69,7 +71,8 @@ pub fn enter_key(editor: &mut EditorSpace) {
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_new_line(line_num, editor.text_position);
+		.insert_new_line(line_num, editor.text_position)
+		.unwrap_or_else(|err| panic!("Couldn't insert new line {} | {}", line_num, err));
 
 	// Add a line to the overall file length
 	editor.file_length += 1;
@@ -98,7 +101,10 @@ pub fn backspace(editor: &mut EditorSpace) {
 					.blocks
 					.as_mut()
 					.unwrap()
-					.delete_and_append_line(line_num);
+					.delete_and_append_line(line_num)
+					.unwrap_or_else(|err| {
+						panic!("Couldn't delete line {} | {}", line_num + 1, err)
+					});
 
 				// Reduce the file length
 				editor.file_length -= 1;
@@ -115,7 +121,10 @@ pub fn backspace(editor: &mut EditorSpace) {
 				.blocks
 				.as_mut()
 				.unwrap()
-				.delete_char_in_line(line_num, editor.text_position);
+				.delete_char_in_line(line_num, editor.text_position)
+				.unwrap_or_else(|err| {
+					panic!("Couldn't delete char on line {} | {}", line_num, err)
+				});
 		}
 	} else {
 		// Delete the selection
@@ -130,14 +139,22 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// Line number of current line in the text
 		let line_num = editor.get_line_num();
 
+		let length = match editor.blocks.as_ref().unwrap().get_line_length(line_num) {
+			Ok(len) => len,
+			Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
+		};
+
 		// If not at the end of the current line
-		if editor.text_position < editor.blocks.as_ref().unwrap().get_line_length(line_num) {
+		if editor.text_position < length {
 			// Delete next char
 			editor
 				.blocks
 				.as_mut()
 				.unwrap()
-				.delete_char_in_line(line_num, editor.text_position);
+				.delete_char_in_line(line_num, editor.text_position)
+				.unwrap_or_else(|err| {
+					panic!("Couldn't delete char on line {} | {}", line_num, err)
+				});
 		// If not at end of last line
 		} else if line_num < editor.file_length - 1 {
 			// Delete the below line and append its text content to the current line
@@ -145,7 +162,8 @@ pub fn delete_key(editor: &mut EditorSpace) {
 				.blocks
 				.as_mut()
 				.unwrap()
-				.delete_and_append_line(line_num);
+				.delete_and_append_line(line_num)
+				.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
 			// Reduce the overall file length
 			editor.file_length -= 1;
 		}
@@ -171,27 +189,27 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
+		// The line of text
+		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+			Ok(line) => line,
+			Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
+		};
 		// If the next char isn't a tab, move normally
-		if editor
-			.blocks
-			.as_ref()
-			.unwrap()
-			.get_line(line_num)
-			.graphemes(true)
-			.nth(editor.text_position - 1)
-			!= Some("\t")
-		{
-			// Line of text
-			let text = editor.blocks.as_ref().unwrap().get_line(line_num);
+		if line.graphemes(true).nth(editor.text_position - 1) != Some("\t") {
 			// Create a cursor to navigate the grapheme cluster
-			let mut cursor = GraphemeCursor::new(editor.text_position, text.len(), true);
+			let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
 			// Get the previous location in the text
-			let loc = cursor.prev_boundary(&text, 0);
+			let loc = cursor.prev_boundary(&line, 0);
 			// Set the text position
 			let loc = match loc {
 				Ok(num) => match num {
 					Some(num) => num,
-					None => panic!("Invalid location"),
+					None => panic!(
+						"{}::left_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
+						file!(),
+						line!(),
+						line_num
+					),
 				},
 				Err(_) => 0,
 			};
@@ -224,8 +242,13 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 
 // Check the end of line cursor condition
 fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
+	// The line of text
+	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+		Ok(line) => line,
+		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
+	};
 	// If the x position is beyond the end of the line, return false
-	if editor.text_position >= editor.blocks.as_ref().unwrap().get_line(line_num).len() {
+	if editor.text_position >= line.len() {
 		return false;
 	}
 	true
@@ -238,29 +261,29 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
+		// The line of text
+		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+			Ok(line) => line,
+			Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
+		};
 		// If not a tab character, move normally
-		if editor
-			.blocks
-			.as_ref()
-			.unwrap()
-			.get_line(line_num)
-			.graphemes(true)
-			.nth(editor.text_position)
-			!= Some("\t")
-		{
-			// Line of text
-			let text = editor.blocks.as_ref().unwrap().get_line(line_num);
+		if line.graphemes(true).nth(editor.text_position) != Some("\t") {
 			// Create a cursor to navigate the grapheme cluster
-			let mut cursor = GraphemeCursor::new(editor.text_position, text.len(), true);
+			let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
 			// Get the next location in the text
-			let loc = cursor.next_boundary(&text, 0);
+			let loc = cursor.next_boundary(&line, 0);
 			// Set the text position
 			let loc = match loc {
 				Ok(num) => match num {
 					Some(num) => num,
-					None => panic!("Invalid location"),
+					None => panic!(
+						"{}::right_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
+						file!(),
+						line!(),
+						line_num
+					),
 				},
-				Err(_) => text.len(),
+				Err(_) => line.len(),
 			};
 			// Get the difference in the positions
 			let diff = loc - editor.text_position;
@@ -374,7 +397,7 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 			// If moving after the end of the block, insert a new tail
 			if line_num
 				>= editor.blocks.as_ref().unwrap().starting_line_num
-					+ (editor.blocks.as_ref().unwrap().len() - 1)
+					+ editor.blocks.as_ref().unwrap().len()
 				&& line_num < editor.file_length - 1
 			{
 				// Clone the blocks

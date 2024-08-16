@@ -73,7 +73,7 @@ impl Block {
 			}
 		}
 		// If the last line is incomplete, remove it
-		if !ends_with_newline && content.len() >= (editor.height.1 - editor.height.0) {
+		if !ends_with_newline && editor.file_length >= (editor.height.1 - editor.height.0) {
 			content.pop();
 		}
 		// Trim the newlines

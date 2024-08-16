@@ -488,7 +488,7 @@ fn unload_blocks_up_and_down() {
 	assert_eq!(actual_text, expected_text);
 }
 
-// Test deleting a large number of lines
+// Test deleting a large number of lines one at a time
 #[test]
 fn delete_lines_test() {
 	// Create a default config
@@ -498,8 +498,13 @@ fn delete_lines_test() {
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
-	for _i in 0..2398 {
-		editor.blocks.as_mut().unwrap().delete_line(0);
+	for i in 0..2398 {
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.delete_line(0)
+			.unwrap_or_else(|err| panic!("Couldn't delete line `{}` | {}", i + 1, err));
 	}
 
 	// Create a vector of all the lines in the first three blocks
@@ -521,6 +526,7 @@ fn delete_lines_test() {
 	assert_eq!(actual_text, DELETE_LINES_TEST_RESULT);
 }
 
+// Test that get_location return the proper location
 #[test]
 fn get_location_test() {
 	// Create a default config
@@ -540,7 +546,12 @@ fn get_location_test() {
 	assert_eq!(loc, (2, 1));
 
 	// Delete a line
-	editor.blocks.as_mut().unwrap().delete_line(630);
+	editor
+		.blocks
+		.as_mut()
+		.unwrap()
+		.delete_line(630)
+		.expect("Couldn't delete line 630");
 
 	// Should return block 2, line 2
 	let loc = editor.blocks.as_ref().unwrap().get_location(640).unwrap();
