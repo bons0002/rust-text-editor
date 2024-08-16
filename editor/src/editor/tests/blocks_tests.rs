@@ -498,13 +498,14 @@ fn delete_lines_test() {
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
+	// Loop and delete lines
 	for i in 0..2398 {
 		editor
 			.blocks
 			.as_mut()
 			.unwrap()
 			.delete_line(0)
-			.unwrap_or_else(|err| panic!("Couldn't delete line `{}` | {}", i + 1, err));
+			.unwrap_or_else(|err| panic!("==> Couldn't delete line `{}` | {}", i + 1, err));
 	}
 
 	// Create a vector of all the lines in the first three blocks

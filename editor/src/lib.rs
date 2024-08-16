@@ -241,7 +241,7 @@ pub mod editor {
 			let height = self.height.1 - self.height.0;
 
 			// If the Blocks is shorter than the editor widget, add head and tail blocks
-			if blocks.len() < height && self.file_length - 1 > height {
+			if blocks.len() < height + self.scroll_offset && self.file_length > height {
 				if blocks.head_block != 0 && blocks.tail_block < blocks.max_blocks {
 					// Add new head block
 					blocks.push_head(self).unwrap();
@@ -250,7 +250,7 @@ pub mod editor {
 				} else if blocks.head_block != 0 {
 					// Add new head block
 					blocks.push_head(self).unwrap();
-				} else {
+				} else if blocks.tail_block < blocks.max_blocks {
 					// Add new tail block
 					blocks.push_tail(self).unwrap();
 				}

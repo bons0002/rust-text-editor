@@ -86,9 +86,11 @@ pub fn enter_key(editor: &mut EditorSpace) {
 pub fn backspace(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, backspace normally
 	if editor.selection.is_empty {
+		// The current line number
+		let line_num = editor.get_line_num();
 		// Remove empty line
 		// If cursor at beginning of line, move to above line
-		if editor.text_position == 0 {
+		if editor.text_position == 0 && line_num != 0 {
 			if editor.file_length > 1 {
 				// Move up one line
 				up_arrow(editor);
@@ -106,11 +108,14 @@ pub fn backspace(editor: &mut EditorSpace) {
 						panic!("Couldn't delete line {} | {}", line_num + 1, err)
 					});
 
+				// Ensure the cursor is at the end of the line
+				end_key(editor);
+
 				// Reduce the file length
 				editor.file_length -= 1;
 			}
 		// Otherwise, just move cursor left
-		} else {
+		} else if editor.text_position != 0 {
 			// Move left
 			left_arrow(editor);
 			// Line number of current line in the text
@@ -205,6 +210,8 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 				Ok(num) => match num {
 					Some(num) => num,
 					None => panic!(
+						/* Return the source file name, line number error occurred in this source file,
+						and line_num that this grapheme boundary exists on. */
 						"{}::left_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
 						file!(),
 						line!(),
@@ -248,7 +255,9 @@ fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
 	// If the x position is beyond the end of the line, return false
-	if editor.text_position >= line.len() {
+	if editor.text_position >= line.len()
+		|| editor.text_position >= editor.width.1 - editor.width.0 - 2
+	{
 		return false;
 	}
 	true
@@ -277,6 +286,8 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 				Ok(num) => match num {
 					Some(num) => num,
 					None => panic!(
+						/* Return the source file name, line number error occurred in this source file,
+						and line_num that this grapheme boundary exists on. */
 						"{}::right_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
 						file!(),
 						line!(),
