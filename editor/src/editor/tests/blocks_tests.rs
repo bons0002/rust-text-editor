@@ -13,6 +13,8 @@ fn blocks_create_test() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -40,6 +42,8 @@ fn push_tail_test() {
 	let config = Config::default();
 	// Create an editor over the genome file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the editor
 	let _ = editor.init_editor((0, 0), 50, 50);
 	// Clone the blocks
@@ -117,6 +121,8 @@ fn small_file_block_test() {
 	let config = Config::default();
 	// Create an editor over the small file
 	let mut editor = EditorSpace::new(String::from(SMALL_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -155,7 +161,8 @@ fn down_arrow_block_load() {
 	let config = Config::default();
 	// Create an editor over the genome file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
-
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -194,6 +201,8 @@ fn up_arrow_block_load() {
 	let config = Config::default();
 	// Create an editor over the genome file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 	// Create a new Blocks struct starting at the second block of the file
@@ -235,7 +244,8 @@ fn repeated_load_down() {
 	let config = Config::default();
 	// Create an editor over the genome file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
-
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -276,6 +286,8 @@ fn blocks_length() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -318,7 +330,8 @@ fn pop_head_down_arrow() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
-
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -365,9 +378,11 @@ fn pop_tail_up_arrow() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
-
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
+
 	// Create a new Blocks struct starting at the fourth block of the file
 	let blocks = Blocks::new(&mut editor, 3).unwrap();
 	editor.blocks = Some(blocks);
@@ -410,7 +425,8 @@ fn unload_blocks_up_and_down() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
-
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -495,6 +511,8 @@ fn delete_lines_test() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 
@@ -534,6 +552,8 @@ fn get_location_test() {
 	let config = Config::default();
 	// Editor that will load in one block from the `GRCh38_50_rna` file
 	let mut editor = EditorSpace::new(String::from(GENOME_FILE), config);
+	// Initialize the file length
+	let _ = editor.init_file_length();
 	// Initialize the block (among other things)
 	let _ = editor.init_editor((0, 0), 50, 50);
 

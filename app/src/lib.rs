@@ -76,62 +76,54 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 	Ok(())
 }
 
+fn get_digits(file_length: usize) -> u16 {
+	// The number of digits in the largest line number
+	let mut digits = 0;
+	let mut len = file_length / (10_usize.pow(digits));
+	// Count the number of digits
+	while len != 0 {
+		len = file_length / (10_usize.pow(digits));
+		digits += 1;
+	}
+	digits += 1;
+
+	digits as u16
+}
+
+fn build_layout(frame: &mut Frame, file_length: usize) -> Rc<[Rect]> {
+	let digits = get_digits(file_length);
+
+	// Create the layout
+	Layout::new(
+		Direction::Horizontal,
+		[
+			Constraint::Length(digits),
+			Constraint::Length(frame.size().width - digits),
+		],
+	)
+	.split(frame.size())
+}
+
 // Define the frame ui
 fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
-	// Construct the layout of the frame
-	let layouts = create_layouts(frame);
-	// The layout for the tabs bar
-	let tabs_layout = &layouts[0];
-	// The layout for the editor space and the explorer
-	let main_layout = &layouts[1];
+	// Initialize the file length
+	if !editor.has_file {
+		editor.init_file_length().unwrap();
+	}
 
-	let tab_name = editor.filename.clone();
-	// Render tabs
-	frame.render_widget(
-		Tabs::new(vec![
-			tab_name,
-			String::from("Tab 2"),
-			String::from("Tab 3"),
-			String::from("Tab 4"),
-		])
-		.block(
-			Block::new()
-				.fg(editor.config.theme.app_fg)
-				.bg(editor.config.theme.app_bg)
-				.borders(Borders::ALL),
-		)
-		.style(Style::default().white())
-		.highlight_style(
-			Style::default()
-				.fg(editor.config.theme.tab_fg)
-				.bg(editor.config.theme.tab_bg)
-				.underline_color(editor.config.theme.tab_fg)
-				.add_modifier(Modifier::BOLD),
-		)
-		.select(0)
-		.divider(symbols::DOT)
-		.padding(" ", " "),
-		tabs_layout[0],
-	);
-	// File explorer
-	frame.render_widget(
-		Block::new()
-			.title("Explorer")
-			.fg(editor.config.theme.app_fg)
-			.bg(editor.config.theme.app_bg)
-			.borders(Borders::ALL),
-		main_layout[0],
-	);
+	let layout = build_layout(frame, editor.file_length);
+
 	// Set the starting position for the cursor of the editor space if it hasn't been set
 	if !editor.start_cursor_set {
 		let _ = editor.init_editor(
-			(main_layout[1].x as usize, main_layout[1].y as usize),
-			main_layout[1].width as usize,
-			main_layout[1].height as usize,
+			(layout[1].x as usize, layout[1].y as usize),
+			layout[1].width as usize,
+			layout[1].height as usize,
 		);
 	}
 	// Main editor space
 	if !editor.blocks.as_ref().unwrap().blocks_list.is_empty() {
+		// Clone the config for the editor
 		let config = editor.config.clone();
 		frame.render_widget(
 			editor.get_paragraph().block(
@@ -140,7 +132,17 @@ fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
 					.bg(config.theme.app_bg)
 					.borders(Borders::ALL),
 			),
-			main_layout[1],
+			layout[1],
+		);
+		// Render line numbers
+		frame.render_widget(
+			editor.get_line_numbers_paragraph().block(
+				Block::new()
+					.fg(config.theme.app_fg)
+					.bg(config.theme.app_bg)
+					.borders(Borders::all()),
+			),
+			layout[0],
 		);
 	} else {
 		// If the file is empty, make an empty block
@@ -149,28 +151,15 @@ fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
 				.fg(editor.config.theme.app_fg)
 				.bg(editor.config.theme.app_bg)
 				.borders(Borders::ALL),
-			main_layout[1],
+			layout[1],
+		);
+		// If the file is empty, make an empty block
+		frame.render_widget(
+			Block::new()
+				.fg(editor.config.theme.app_fg)
+				.bg(editor.config.theme.app_bg)
+				.borders(Borders::ALL),
+			layout[0],
 		);
 	}
-}
-
-// Create the ui layouts for the frame
-fn create_layouts(frame: &mut Frame) -> Vec<Rc<[Rect]>> {
-	// Create tabs (TEMP)
-	let tabs_layout = Layout::new(
-		Direction::Vertical,
-		[Constraint::Percentage(5), Constraint::Percentage(95)],
-	)
-	.split(frame.size());
-
-	// Create the rest of the frame
-	let main_layout = Layout::new(
-		Direction::Horizontal,
-		[Constraint::Percentage(14), Constraint::Percentage(86)],
-	)
-	.split(tabs_layout[1]);
-
-	let layouts = vec![tabs_layout, main_layout];
-
-	layouts
 }

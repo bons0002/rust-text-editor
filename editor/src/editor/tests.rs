@@ -26,6 +26,9 @@ const GENOME_FILE: &str = "../editor/test_files/GRCh38_50_rna.fna";
 // File for highlighting tests
 const HIGHLIGHT_FILE: &str = "../editor/test_files/highlight.txt";
 
+// The result of the multi_deletion_test in selection_tests
+const MULTI_DELETION: &str = "../editor/test_files/results/multi_deletion_test_result.txt";
+
 /*
 ========================================
             BLOCKS CONSTANTS

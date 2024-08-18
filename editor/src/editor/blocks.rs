@@ -124,13 +124,11 @@ impl Blocks {
 			// Update the number of blocks
 			self.num_blocks += 1;
 
-			// Length of the head block
-			let head_length: usize = self.get_head().len;
 			/* If there are more than three blocks loaded in and the head
 			block has not been modified, then remove the head.
 			Also, if there is a highlighted selection, don't unload blocks. */
 			if self.num_blocks > 3 && !self.get_head().is_modified && editor.selection.is_empty {
-				self.pop_head();
+				let head_length = self.pop_head();
 				// Subtract length of original head from scroll offset
 				editor.scroll_offset -= head_length;
 			}

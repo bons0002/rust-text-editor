@@ -47,8 +47,10 @@ pub mod editor {
 		pub filename: String,
 		// The file that is open
 		file: File,
-		// The length of the entire file that is being openned
-		file_length: usize,
+		// The number of lines in the entire file
+		pub file_length: usize,
+		// Flag for if the file has been initialize
+		pub has_file: bool,
 		// Vertical bounds of the editor block
 		pub height: (usize, usize),
 		// Horizontal bounds of the editor block
@@ -82,12 +84,25 @@ pub mod editor {
 				filename,
 				file,
 				file_length: 0,
+				has_file: false,
 				height: (0, 0),
 				width: (0, 0),
 				scroll_offset: 0,
 				selection: Selection::new(),
 				start_cursor_set: false,
 			}
+		}
+
+		// Initialize the file length variable
+		pub fn init_file_length(&mut self) -> Result<usize, Error> {
+			// Open the file
+			let file = File::open(&self.filename)?;
+			// Count the lines of the file (in parallel)
+			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
+			// The file has been initialized
+			self.has_file = true;
+			// Return the file length
+			Ok(self.file_length)
 		}
 
 		// Set the starting Position of the editing space cursor
@@ -101,16 +116,6 @@ pub mod editor {
 
 			// Flag that cursor has been initialized
 			self.start_cursor_set = true;
-		}
-
-		// Initialize the file length variable
-		fn init_file_length(&mut self) -> Result<usize, Error> {
-			// Open the file
-			let file = File::open(&self.filename)?;
-			// Count the lines of the file (in parallel)
-			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
-			// Return the file length
-			Ok(self.file_length)
 		}
 
 		// Create the first block when the editor is opened
@@ -132,8 +137,6 @@ pub mod editor {
 		) -> Result<&str, Error> {
 			// Initialize the starting position of the screen cursor
 			self.init_starting_position(start, width, height);
-			// Initialize the file length
-			self.init_file_length()?;
 			// Create the first block of text in Blocks
 			self.init_first_block()?;
 			// Return the string "Success" (arbitrary)
@@ -241,7 +244,7 @@ pub mod editor {
 			let height = self.height.1 - self.height.0;
 
 			// If the Blocks is shorter than the editor widget, add head and tail blocks
-			if blocks.len() < height + self.scroll_offset && self.file_length > height {
+			if blocks.len() < height && self.file_length > height {
 				if blocks.head_block != 0 && blocks.tail_block < blocks.max_blocks {
 					// Add new head block
 					blocks.push_head(self).unwrap();
@@ -290,6 +293,26 @@ pub mod editor {
 
 			// Return a paragraph from the lines
 			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
+		}
+
+		// Return a Vector of the line numbers that are displayed
+		fn get_line_numbers(&self) -> Vec<usize> {
+			let blocks = self.blocks.as_ref().unwrap();
+			(blocks.starting_line_num + self.scroll_offset + 1
+				..blocks.len() + blocks.starting_line_num + self.scroll_offset + 1)
+				.collect()
+		}
+
+		// Return a Paragraph of the line numbers that are displayed
+		pub fn get_line_numbers_paragraph(&self) -> Paragraph {
+			let line_nums: Vec<String> = self
+				.get_line_numbers()
+				.into_par_iter()
+				.map(|num| format!("{}", num))
+				.collect();
+			let line_nums: Vec<Line> = line_nums.into_par_iter().map(Line::from).collect();
+
+			Paragraph::new(Text::from(line_nums))
 		}
 
 		fn delete_selection(&mut self) {
