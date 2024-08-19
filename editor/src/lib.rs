@@ -243,30 +243,26 @@ pub mod editor {
 			// Height of widget
 			let height = self.height.1 - self.height.0;
 
-			// If the Blocks is shorter than the editor widget, add head and tail blocks
-			if blocks.len() < height && self.file_length > height {
-				if blocks.head_block != 0 && blocks.tail_block < blocks.max_blocks {
-					// Add new head block
-					blocks.push_head(self).unwrap();
-					// Add new tail block
-					blocks.push_tail(self).unwrap();
-				} else if blocks.head_block != 0 {
-					// Add new head block
-					blocks.push_head(self).unwrap();
-				} else if blocks.tail_block < blocks.max_blocks {
-					// Add new tail block
-					blocks.push_tail(self).unwrap();
-				}
+			// If the Blocks is shorter than the editor widget, add tail block
+			if blocks.len() < height + self.scroll_offset
+				&& self.file_length > height
+				&& blocks.tail_block < blocks.max_blocks
+			{
+				// Add new tail block
+				blocks.push_tail(self).unwrap();
 			}
 
 			// Convert the blocks into one text vector
 			let mut text: Vec<String> = Vec::new();
 
 			// Iterate through the blocks that are currently loaded in
-			for block in blocks.blocks_list {
+			for block in blocks.blocks_list.clone() {
 				// Add all of the lines in these blocks into the `text` vector
 				text.extend(block.content);
 			}
+
+			// Set the editor blocks to this new blocks
+			self.blocks = Some(blocks);
 
 			// Create a vector of Lines from the text
 			let mut lines: Vec<Line> = text
