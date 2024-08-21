@@ -94,7 +94,7 @@ pub mod editor {
 		}
 
 		// Initialize the file length variable
-		pub fn init_file_length(&mut self) -> Result<usize, Error> {
+		fn init_file_length(&mut self) -> Result<usize, Error> {
 			// Open the file
 			let file = File::open(&self.filename)?;
 			// Count the lines of the file (in parallel)
@@ -137,6 +137,8 @@ pub mod editor {
 		) -> Result<&str, Error> {
 			// Initialize the starting position of the screen cursor
 			self.init_starting_position(start, width, height);
+			// Initialize the length of the file
+			self.init_file_length()?;
 			// Create the first block of text in Blocks
 			self.init_first_block()?;
 			// Return the string "Success" (arbitrary)
@@ -243,10 +245,11 @@ pub mod editor {
 			// Height of widget
 			let height = self.height.1 - self.height.0;
 
-			// If the Blocks is shorter than the editor widget, add tail block
+			/* If the Blocks is too short, but there is more text to be shown,
+			add a new TextBlock to the tail. */
 			if blocks.len() < height + self.scroll_offset
 				&& self.file_length > height
-				&& blocks.tail_block < blocks.max_blocks
+				&& blocks.tail_block < blocks.max_blocks - 1
 			{
 				// Add new tail block
 				blocks.push_tail(self).unwrap();
@@ -311,63 +314,45 @@ pub mod editor {
 			Paragraph::new(Text::from(line_nums))
 		}
 
+		// Delete a highlighted selection of text
 		fn delete_selection(&mut self) {
 			// Start point of the selection (as an immutable tuple)
 			let start = (self.selection.start[0], self.selection.start[1]);
 			// End point of the selection (as an immutable tuple)
 			let end = (self.selection.end[0], self.selection.end[1]);
 
-			// The first line in the selection
-			let start_line = match self.blocks.as_ref().unwrap().get_line(start.1) {
-				Ok(line) => line,
-				Err(err) => panic!("Couldn't get line {} | {}", start.1, err),
-			};
-			// The text on the line before the starting point
-			let before_selection = &start_line[..start.0];
-			// The last line in the selection
-			let end_line = match self.blocks.as_ref().unwrap().get_line(end.1) {
-				Ok(line) => line,
-				Err(err) => panic!("Couldn't get line {} | {}", end.1, err),
-			};
-			// The text on the line after the starting point
-			let after_selection = &end_line[end.0..];
-
-			// Concatenate the remaining text on the first and last line
-			let text = String::from(before_selection) + after_selection;
-			// Set the first line of the selection (only remaining line) to this new text
-			self.blocks
-				.as_mut()
-				.unwrap()
-				.set_line(start.1, &text)
-				.unwrap_or_else(|err| panic!("Couldn't set text on line {} | {}", start.1, err));
-
-			// Delete all lines after the first one in the selection
-			for _line_num in start.1..end.1 {
-				// Delete the whole line
-				self.blocks
-					.as_mut()
-					.unwrap()
-					.delete_line(start.1 + 1)
-					.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", start.1 + 2, err));
-				// Reduce the length of the file
-				self.file_length -= 1;
-			}
-
-			// Reset to beginning of line
-			key_functions::home_key(self);
-			// Ensure that the cursor is on the first line of the selection after deletion
-			if self.cursor_position[1] > self.selection.original_cursor_position.1 {
-				self.cursor_position[1] = self.selection.original_cursor_position.1;
-				// Fix the scroll offset
-				self.scroll_offset = self.selection.original_scroll_offset;
-			}
-			// Move right until at the correct position
-			while self.text_position < start.0 {
-				key_functions::right_arrow(self);
-			}
-
 			// Clear the selection
 			self.selection.is_empty = true;
+
+			// If the cursor is at the beginning of the selection
+			if (self.text_position, self.get_line_num()) == start {
+				// Move to the last line of the selection
+				while self.get_line_num() != end.1 {
+					key_functions::down_arrow(self);
+				}
+
+				// Move the horizontal position to the end horizontal position
+				match self.text_position < end.0 {
+					// If the horizontal cursor is before the end position
+					true => {
+						// Move right until at the correct location
+						while self.text_position < end.0 {
+							key_functions::right_arrow(self);
+						}
+					}
+					// If the horizontal cursor is after the end position
+					false => {
+						// Move left until at the correct location
+						while self.text_position > end.0 {
+							key_functions::left_arrow(self);
+						}
+					}
+				}
+			}
+			// Backspace until at the beginning of the selection
+			while self.text_position != start.0 || self.get_line_num() != start.1 {
+				key_functions::backspace(self);
+			}
 		}
 
 		// Get the key pressed

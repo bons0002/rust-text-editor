@@ -3,9 +3,9 @@ members = ["editor", "app", "config"]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.40"
+version = "0.2.49"
 repository = "https://github.com/bons0002/rust-text-editor"
-license = "GPL OR MIT"
+license = "MIT"
 
 [workspace.dependencies]
 rayon = "1.10"

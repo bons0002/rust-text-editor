@@ -108,9 +108,6 @@ pub fn backspace(editor: &mut EditorSpace) {
 						panic!("Couldn't delete line {} | {}", line_num + 1, err)
 					});
 
-				// Ensure the cursor is at the end of the line
-				end_key(editor);
-
 				// Reduce the file length
 				editor.file_length -= 1;
 			}

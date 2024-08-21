@@ -76,42 +76,27 @@ fn run(filename: String, config: Config) -> io::Result<()> {
 	Ok(())
 }
 
-fn get_digits(file_length: usize) -> u16 {
-	// The number of digits in the largest line number
-	let mut digits = 0;
-	let mut len = file_length / (10_usize.pow(digits));
-	// Count the number of digits
-	while len != 0 {
-		len = file_length / (10_usize.pow(digits));
-		digits += 1;
-	}
-	digits += 1;
-
-	digits as u16
-}
-
-fn build_layout(frame: &mut Frame, file_length: usize) -> Rc<[Rect]> {
-	let digits = get_digits(file_length);
-
+// Build the layout for displaying the widgets
+fn build_layout(frame: &mut Frame) -> Rc<[Rect]> {
+	/* The width of the widget that displays the line numbers.
+	This should be 2 greater than the number of digits
+	to display (9 = 7 digits). */
+	let line_nums_width = 9;
 	// Create the layout
 	Layout::new(
 		Direction::Horizontal,
 		[
-			Constraint::Length(digits),
-			Constraint::Length(frame.size().width - digits),
+			Constraint::Length(line_nums_width),
+			Constraint::Length(frame.size().width - line_nums_width),
 		],
 	)
+	// Split it over the entire frame
 	.split(frame.size())
 }
 
 // Define the frame ui
 fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
-	// Initialize the file length
-	if !editor.has_file {
-		editor.init_file_length().unwrap();
-	}
-
-	let layout = build_layout(frame, editor.file_length);
+	let layout = build_layout(frame);
 
 	// Set the starting position for the cursor of the editor space if it hasn't been set
 	if !editor.start_cursor_set {

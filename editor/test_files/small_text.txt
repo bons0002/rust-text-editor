@@ -1,11 +1,11 @@
-#include<stdio.h> 🥹🇺🇸🇳🇴
+#include<stdio.h>
 
 void test_func() {
-	printf("Testing the save feature\n");
+	printf("Testing the Blocks construction 🥹\n");
 }
 
 int main() {
-	printf("I've almost done it!\n");
+	printf("Hopefully it works 🥹🇺🇸🇳🇴\n");
 	test_func();
 
 	return 0;

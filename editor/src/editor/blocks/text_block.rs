@@ -11,7 +11,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 pub const BLOCK_SIZE: u64 = 5120;
 
 #[derive(Clone)]
-pub struct Block {
+pub struct TextBlock {
 	// ID number of the current block
 	pub block_num: usize,
 	// The text content of the current block
@@ -22,10 +22,19 @@ pub struct Block {
 	pub len: usize,
 }
 
-impl Block {
+impl TextBlock {
+	// Get the length (in lines) of the current block
+	fn calc_len(&self) -> usize {
+		self.content.len()
+	}
+
 	/* Create a new block.
 	This function is disgustingly long. */
-	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
+	pub fn new(
+		editor: &mut EditorSpace,
+		block_num: usize,
+		max_blocks: usize,
+	) -> Result<Self, Error> {
 		// Buffer that the bytes of the file are read into
 		let mut buffer = [0; BLOCK_SIZE as usize];
 
@@ -75,7 +84,10 @@ impl Block {
 			}
 		}
 		// If the last line is incomplete, remove it
-		if !ends_with_newline && editor.file_length >= (editor.height.1 - editor.height.0) {
+		if !ends_with_newline
+			&& editor.file_length >= (editor.height.1 - editor.height.0)
+			&& block_num < max_blocks - 1
+		{
 			content.pop();
 		}
 		// Trim the newlines
@@ -84,7 +96,7 @@ impl Block {
 			.map(|line| String::from(line.trim_end()))
 			.collect();
 		// Create the block
-		let mut block = Block {
+		let mut block = TextBlock {
 			block_num,
 			content,
 			// Can't be modified if new
@@ -98,14 +110,18 @@ impl Block {
 	}
 
 	// Calculate the starting line number of a block of text
-	pub fn calc_line_num(editor: &mut EditorSpace, block_num: usize) -> Result<usize, Error> {
+	pub fn calc_line_num(
+		editor: &mut EditorSpace,
+		block_num: usize,
+		max_blocks: usize,
+	) -> Result<usize, Error> {
 		let mut current_block = 0;
 		// Total length of all blocks before the current one
 		let mut total_length = 0;
 		// Loop until the given block number is reached
 		while current_block < block_num {
 			// Construct a block
-			let block = Block::new(editor, current_block)?;
+			let block = TextBlock::new(editor, current_block, max_blocks)?;
 			// Update the total length of blocks
 			total_length += block.len;
 			// Update the current block to be counted
@@ -114,10 +130,5 @@ impl Block {
 
 		// Return the line number
 		Ok(total_length)
-	}
-
-	// Get the length (in lines) of the current block
-	fn calc_len(&self) -> usize {
-		self.content.len()
 	}
 }

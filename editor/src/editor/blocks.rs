@@ -3,14 +3,14 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::io::Error;
 use unicode_segmentation::UnicodeSegmentation;
 
-mod block;
-pub use block::Block;
+mod text_block;
+pub use text_block::TextBlock;
 
 // Contains blocks of text from a file
 #[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
-	pub head_block: usize,
+	head_block: usize,
 	// The ID number of the last block
 	pub tail_block: usize,
 	// The line number of the first line in the first block
@@ -20,7 +20,7 @@ pub struct Blocks {
 	// The number of blocks
 	num_blocks: usize,
 	// The list of blocks
-	pub blocks_list: Vec<Block>,
+	pub blocks_list: Vec<TextBlock>,
 }
 
 impl Blocks {
@@ -31,31 +31,31 @@ impl Blocks {
 		// Get the number of bytes in the file
 		let size = editor.file.metadata()?.len() as usize;
 		// Find the max number of blocks for this file
-		let max_blocks = size.div_ceil(block::BLOCK_SIZE as usize);
+		let max_blocks = size.div_ceil(text_block::BLOCK_SIZE as usize);
 		// Construct the block
 		Ok(Blocks {
 			head_block: block_num,
 			tail_block: block_num,
 			// Calculate the line number of the first line
-			starting_line_num: Block::calc_line_num(editor, block_num)?,
+			starting_line_num: TextBlock::calc_line_num(editor, block_num, max_blocks)?,
 			num_blocks: 1,
 			max_blocks,
 			// Add the current block to the vector of blocks
-			blocks_list: vec![Block::new(editor, block_num)?],
+			blocks_list: vec![TextBlock::new(editor, block_num, max_blocks)?],
 		})
 	}
 
 	// Return the head block
-	pub fn get_head(&self) -> Block {
+	pub fn get_head(&self) -> TextBlock {
 		self.blocks_list[0].clone()
 	}
 
-	// Return the tail Block
-	fn get_tail(&self) -> Block {
+	// Return the tail block
+	fn get_tail(&self) -> TextBlock {
 		self.blocks_list.iter().last().unwrap().clone()
 	}
 
-	// Remove the tail Block
+	// Remove the tail block
 	fn pop_tail(&mut self) {
 		// Reduce the number of blocks
 		self.num_blocks -= 1;
@@ -72,7 +72,7 @@ impl Blocks {
 			// Move the starting block to the previous block
 			self.head_block -= 1;
 			// Create a new block at the new starting block
-			let block = Block::new(editor, self.head_block)?;
+			let block = TextBlock::new(editor, self.head_block, self.max_blocks)?;
 			// Insert this new head block
 			self.blocks_list.insert(0, block);
 			// Update the starting line number
@@ -80,10 +80,13 @@ impl Blocks {
 			// Update the number of blocks
 			self.num_blocks += 1;
 
-			/* If there are more than three blocks loaded in and the tail
+			/* If there are more than (15KiB / BLOCK_SIZE) blocks loaded in and the tail
 			block has not been modified, then remove the tail.
 			Also, if there is a highlighted selection, don't unload blocks. */
-			if self.num_blocks > 3 && !self.get_tail().is_modified && editor.selection.is_empty {
+			if self.num_blocks > (15360_usize.div_ceil(text_block::BLOCK_SIZE as usize))
+				&& !self.get_tail().is_modified
+				&& editor.selection.is_empty
+			{
 				self.pop_tail();
 			}
 		}
@@ -118,16 +121,19 @@ impl Blocks {
 			// Update the tail block number
 			self.tail_block += 1;
 			// Create a new block at this new tail position
-			let block = Block::new(editor, self.tail_block)?;
+			let block = TextBlock::new(editor, self.tail_block, self.max_blocks)?;
 			// Push this new tail
 			self.blocks_list.push(block);
 			// Update the number of blocks
 			self.num_blocks += 1;
 
-			/* If there are more than three blocks loaded in and the head
+			/* If there are more than (15KiB / BLOCK_SIZE) blocks	 loaded in and the head
 			block has not been modified, then remove the head.
 			Also, if there is a highlighted selection, don't unload blocks. */
-			if self.num_blocks > 3 && !self.get_head().is_modified && editor.selection.is_empty {
+			if self.num_blocks > (15360_usize.div_ceil(text_block::BLOCK_SIZE as usize))
+				&& !self.get_head().is_modified
+				&& editor.selection.is_empty
+			{
 				let head_length = self.pop_head();
 				// Subtract length of original head from scroll offset
 				editor.scroll_offset -= head_length;
@@ -140,7 +146,7 @@ impl Blocks {
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
+	fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
 		// Track the total lines over the blocks
 		let mut lines = self.starting_line_num;
 		// The starting line
@@ -247,7 +253,7 @@ impl Blocks {
 	}
 
 	// Fully delete the given line
-	pub fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
+	fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
 		// Get the (block num, line num) location of the below line
 		let location = self.get_location(line_num)?;
 
@@ -290,21 +296,6 @@ impl Blocks {
 
 		// Return a copy of the line
 		Ok(self.blocks_list[location.0].content[location.1].clone())
-	}
-
-	// Set the line in the Blocks (returns true if successful)
-	pub fn set_line(&mut self, line_num: usize, text: &str) -> Result<bool, Error> {
-		// Get the (block num, line number) location
-		let location = self.get_location(line_num)?;
-
-		// Set the line in the block to the given line
-		self.blocks_list[location.0].content[location.1] = String::from(text);
-
-		// Set block as modified
-		self.blocks_list[location.0].is_modified = true;
-
-		// Return true to denote no error
-		Ok(true)
 	}
 
 	// Return the length of the specified line
