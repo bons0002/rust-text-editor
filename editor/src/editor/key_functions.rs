@@ -1,7 +1,13 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 // Contains the logic for all the keys pressed
 
+use super::blocks::Blocks;
 use super::EditorSpace;
+use rayon::iter::ParallelExtend;
+use std::{
+	fs::{File, OpenOptions},
+	io::Write,
+};
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
 
 // Contains logic for all highlighting keys
@@ -362,7 +368,7 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 		// Clone the blocks
 		let mut blocks = editor.blocks.clone();
 		// Insert a new block at the head
-		blocks.as_mut().unwrap().push_head(editor).unwrap();
+		blocks.as_mut().unwrap().push_head(editor, true).unwrap();
 		// Set this blocks to the editor
 		editor.blocks = blocks;
 
@@ -375,9 +381,23 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
-
-	// Make sure cursor doesn't move outside of text
-	if line_num < editor.file_length - 1 {
+	// Last line that the cursor can move to
+	let mut file_length = editor.file_length - 1;
+	/* If the last line of the file is an empty line, using
+	file_length = editor.file_length - 1 will cause the cursor to
+	stop at the second to last line, so file_length = editor.file_length
+	must be used. */
+	if editor.blocks.as_ref().unwrap().blocks_list
+		[editor.blocks.as_ref().unwrap().blocks_list.len() - 1]
+		.content
+		.last()
+		.unwrap()
+		.clone() == *""
+	{
+		file_length = editor.file_length;
+	}
+	// Ensure that the cursor doesn't move beyond the end of the file
+	if line_num < file_length {
 		// Line number of the screen number
 		let cursor_line_num = editor.cursor_position[1];
 		// Ensure that the cursor doesn't move below the editor block
@@ -399,7 +419,6 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 		} else {
 			// Scroll down
 			editor.scroll_offset += 1;
-
 			// Line number of current line in the text
 			let line_num = editor.get_line_num();
 			// If moving after the end of the block, insert a new tail
@@ -411,7 +430,7 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 				// Clone the blocks
 				let mut blocks = editor.blocks.clone();
 				// Insert a new block at the tail (and remove head if necessary)
-				blocks.as_mut().unwrap().push_tail(editor).unwrap();
+				blocks.as_mut().unwrap().push_tail(editor, true).unwrap();
 				// Set this blocks to the editor
 				editor.blocks = blocks;
 			}
@@ -444,5 +463,129 @@ pub fn end_key(editor: &mut EditorSpace) {
 	}
 }
 
+fn load_blocks(editor: &mut EditorSpace) -> Blocks {
+	// Clone the editor blocks
+	let mut blocks = editor.blocks.as_ref().unwrap().clone();
+	// The block number of the head and tail blocks respectively
+	let (head_block, tail_block) = (blocks.head_block, blocks.tail_block);
+
+	// Load in all blocks in the file that aren't currently in the Blocks
+	for i in 0..blocks.max_blocks {
+		if i >= head_block && i <= tail_block {
+			continue;
+		} else if i < head_block {
+			match blocks.push_head(editor, false) {
+				Ok(_) => (),
+				Err(err) => {
+					panic!("{}", err);
+				}
+			}
+		} else if i > tail_block {
+			match blocks.push_tail(editor, false) {
+				Ok(_) => (),
+				Err(err) => {
+					panic!("{}", err);
+				}
+			}
+		}
+	}
+
+	// Return the blocks
+	blocks
+}
+
+// Recreate an existing file (for saving)
+fn recreate_file(filename: &str) -> File {
+	// Create a new blank version of the file
+	File::create(filename).unwrap();
+	// Open the file in read-write mode
+	let file = match OpenOptions::new().read(true).write(true).open(filename) {
+		Ok(file) => file,
+		Err(err) => panic!("{}", err),
+	};
+	file
+}
+
+// Save the contents of the contents vector to the given file
+fn save_file(filename: &str, contents: Vec<String>) -> File {
+	// Open the file in read-write mode
+	let mut file = recreate_file(filename);
+	// Get the number of lines
+	let len = contents.len();
+
+	// Write lines to the debug file
+	for (idx, line) in contents.iter().enumerate() {
+		// If not last line, add a newline char
+		if idx < len - 1 {
+			match writeln!(&file, "{}", line) {
+				Ok(_) => (),
+				Err(err) => panic!("{}", err),
+			}
+		// If last line, don't add newline char
+		} else {
+			match write!(&file, "{}", line) {
+				Ok(_) => (),
+				Err(err) => panic!("{}", err),
+			}
+		}
+	}
+	// Flush the file buffer
+	file.flush().unwrap();
+	// Return the file
+	file
+}
+
+// Update the editor's scroll offset and blocks after saving
+fn post_save_editor_update(editor: &mut EditorSpace, blocks: Blocks) {
+	// Store the current cursor position
+	let curr_cursor = editor.cursor_position[1];
+	// Set cursor to first block of widget
+	editor.cursor_position[1] = 0;
+	// Get the line number of the first line of the widget
+	let line_num = editor.get_line_num();
+	// Reset scroll offset
+	editor.scroll_offset = line_num - blocks.starting_line_num;
+	// Reset the cursor
+	editor.cursor_position[1] = curr_cursor;
+	// Set the editor blocks to this new Blocks
+	editor.blocks = Some(blocks);
+}
+
 // Save key combo functionality
-pub fn save_key_combo() {}
+pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filename: &str) {
+	// Load in all the blocks
+	let blocks = load_blocks(editor);
+	// Get all the lines of the Blocks in one vector
+	let mut contents: Vec<String> = Vec::new();
+	for block in blocks.clone().blocks_list {
+		contents.par_extend(block.content)
+	}
+
+	/* Write to different files based on if this function is in
+	debug mode. */
+	match in_debug_mode {
+		// If in debug mode, write to debug_filename
+		true => _ = save_file(debug_filename, contents),
+		// If not in debug mode, write to the regular file
+		false => editor.file = save_file(&editor.filename, contents),
+	}
+
+	// Get the block number and line number of the current location
+	let (block_num, _) = match blocks.get_location(editor.get_line_num()) {
+		Ok((block, line)) => (block, line),
+		Err(err) => panic!("{}::save_key_combo: line = {} | {}", file!(), line!(), err),
+	};
+	// Construct a new Blocks for the newly saved file
+	let blocks = match Blocks::new(editor, block_num) {
+		Ok(block) => block,
+		Err(err) => panic!(
+			"{}::save_key_combo: line = {}. Couldn't initialize Blocks for block_num = {} | {}",
+			file!(),
+			line!(),
+			block_num,
+			err
+		),
+	};
+	// Update the editor's scroll offset and Blocks
+	post_save_editor_update(editor, blocks);
+}

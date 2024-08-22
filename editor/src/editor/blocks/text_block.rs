@@ -90,6 +90,10 @@ impl TextBlock {
 		{
 			content.pop();
 		}
+		// Push a blank new line if the last block ends in a newline char
+		if ends_with_newline && block_num == max_blocks - 1 {
+			content.push(String::from(""));
+		}
 		// Trim the newlines
 		let content = content
 			.into_par_iter()

@@ -10,7 +10,7 @@ pub use text_block::TextBlock;
 #[derive(Clone)]
 pub struct Blocks {
 	// The ID number of the first block
-	head_block: usize,
+	pub head_block: usize,
 	// The ID number of the last block
 	pub tail_block: usize,
 	// The line number of the first line in the first block
@@ -66,7 +66,11 @@ impl Blocks {
 	}
 
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
-	pub fn push_head(&mut self, editor: &mut EditorSpace) -> Result<usize, Error> {
+	pub fn push_head(
+		&mut self,
+		editor: &mut EditorSpace,
+		can_unload: bool,
+	) -> Result<usize, Error> {
 		// Make sure that too many blocks aren't loaded
 		if self.num_blocks < self.max_blocks {
 			// Move the starting block to the previous block
@@ -86,6 +90,7 @@ impl Blocks {
 			if self.num_blocks > (15360_usize.div_ceil(text_block::BLOCK_SIZE as usize))
 				&& !self.get_tail().is_modified
 				&& editor.selection.is_empty
+				&& can_unload
 			{
 				self.pop_tail();
 			}
@@ -115,7 +120,11 @@ impl Blocks {
 
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
 	// Returns the tail block number if successful and -1 if failure
-	pub fn push_tail(&mut self, editor: &mut EditorSpace) -> Result<isize, Error> {
+	pub fn push_tail(
+		&mut self,
+		editor: &mut EditorSpace,
+		can_unload: bool,
+	) -> Result<isize, Error> {
 		// Make sure that too many blocks aren't loaded
 		if self.num_blocks < self.max_blocks {
 			// Update the tail block number
@@ -133,6 +142,7 @@ impl Blocks {
 			if self.num_blocks > (15360_usize.div_ceil(text_block::BLOCK_SIZE as usize))
 				&& !self.get_head().is_modified
 				&& editor.selection.is_empty
+				&& can_unload
 			{
 				let head_length = self.pop_head();
 				// Subtract length of original head from scroll offset
@@ -146,7 +156,7 @@ impl Blocks {
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
-	fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
+	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
 		// Track the total lines over the blocks
 		let mut lines = self.starting_line_num;
 		// The starting line

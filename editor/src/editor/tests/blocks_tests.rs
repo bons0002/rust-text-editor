@@ -163,7 +163,7 @@ fn blocks_length() {
 
 	let actual_small_length = small_editor.blocks.as_ref().unwrap().len();
 	// Check that it calculated the correct length (12)
-	assert_eq!(actual_small_length, 12);
+	assert_eq!(actual_small_length, 13);
 }
 
 // Test that the length of the blocks updates correctly when being modified
@@ -186,7 +186,7 @@ fn modified_blocks_length() {
 	// Get the length after the deletion sequence
 	let first_length = editor.blocks.as_ref().unwrap().len();
 	// Should be 10
-	assert_eq!(first_length, 10);
+	assert_eq!(first_length, 11);
 
 	// Insertion sequence
 
@@ -204,7 +204,7 @@ fn modified_blocks_length() {
 	// Get the length after the insertion sequence
 	let second_length = editor.blocks.as_ref().unwrap().len();
 	// Should be 14
-	assert_eq!(second_length, 14);
+	assert_eq!(second_length, 15);
 }
 
 // Test deleting all lines of a file starting from the end

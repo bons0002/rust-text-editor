@@ -6,6 +6,8 @@ mod blocks_tests;
 /* Tests for highlighting text and deleting
 said highlight. */
 mod selection_tests;
+/* Tests for the key_functions module. */
+mod key_functions_tests;
 
 /*
 ========================================
@@ -409,7 +411,8 @@ const SMALL_FILE_BLOCK: &str = "#include<stdio.h>\n\
 	\ttest_func();\n\
     \n\
 	\treturn 0;\n\
-    }";
+    }\n\
+    ";
 
 /*
 ===========================================
@@ -417,6 +420,7 @@ const SMALL_FILE_BLOCK: &str = "#include<stdio.h>\n\
 ===========================================
 */
 
+// The results of deleting a selection on a single line
 const SINGLE_LINE_SELECTION_DELETION: &str = "123456789🥹\n\
     abcdefghi\n\
     ^&*(\n\
@@ -424,6 +428,35 @@ const SINGLE_LINE_SELECTION_DELETION: &str = "123456789🥹\n\
     987654321\n\
     +_)=-\\🥹,./";
 
+// The results of deleting a selection over multiple lines
 const MULTI_LINE_SELECTION_DELETION: &str = "123456789🥹\n\
     abc4321\n\
     +_)=-\\🥹,./";
+
+/*
+			KEY FUNCTIONS CONSTANTS
+*/
+
+// The modification that the saved debug file should contain (for SMALL_FILE)
+const MODIFIED_SMALL_SAVE_FILE: &str = "#include<stdio.h>\n\
+    \n\
+    void test_func() {	printf(\"Testing the Blocks construction 🥹\\n\");\n\
+    }\n\
+    int main() {\n\
+	\tprintf(\"Hopefully it works 🥹🇺🇸🇳🇴\\n\");\n\
+	\ttest_func();\n\
+    \n\
+	\treturn 0;\n\
+    }\n\
+    ";
+
+// The modification that the saved debug file should contain (for GENOME_FILE)
+const MODIFIED_LARGE_SAVE_FILE: &str =
+	">NM_000014.6 Homo sapiens alpha-2-macroglobulin (A2M), transcript variant 1, mRNA\n\
+    >NM_000022.4 Homo sapiens adenosine deaminase (ADA), transcript variant 1, mRNA\n\
+    GCTGGCCCCAGGGAAAGCCGAGCGGCCACCGAGCCGGCAGAGACCCACCGAGCGGCGGCGGAGGGAGCAGCGCCGGGGCG\n\
+    CACGAGGGCACCATGGCCCAGACGCCCGCCTTCGACAAGCCCAAAGTGGAACTGCATGTCCACCTAGACGGATCCATCAA\n\
+    GCCTGAAACCATCTTATACTATGGCAGGAGGAGAGGGATCGCCCTCCCAGCTAACACAGCAGAGGGGCTGCTGAACGTCA\n\
+    TTGGCATGGACAAGCCGCTCACCCTTCCAGACTTCCTGGCCAAGTTTGACTACTACATGCCTGCTATCGCGGGCTGCCGG\n\
+    GAGGCTATCAAAAGGATCGCCTATGAGTTTGTAGAGATGAAGGCCAAAGAGGGCGTGGTGTATGTGGAGGTGCGGTACAG\n\
+    TCCGCACCTGCTGGCCA";

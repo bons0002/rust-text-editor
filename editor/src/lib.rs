@@ -64,16 +64,23 @@ pub mod editor {
 	}
 
 	impl EditorSpace {
-		pub fn new(filename: String, config: Config) -> Self {
+		// Open (and create if necessary) the given file
+		fn open_file(filename: &str) -> File {
 			// Check if a file exists, if not create it
-			if !Path::new(&filename).exists() {
-				File::create(&filename).unwrap();
+			if !Path::new(filename).exists() {
+				File::create(filename).unwrap();
 			}
 			// Open the file in read-write mode
-			let file = match OpenOptions::new().read(true).write(true).open(&filename) {
+			let file = match OpenOptions::new().read(true).write(true).open(filename) {
 				Ok(file) => file,
 				Err(err) => panic!("{}", err),
 			};
+			file
+		}
+
+		pub fn new(filename: String, config: Config) -> Self {
+			// Open (and create if necessary) the given file
+			let file = Self::open_file(&filename);
 			// Construct an EditorSpace
 			EditorSpace {
 				blocks: None,
@@ -252,20 +259,18 @@ pub mod editor {
 				&& blocks.tail_block < blocks.max_blocks - 1
 			{
 				// Add new tail block
-				blocks.push_tail(self).unwrap();
+				blocks.push_tail(self, true).unwrap();
 			}
+			// Set the editor blocks to this new blocks
+			self.blocks = Some(blocks.clone());
 
 			// Convert the blocks into one text vector
 			let mut text: Vec<String> = Vec::new();
-
 			// Iterate through the blocks that are currently loaded in
-			for block in blocks.blocks_list.clone() {
+			for block in blocks.blocks_list {
 				// Add all of the lines in these blocks into the `text` vector
 				text.extend(block.content);
 			}
-
-			// Set the editor blocks to this new blocks
-			self.blocks = Some(blocks);
 
 			// Create a vector of Lines from the text
 			let mut lines: Vec<Line> = text
@@ -281,7 +286,7 @@ pub mod editor {
 				.collect();
 
 			// The current line number in the text
-			let line_num = self.get_line_num() - self.blocks.as_ref().unwrap().starting_line_num;
+			let line_num = self.get_line_num() - blocks.starting_line_num;
 
 			// Highlight the line that the cursor is on
 			lines[line_num] = lines[line_num].clone().style(
@@ -468,7 +473,7 @@ pub mod editor {
 					}) => {
 						match code {
 							// Save the frame to the file
-							KeyCode::Char('s') => key_functions::save_key_combo(),
+							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
 							// Break the loop to end the program
 							KeyCode::Char('q') => self.break_loop = true,
 							_ => (),
