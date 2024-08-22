@@ -190,6 +190,57 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 	true
 }
 
+// Logic for moving left for a non-tab char
+fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
+	// Create a cursor to navigate the grapheme cluster
+	let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
+	// Get the previous location in the text
+	let loc = cursor.prev_boundary(line, 0);
+	// Set the text position
+	let loc = match loc {
+		Ok(num) => match num {
+			Some(num) => num,
+			None => panic!(
+				/* Return the source file name, line number error occurred in this source file,
+				and line_num that this grapheme boundary exists on. */
+				"{}::left_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
+				file!(),
+				line!(),
+				line_num
+			),
+		},
+		Err(_) => 0,
+	};
+	// Get the difference in the positions
+	let diff = editor.text_position - loc;
+	// Update editor text position
+	editor.text_position -= diff;
+	// Move the screen cursor
+	match diff > 1 {
+		// If there is a non ascii character there, the screen cursor needs to move two spaces
+		true => editor.cursor_position[0] -= 2,
+		// Otherwise, move one space
+		false => editor.cursor_position[0] -= 1,
+	}
+}
+
+// Logic for moving left if not at the beginning of the line
+fn left_post_begin_line(editor: &mut EditorSpace, line_num: usize) {
+	// The line of text
+	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+		Ok(line) => line,
+		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
+	};
+	// If the next char isn't a tab, move normally
+	if line.graphemes(true).nth(editor.text_position - 1) != Some("\t") {
+		left_not_tab(editor, line_num, &line);
+	// Otherwise, move by the number of tab spaces
+	} else {
+		editor.text_position -= 1;
+		editor.cursor_position[0] -= editor.config.tab_width;
+	}
+}
+
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
@@ -197,48 +248,8 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
-		// The line of text
-		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-			Ok(line) => line,
-			Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
-		};
-		// If the next char isn't a tab, move normally
-		if line.graphemes(true).nth(editor.text_position - 1) != Some("\t") {
-			// Create a cursor to navigate the grapheme cluster
-			let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
-			// Get the previous location in the text
-			let loc = cursor.prev_boundary(&line, 0);
-			// Set the text position
-			let loc = match loc {
-				Ok(num) => match num {
-					Some(num) => num,
-					None => panic!(
-						/* Return the source file name, line number error occurred in this source file,
-						and line_num that this grapheme boundary exists on. */
-						"{}::left_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
-						file!(),
-						line!(),
-						line_num
-					),
-				},
-				Err(_) => 0,
-			};
-			// Get the difference in the positions
-			let diff = editor.text_position - loc;
-			// Update editor text position
-			editor.text_position -= diff;
-			// Move the screen cursor
-			match diff > 1 {
-				// If there is a non ascii character there, the screen cursor needs to move two spaces
-				true => editor.cursor_position[0] -= 2,
-				// Otherwise, move one space
-				false => editor.cursor_position[0] -= 1,
-			}
-		// Otherwise, move by the number of tab spaces
-		} else {
-			editor.text_position -= 1;
-			editor.cursor_position[0] -= editor.config.tab_width;
-		}
+		// Move left if not at the beginning of the line (move normally)
+		left_post_begin_line(editor, line_num);
 	} else {
 		// Move to above line
 		if line_num > 0 {
@@ -266,6 +277,84 @@ fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 	true
 }
 
+// Logic for moving right in the text for a non-tab char
+fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
+	// Create a cursor to navigate the grapheme cluster
+	let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
+	// Get the next location in the text
+	let loc = cursor.next_boundary(line, 0);
+	// Set the text position
+	let loc = match loc {
+		Ok(num) => match num {
+			Some(num) => num,
+			None => panic!(
+				/* Return the source file name, line number error occurred in this source file,
+				and line_num that this grapheme boundary exists on. */
+				"{}::right_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
+				file!(),
+				line!(),
+				line_num
+			),
+		},
+		Err(_) => line.len(),
+	};
+	// Get the difference in the positions
+	let diff = loc - editor.text_position;
+	// Update editor text position
+	editor.text_position += diff;
+	// Move the screen cursor
+	match diff > 1 {
+		// If there is a non ascii character there, the screen cursor needs to move two spaces
+		true => editor.cursor_position[0] += 2,
+		// Otherwise, move one space
+		false => editor.cursor_position[0] += 1,
+	}
+}
+
+// Logic for moving right in the text before reaching the end of the line
+fn right_pre_end_line(editor: &mut EditorSpace, line_num: usize) {
+	// The line of text
+	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+		Ok(line) => line,
+		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
+	};
+	// If not a tab character, move normally
+	if line.graphemes(true).nth(editor.text_position) != Some("\t") {
+		// Move right for non-tab chars
+		right_not_tab(editor, line_num, &line);
+	// Otherwise, move the number of tab spaces
+	} else {
+		editor.text_position += 1;
+		editor.cursor_position[0] += editor.config.tab_width;
+	}
+}
+
+// Logic for moving right in the text when at the end of the line (move to next line)
+fn right_post_end_line(editor: &mut EditorSpace, line_num: usize) {
+	// Last line that the cursor can move to
+	let mut file_length = editor.file_length - 1;
+	/* If the last line of the file is an empty line, using
+	file_length = editor.file_length - 1 will cause the cursor to
+	stop at the second to last line, so file_length = editor.file_length
+	must be used. */
+	if editor.blocks.as_ref().unwrap().blocks_list
+		[editor.blocks.as_ref().unwrap().blocks_list.len() - 1]
+		.content
+		.last()
+		.unwrap()
+		.clone() == *""
+	{
+		file_length = editor.file_length;
+	}
+	// Move to next line
+	if line_num < file_length {
+		down_arrow(editor);
+		home_key(editor);
+	} else {
+		end_key(editor);
+	}
+}
+
 // Right arrow key functionality
 pub fn right_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
@@ -273,56 +362,12 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
-		// The line of text
-		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-			Ok(line) => line,
-			Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
-		};
-		// If not a tab character, move normally
-		if line.graphemes(true).nth(editor.text_position) != Some("\t") {
-			// Create a cursor to navigate the grapheme cluster
-			let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
-			// Get the next location in the text
-			let loc = cursor.next_boundary(&line, 0);
-			// Set the text position
-			let loc = match loc {
-				Ok(num) => match num {
-					Some(num) => num,
-					None => panic!(
-						/* Return the source file name, line number error occurred in this source file,
-						and line_num that this grapheme boundary exists on. */
-						"{}::right_arrow: line {}. Invalid grapheme boundary for `line_num = {}`",
-						file!(),
-						line!(),
-						line_num
-					),
-				},
-				Err(_) => line.len(),
-			};
-			// Get the difference in the positions
-			let diff = loc - editor.text_position;
-			// Update editor text position
-			editor.text_position += diff;
-			// Move the screen cursor
-			match diff > 1 {
-				// If there is a non ascii character there, the screen cursor needs to move two spaces
-				true => editor.cursor_position[0] += 2,
-				// Otherwise, move one space
-				false => editor.cursor_position[0] += 1,
-			}
-		// Otherwise, move the number of tab spaces
-		} else {
-			editor.text_position += 1;
-			editor.cursor_position[0] += editor.config.tab_width;
-		}
+		// Move right normally
+		right_pre_end_line(editor, line_num);
+	// If the cursor goes beyond the end of the line
 	} else {
-		// Move to next line
-		if line_num < editor.file_length - 1 {
-			down_arrow(editor);
-			home_key(editor);
-		} else {
-			end_key(editor);
-		}
+		// Move right at the end of the line (move to next line)
+		right_post_end_line(editor, line_num);
 	}
 }
 
