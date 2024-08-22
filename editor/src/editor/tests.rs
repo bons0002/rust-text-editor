@@ -434,7 +434,9 @@ const MULTI_LINE_SELECTION_DELETION: &str = "123456789🥹\n\
     +_)=-\\🥹,./";
 
 /*
+===============================================
 			KEY FUNCTIONS CONSTANTS
+===============================================
 */
 
 // The modification that the saved debug file should contain (for SMALL_FILE)

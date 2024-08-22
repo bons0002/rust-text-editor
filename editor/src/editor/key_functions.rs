@@ -88,6 +88,44 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	home_key(editor);
 }
 
+// Backspace at the beginning of line, moving to the above line
+fn backspace_beginning_of_line(editor: &mut EditorSpace) {
+	if editor.file_length > 1 {
+		// Move up one line
+		up_arrow(editor);
+		end_key(editor);
+		// Line number of current line in the text
+		let line_num = editor.get_line_num();
+
+		// Delete the previous line and append its text content to the current line
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.delete_and_append_line(line_num)
+			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
+
+		// Reduce the file length
+		editor.file_length -= 1;
+	}
+}
+
+// Backspace after the beginning of the line deletes a char normally
+fn backspace_normally(editor: &mut EditorSpace) {
+	// Move left
+	left_arrow(editor);
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+
+	// Remove one character
+	editor
+		.blocks
+		.as_mut()
+		.unwrap()
+		.delete_char_in_line(line_num, editor.text_position)
+		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+}
+
 // Functionality of the backspace key
 pub fn backspace(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, backspace normally
@@ -97,46 +135,50 @@ pub fn backspace(editor: &mut EditorSpace) {
 		// Remove empty line
 		// If cursor at beginning of line, move to above line
 		if editor.text_position == 0 && line_num != 0 {
-			if editor.file_length > 1 {
-				// Move up one line
-				up_arrow(editor);
-				end_key(editor);
-				// Line number of current line in the text
-				let line_num = editor.get_line_num();
-
-				// Delete the previous line and append its text content to the current line
-				editor
-					.blocks
-					.as_mut()
-					.unwrap()
-					.delete_and_append_line(line_num)
-					.unwrap_or_else(|err| {
-						panic!("Couldn't delete line {} | {}", line_num + 1, err)
-					});
-
-				// Reduce the file length
-				editor.file_length -= 1;
-			}
+			// Backspace at beginning of the line
+			backspace_beginning_of_line(editor);
 		// Otherwise, just move cursor left
 		} else if editor.text_position != 0 {
-			// Move left
-			left_arrow(editor);
-			// Line number of current line in the text
-			let line_num = editor.get_line_num();
-
-			// Remove one character
-			editor
-				.blocks
-				.as_mut()
-				.unwrap()
-				.delete_char_in_line(line_num, editor.text_position)
-				.unwrap_or_else(|err| {
-					panic!("Couldn't delete char on line {} | {}", line_num, err)
-				});
+			// Backspace normally, deleting one char
+			backspace_normally(editor);
 		}
 	} else {
 		// Delete the selection
 		editor.delete_selection();
+	}
+}
+
+// Delete a character normally if there is no selection
+fn no_selection_delete(editor: &mut EditorSpace) {
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+
+	// The length of the current line
+	let length = match editor.blocks.as_ref().unwrap().get_line_length(line_num) {
+		Ok(len) => len,
+		Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
+	};
+
+	// If not at the end of the current line
+	if editor.text_position < length {
+		// Delete next char
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.delete_char_in_line(line_num, editor.text_position)
+			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+	// If not at end of last line
+	} else if line_num < editor.file_length - 1 {
+		// Delete the below line and append its text content to the current line
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.delete_and_append_line(line_num)
+			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
+		// Reduce the overall file length
+		editor.file_length -= 1;
 	}
 }
 
@@ -144,50 +186,12 @@ pub fn backspace(editor: &mut EditorSpace) {
 pub fn delete_key(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, delete normally
 	if editor.selection.is_empty {
-		// Line number of current line in the text
-		let line_num = editor.get_line_num();
-
-		let length = match editor.blocks.as_ref().unwrap().get_line_length(line_num) {
-			Ok(len) => len,
-			Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
-		};
-
-		// If not at the end of the current line
-		if editor.text_position < length {
-			// Delete next char
-			editor
-				.blocks
-				.as_mut()
-				.unwrap()
-				.delete_char_in_line(line_num, editor.text_position)
-				.unwrap_or_else(|err| {
-					panic!("Couldn't delete char on line {} | {}", line_num, err)
-				});
-		// If not at end of last line
-		} else if line_num < editor.file_length - 1 {
-			// Delete the below line and append its text content to the current line
-			editor
-				.blocks
-				.as_mut()
-				.unwrap()
-				.delete_and_append_line(line_num)
-				.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
-			// Reduce the overall file length
-			editor.file_length -= 1;
-		}
+		// Delete character
+		no_selection_delete(editor);
 	} else {
 		// Delete the selection
 		editor.delete_selection();
 	}
-}
-
-// Check the beginning of line cursor condition
-fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
-	// If the x position is before the start of the line, return false
-	if editor.text_position == 0 {
-		return false;
-	}
-	true
 }
 
 // Logic for moving left for a non-tab char
@@ -225,7 +229,7 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 }
 
 // Logic for moving left if not at the beginning of the line
-fn left_post_begin_line(editor: &mut EditorSpace, line_num: usize) {
+fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize) {
 	// The line of text
 	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
 		Ok(line) => line,
@@ -241,6 +245,15 @@ fn left_post_begin_line(editor: &mut EditorSpace, line_num: usize) {
 	}
 }
 
+// Check the beginning of line cursor condition
+fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
+	// If the x position is before the start of the line, return false
+	if editor.text_position == 0 {
+		return false;
+	}
+	true
+}
+
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
@@ -249,7 +262,7 @@ pub fn left_arrow(editor: &mut EditorSpace) {
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
 		// Move left if not at the beginning of the line (move normally)
-		left_post_begin_line(editor, line_num);
+		left_not_beginning_of_line(editor, line_num);
 	} else {
 		// Move to above line
 		if line_num > 0 {
@@ -312,7 +325,7 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 }
 
 // Logic for moving right in the text before reaching the end of the line
-fn right_pre_end_line(editor: &mut EditorSpace, line_num: usize) {
+fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize) {
 	// The line of text
 	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
 		Ok(line) => line,
@@ -329,14 +342,14 @@ fn right_pre_end_line(editor: &mut EditorSpace, line_num: usize) {
 	}
 }
 
-// Logic for moving right in the text when at the end of the line (move to next line)
-fn right_post_end_line(editor: &mut EditorSpace, line_num: usize) {
+/* If the last line of the file is an empty line, using
+file_length = editor.file_length - 1 will cause the cursor to
+stop at the second to last line, so file_length = editor.file_length
+must be used. */
+fn get_correct_file_length(editor: &mut EditorSpace) -> usize {
 	// Last line that the cursor can move to
 	let mut file_length = editor.file_length - 1;
-	/* If the last line of the file is an empty line, using
-	file_length = editor.file_length - 1 will cause the cursor to
-	stop at the second to last line, so file_length = editor.file_length
-	must be used. */
+	// Check if last line is empty
 	if editor.blocks.as_ref().unwrap().blocks_list
 		[editor.blocks.as_ref().unwrap().blocks_list.len() - 1]
 		.content
@@ -346,6 +359,15 @@ fn right_post_end_line(editor: &mut EditorSpace, line_num: usize) {
 	{
 		file_length = editor.file_length;
 	}
+	// Return the file length
+	file_length
+}
+
+// Logic for moving right in the text when at the end of the line (move to next line)
+fn right_end_of_line(editor: &mut EditorSpace, line_num: usize) {
+	// Last line that the cursor can move to
+	let file_length = get_correct_file_length(editor);
+
 	// Move to next line
 	if line_num < file_length {
 		down_arrow(editor);
@@ -363,11 +385,11 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
 		// Move right normally
-		right_pre_end_line(editor, line_num);
+		right_not_end_of_line(editor, line_num);
 	// If the cursor goes beyond the end of the line
 	} else {
 		// Move right at the end of the line (move to next line)
-		right_post_end_line(editor, line_num);
+		right_end_of_line(editor, line_num);
 	}
 }
 
@@ -512,20 +534,8 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num();
 	// Last line that the cursor can move to
-	let mut file_length = editor.file_length - 1;
-	/* If the last line of the file is an empty line, using
-	file_length = editor.file_length - 1 will cause the cursor to
-	stop at the second to last line, so file_length = editor.file_length
-	must be used. */
-	if editor.blocks.as_ref().unwrap().blocks_list
-		[editor.blocks.as_ref().unwrap().blocks_list.len() - 1]
-		.content
-		.last()
-		.unwrap()
-		.clone() == *""
-	{
-		file_length = editor.file_length;
-	}
+	let file_length = get_correct_file_length(editor);
+
 	// Ensure that the cursor doesn't move beyond the end of the file
 	if line_num < file_length {
 		// Following proper control flow for moving down
