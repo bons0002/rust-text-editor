@@ -2,29 +2,31 @@
 ===========================================
 			KEY FUNCTIONS TESTS
 ===========================================
-
-All of these test are run serially because they share
-files.
 */
 
 use super::*;
 use key_functions::{
-	backspace, down_arrow, highlight_selection::highlight_down, home_key, save_key_combo,
+	backspace, down_arrow, end_key, highlight_selection::highlight_down, home_key, left_arrow,
+	right_arrow, save_key_combo,
 };
-use serial_test::serial;
 use std::fs::{self, read_to_string};
+
+/*
+==================================
+			SAVE TESTS
+==================================
+*/
 
 /* Test saving the small file.
 The small file ends in an empty line,
 so this checks that that line gets saved. */
 #[test]
 #[ignore]
-#[serial]
 fn save_key_combo_small_file() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
 	// The filename of the debug file
-	let debug_filename = &(String::from(SMALL_FILE) + "-debug");
+	let debug_filename = &(String::from(SMALL_FILE) + "-debug-test-0");
 
 	// Ensure that the metadata of the file is up to date
 	editor.file.sync_all().unwrap();
@@ -72,12 +74,11 @@ This tests whether mutliple block length
 files will be saved properly. */
 #[test]
 #[ignore]
-#[serial]
 fn save_key_combo_genome_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
 	// The filename of the debug file
-	let debug_filename = &(String::from(GENOME_FILE) + "-debug");
+	let debug_filename = &(String::from(GENOME_FILE) + "-debug-test-1");
 
 	// Ensure that the metadata of the file is up to date
 	editor.file.sync_all().unwrap();
@@ -126,12 +127,11 @@ Also, I just felt like having a test for each of the existing files.
 Also tests repeated saves. */
 #[test]
 #[ignore]
-#[serial]
 fn save_key_combo_highlight_file() {
 	// Make and editor for the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
 	// The filename of the debug file
-	let debug_filename = &(String::from(HIGHLIGHT_FILE) + "-debug");
+	let debug_filename = &(String::from(HIGHLIGHT_FILE) + "-debug-test-2");
 
 	// Ensure that the metadata of the file is up to date
 	editor.file.sync_all().unwrap();
@@ -181,12 +181,11 @@ fn save_key_combo_highlight_file() {
 // Test saving a modified small file
 #[test]
 #[ignore]
-#[serial]
 fn modified_small_file_save() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
 	// The filename of the debug file
-	let debug_filename = &(String::from(SMALL_FILE) + "-debug");
+	let debug_filename = &(String::from(SMALL_FILE) + "-debug-test-3");
 
 	// Move down three lines
 	for _i in 0..3 {
@@ -228,12 +227,11 @@ fn modified_small_file_save() {
 // Test saving a modified large file
 #[test]
 #[ignore]
-#[serial]
 fn modified_large_file_save() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
 	// The filename of the debug file
-	let debug_filename = &(String::from(GENOME_FILE) + "-debug");
+	let debug_filename = &(String::from(GENOME_FILE) + "-debug-test-4");
 
 	// Move down one line
 	down_arrow(&mut editor);
@@ -277,4 +275,134 @@ fn modified_large_file_save() {
 
 	// Delete the debug file
 	fs::remove_file(debug_filename).unwrap();
+}
+
+// Test saving GENOME_FILE multiple times, each time editing the file
+#[test]
+#[ignore]
+fn multiple_modifications_save() {
+	// Make and editor for the GENOME_FILE
+	let mut genome_editor = construct_editor(GENOME_FILE);
+	// The filename of the debug file
+	let debug_filename = &(String::from(GENOME_FILE) + "-debug-test-5");
+
+	// Write the file to a different debug file
+	save_key_combo(&mut genome_editor, true, debug_filename);
+
+	// Create a new editor for this debug file
+	let mut editor = construct_editor(debug_filename);
+
+	// Move down one line
+	down_arrow(&mut editor);
+	home_key(&mut editor);
+
+	// Highlight down 58 lines
+	for i in 0..58 {
+		// Ensure that the Blocks are loaded correctly (every 50 iterations)
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_down(&mut editor);
+	}
+	// Delete the selection
+	backspace(&mut editor);
+	// Write to the file in-place
+	save_key_combo(&mut editor, false, debug_filename);
+
+	// Move down one line
+	down_arrow(&mut editor);
+	home_key(&mut editor);
+
+	// Highlight down 101 lines
+	for i in 0..101 {
+		// Ensure that the Blocks are loaded correctly (every 50 iterations)
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_down(&mut editor);
+	}
+	// Delete the selection
+	backspace(&mut editor);
+	// Write the file in-place
+	save_key_combo(&mut editor, false, debug_filename);
+
+	// Move down one line
+	down_arrow(&mut editor);
+	home_key(&mut editor);
+
+	// Highlight down 151 lines
+	for i in 0..151 {
+		// Ensure that the Blocks are loaded correctly (every 50 iterations)
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_down(&mut editor);
+	}
+	// Delete the selection
+	backspace(&mut editor);
+	// Write the file in-place
+	save_key_combo(&mut editor, false, debug_filename);
+
+	// Get a vector of the lines saved to the debug file
+	let saved_text = read_to_string(debug_filename).unwrap();
+	let saved_content: Vec<String> = saved_text.split('\n').map(String::from).collect();
+
+	// The expected lines of the debug file
+	let expected_content: Vec<String> = MULTIPLE_MODIFICATIONS_SAVE
+		.split('\n')
+		.map(String::from)
+		.collect();
+
+	// Check that the modified blocks were saved correctly
+	assert_eq!(saved_content, expected_content);
+
+	// Delete the debug file
+	fs::remove_file(debug_filename).unwrap();
+}
+
+/*
+===================================
+			ARROW TESTS
+===================================
+*/
+
+// Use the right arrow key to move to the end of the file
+#[test]
+#[ignore]
+fn move_right_through_entire_file() {
+	// Make and editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Move right through the entire file
+	for _i in 0..26000 {
+		right_arrow(&mut editor);
+	}
+
+	// Should be on last line
+	let line_num = editor.get_line_num();
+
+	assert_eq!(line_num, 319);
+}
+
+#[test]
+#[ignore]
+fn move_left_through_entire_file() {
+	// Make and editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Move to the end of the file
+	for _i in 0..330 {
+		down_arrow(&mut editor);
+	}
+	end_key(&mut editor);
+
+	// Move left through the entire file
+	for _i in 0..26000 {
+		left_arrow(&mut editor);
+	}
+
+	// Should be on last line
+	let line_num = editor.get_line_num();
+
+	assert_eq!(line_num, 0);
 }

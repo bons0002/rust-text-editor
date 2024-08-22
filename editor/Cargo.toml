@@ -8,5 +8,4 @@ rayon = {workspace = true}
 ratatui = {workspace = true}
 crossterm = {workspace = true}
 unicode-segmentation = {workspace = true}
-serial_test = {workspace = true}
 config = { path = "../config" }
