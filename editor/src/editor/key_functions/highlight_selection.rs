@@ -192,6 +192,37 @@ pub fn highlight_down(editor: &mut EditorSpace) {
 	}
 }
 
+/* highlight_end subroutine for highlighting text until the end of the line,
+provided that the selection is not empty now. */
+fn end_subroutine(editor: &mut EditorSpace, update: [usize; 2], prior: [usize; 2]) {
+	// If only one line
+	if editor.selection.start[1] == editor.selection.end[1]
+		&& update[1] == editor.selection.start[1]
+	{
+		// If cursor before selection
+		if prior[0] <= editor.selection.start[0] {
+			// Set start to original end
+			editor.selection.start = [
+				editor.selection.original_text_position.0,
+				editor.selection.original_text_position.1,
+			];
+			// Set end to end of line
+			editor.selection.end = update;
+		// Otherwise, update endpoint
+		} else {
+			editor.selection.end = update;
+		}
+	// If at last line
+	} else if prior[1] >= editor.selection.end[1] {
+		// Update end
+		editor.selection.end = update;
+	// If at first line
+	} else {
+		// Deselect start
+		editor.selection.start = update;
+	}
+}
+
 // Highlight (or un-highlight) to the end of the line
 pub fn highlight_end(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
@@ -210,34 +241,42 @@ pub fn highlight_end(editor: &mut EditorSpace) {
 		if update == editor.selection.end {
 			// Reset selection
 			editor.selection.is_empty = true;
+		// If selection is not empty
 		} else {
-			// If only one line
-			if editor.selection.start[1] == editor.selection.end[1]
-				&& update[1] == editor.selection.start[1]
-			{
-				// If cursor before selection
-				if prior[0] <= editor.selection.start[0] {
-					// Set start to original end
-					editor.selection.start = [
-						editor.selection.original_text_position.0,
-						editor.selection.original_text_position.1,
-					];
-					// Set end to end of line
-					editor.selection.end = update;
-				// Otherwise, update endpoint
-				} else {
-					editor.selection.end = update;
-				}
-			// If at last line
-			} else if prior[1] >= editor.selection.end[1] {
-				// Update end
-				editor.selection.end = update;
-			// If at first line
-			} else {
-				// Deselect start
-				editor.selection.start = update;
-			}
+			// Highlight to the end of the line
+			end_subroutine(editor, update, prior);
 		}
+	}
+}
+
+/* highlight_home subroutine for highlighting text until the beginning of the line,
+provided that the selection is not empty now. */
+fn home_subroutine(editor: &mut EditorSpace, update: [usize; 2], prior: [usize; 2]) {
+	// If only one line
+	if editor.selection.start[1] == editor.selection.end[1]
+		&& update[1] == editor.selection.start[1]
+	{
+		// If cursor after selection
+		if prior[0] >= editor.selection.start[0] {
+			// Set end to original start
+			editor.selection.end = [
+				editor.selection.original_text_position.0,
+				editor.selection.original_text_position.1,
+			];
+			// Set start to beginning of line
+			editor.selection.start = update;
+		// Otherwise, update beginning
+		} else {
+			editor.selection.start = update;
+		}
+	// If at first line
+	} else if prior[1] <= editor.selection.start[1] {
+		// Update end
+		editor.selection.start = update;
+	// If at last line
+	} else {
+		// Deselect start
+		editor.selection.end = update;
 	}
 }
 
@@ -259,33 +298,10 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 		if update == editor.selection.end {
 			// Reset selection
 			editor.selection.is_empty = true;
+		// If not empty
 		} else {
-			// If only one line
-			if editor.selection.start[1] == editor.selection.end[1]
-				&& update[1] == editor.selection.start[1]
-			{
-				// If cursor after selection
-				if prior[0] >= editor.selection.start[0] {
-					// Set end to original start
-					editor.selection.end = [
-						editor.selection.original_text_position.0,
-						editor.selection.original_text_position.1,
-					];
-					// Set start to beginning of line
-					editor.selection.start = update;
-				// Otherwise, update beginning
-				} else {
-					editor.selection.start = update;
-				}
-			// If at first line
-			} else if prior[1] <= editor.selection.start[1] {
-				// Update end
-				editor.selection.start = update;
-			// If at last line
-			} else {
-				// Deselect start
-				editor.selection.end = update;
-			}
+			// Highlight to the beginning of the line
+			home_subroutine(editor, update, prior);
 		}
 	}
 }
