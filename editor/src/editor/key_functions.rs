@@ -326,6 +326,53 @@ pub fn right_arrow(editor: &mut EditorSpace) {
 	}
 }
 
+// Logic for moving up without scrolling
+fn up_no_scroll(editor: &mut EditorSpace) {
+	// Move the cursor to the prev line
+	editor.cursor_position[1] -= 1;
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+	// Save current position
+	let position = editor.cursor_position[0];
+	// Move cursor to beginning of line
+	home_key(editor);
+	// Loop until in correct position
+	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+		// Move right
+		right_arrow(editor);
+	}
+}
+
+// Logic for moving up while scrolling
+fn up_with_scroll(editor: &mut EditorSpace) {
+	// Scroll up
+	editor.scroll_offset -= 1;
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+	// Save current position
+	let position = editor.cursor_position[0];
+	// Move cursor to beginning of line
+	home_key(editor);
+	// Loop until in correct position
+	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+		// Move right
+		right_arrow(editor);
+	}
+}
+
+// Logic for loading new blocks while moving up
+fn up_load_blocks(editor: &mut EditorSpace) {
+	// Clone the blocks
+	let mut blocks = editor.blocks.clone();
+	// Insert a new block at the head
+	blocks.as_mut().unwrap().push_head(editor, true).unwrap();
+	// Set this blocks to the editor
+	editor.blocks = blocks;
+
+	// Update scroll offset
+	editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len - 1;
+}
+
 // Up arrow key functionality
 pub fn up_arrow(editor: &mut EditorSpace) {
 	// Line number of the screen number
@@ -333,47 +380,85 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 
 	// Ensure that the cursor doesn't move above the editor block
 	if cursor_line_num > 0 {
-		// Move the cursor to the prev line
-		editor.cursor_position[1] -= 1;
-		// Line number of current line in the text
-		let line_num = editor.get_line_num();
-		// Save current position
-		let position = editor.cursor_position[0];
-		// Move cursor to beginning of line
-		home_key(editor);
-		// Loop until in correct position
-		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-			// Move right
-			right_arrow(editor);
-		}
-	// If the cursor moves beyond the bound, scroll up
+		// Move up without scrolling
+		up_no_scroll(editor);
+	// If the cursor moves beyond the bound
 	} else if editor.scroll_offset > 0 {
-		// Scroll up
-		editor.scroll_offset -= 1;
-		// Line number of current line in the text
-		let line_num = editor.get_line_num();
-		// Save current position
-		let position = editor.cursor_position[0];
-		// Move cursor to beginning of line
-		home_key(editor);
-		// Loop until in correct position
-		while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-			// Move right
-			right_arrow(editor);
-		}
+		// Move up and scroll
+		up_with_scroll(editor);
 	// If moving before the start of the block, insert a new head
 	} else if editor.get_line_num() < editor.blocks.as_ref().unwrap().starting_line_num + 1
 		&& editor.get_line_num() > 0
 	{
-		// Clone the blocks
-		let mut blocks = editor.blocks.clone();
-		// Insert a new block at the head
-		blocks.as_mut().unwrap().push_head(editor, true).unwrap();
-		// Set this blocks to the editor
-		editor.blocks = blocks;
+		// Move up and load blocks
+		up_load_blocks(editor);
+	}
+}
 
-		// Update scroll offset
-		editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len - 1;
+// Logic for moving down without scrolling
+fn down_no_scroll(editor: &mut EditorSpace) {
+	// Move the cursor to the next line
+	editor.cursor_position[1] += 1;
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+	// Save current position
+	let position = editor.cursor_position[0];
+	// Move cursor to beginning of line
+	home_key(editor);
+	// Loop until in correct position
+	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+		// Move right
+		right_arrow(editor);
+	}
+}
+
+// Logic for loading blocks when moving down
+fn down_load_blocks(editor: &mut EditorSpace) {
+	// Clone the blocks
+	let mut blocks = editor.blocks.clone();
+	// Insert a new block at the tail (and remove head if necessary)
+	blocks.as_mut().unwrap().push_tail(editor, true).unwrap();
+	// Set this blocks to the editor
+	editor.blocks = blocks;
+}
+
+// Logic for moving down while scrolling
+fn down_with_scroll(editor: &mut EditorSpace) {
+	// Scroll down
+	editor.scroll_offset += 1;
+	// Line number of current line in the text
+	let line_num = editor.get_line_num();
+	// If moving after the end of the block, insert a new tail
+	if line_num
+		>= editor.blocks.as_ref().unwrap().starting_line_num + editor.blocks.as_ref().unwrap().len()
+		&& line_num < editor.file_length - 1
+	{
+		// Move down and load new blocks
+		down_load_blocks(editor);
+	}
+	// Save current position
+	let position = editor.cursor_position[0];
+	// Move cursor to beginning of line
+	home_key(editor);
+	// Loop until in correct position
+	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+		// Move right
+		right_arrow(editor);
+	}
+}
+
+// The main control flow of the down arrow key
+fn down_conditions(editor: &mut EditorSpace) {
+	// Line number of the screen number
+	let cursor_line_num = editor.cursor_position[1];
+	// Ensure that the cursor doesn't move below the editor block
+	if cursor_line_num < (editor.height.1 - editor.height.0) - 3 {
+		// Move down without scrolling
+		down_no_scroll(editor);
+	// If the cursor goes below the bound
+	} else {
+		// Move down and scroll
+		down_with_scroll(editor);
 	}
 }
 
@@ -398,52 +483,8 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 	}
 	// Ensure that the cursor doesn't move beyond the end of the file
 	if line_num < file_length {
-		// Line number of the screen number
-		let cursor_line_num = editor.cursor_position[1];
-		// Ensure that the cursor doesn't move below the editor block
-		if cursor_line_num < (editor.height.1 - editor.height.0) - 3 {
-			// Move the cursor to the next line
-			editor.cursor_position[1] += 1;
-			// Line number of current line in the text
-			let line_num = editor.get_line_num();
-			// Save current position
-			let position = editor.cursor_position[0];
-			// Move cursor to beginning of line
-			home_key(editor);
-			// Loop until in correct position
-			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-				// Move right
-				right_arrow(editor);
-			}
-		// If the cursor goes below the bound, scroll down
-		} else {
-			// Scroll down
-			editor.scroll_offset += 1;
-			// Line number of current line in the text
-			let line_num = editor.get_line_num();
-			// If moving after the end of the block, insert a new tail
-			if line_num
-				>= editor.blocks.as_ref().unwrap().starting_line_num
-					+ editor.blocks.as_ref().unwrap().len()
-				&& line_num < editor.file_length - 1
-			{
-				// Clone the blocks
-				let mut blocks = editor.blocks.clone();
-				// Insert a new block at the tail (and remove head if necessary)
-				blocks.as_mut().unwrap().push_tail(editor, true).unwrap();
-				// Set this blocks to the editor
-				editor.blocks = blocks;
-			}
-			// Save current position
-			let position = editor.cursor_position[0];
-			// Move cursor to beginning of line
-			home_key(editor);
-			// Loop until in correct position
-			while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-				// Move right
-				right_arrow(editor);
-			}
-		}
+		// Following proper control flow for moving down
+		down_conditions(editor);
 	}
 }
 
