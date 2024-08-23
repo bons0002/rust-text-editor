@@ -22,7 +22,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	}
 
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// Insert the character into the correct line in the correct block
 	editor
@@ -46,7 +46,7 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	}
 
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// Insert tab character into the line
 	editor
@@ -70,7 +70,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	}
 
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// Insert a new line and truncate the current one (after the cursor)
 	editor
@@ -95,7 +95,7 @@ fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 		up_arrow(editor);
 		end_key(editor);
 		// Line number of current line in the text
-		let line_num = editor.get_line_num();
+		let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 		// Delete the previous line and append its text content to the current line
 		editor
@@ -115,7 +115,7 @@ fn backspace_normally(editor: &mut EditorSpace) {
 	// Move left
 	left_arrow(editor);
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// Remove one character
 	editor
@@ -131,7 +131,7 @@ pub fn backspace(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, backspace normally
 	if editor.selection.is_empty {
 		// The current line number
-		let line_num = editor.get_line_num();
+		let line_num = editor.get_line_num(editor.cursor_position[1]);
 		// Remove empty line
 		// If cursor at beginning of line, move to above line
 		if editor.text_position == 0 && line_num != 0 {
@@ -151,7 +151,7 @@ pub fn backspace(editor: &mut EditorSpace) {
 // Delete a character normally if there is no selection
 fn no_selection_delete(editor: &mut EditorSpace) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// The length of the current line
 	let length = match editor.blocks.as_ref().unwrap().get_line_length(line_num) {
@@ -257,7 +257,7 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 // Left arrow key functionality
 pub fn left_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
@@ -380,7 +380,7 @@ fn right_end_of_line(editor: &mut EditorSpace, line_num: usize) {
 // Right arrow key functionality
 pub fn right_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
@@ -398,7 +398,7 @@ fn up_no_scroll(editor: &mut EditorSpace) {
 	// Move the cursor to the prev line
 	editor.cursor_position[1] -= 1;
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
 	let position = editor.cursor_position[0];
 	// Move cursor to beginning of line
@@ -415,7 +415,7 @@ fn up_with_scroll(editor: &mut EditorSpace) {
 	// Scroll up
 	editor.scroll_offset -= 1;
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
 	let position = editor.cursor_position[0];
 	// Move cursor to beginning of line
@@ -442,11 +442,11 @@ fn up_load_blocks(editor: &mut EditorSpace) {
 
 // Up arrow key functionality
 pub fn up_arrow(editor: &mut EditorSpace) {
-	// Line number of the screen number
-	let cursor_line_num = editor.cursor_position[1];
+	// The current line number
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// Ensure that the cursor doesn't move above the editor block
-	if cursor_line_num > 0 {
+	if editor.cursor_position[1] > 0 {
 		// Move up without scrolling
 		up_no_scroll(editor);
 	// If the cursor moves beyond the bound
@@ -454,9 +454,7 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 		// Move up and scroll
 		up_with_scroll(editor);
 	// If moving before the start of the block, insert a new head
-	} else if editor.get_line_num() < editor.blocks.as_ref().unwrap().starting_line_num + 1
-		&& editor.get_line_num() > 0
-	{
+	} else if line_num < editor.blocks.as_ref().unwrap().starting_line_num + 1 && line_num > 0 {
 		// Move up and load blocks
 		up_load_blocks(editor);
 	}
@@ -467,7 +465,7 @@ fn down_no_scroll(editor: &mut EditorSpace) {
 	// Move the cursor to the next line
 	editor.cursor_position[1] += 1;
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
 	let position = editor.cursor_position[0];
 	// Move cursor to beginning of line
@@ -494,7 +492,7 @@ fn down_with_scroll(editor: &mut EditorSpace) {
 	// Scroll down
 	editor.scroll_offset += 1;
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// If moving after the end of the block, insert a new tail
 	if line_num
 		>= editor.blocks.as_ref().unwrap().starting_line_num + editor.blocks.as_ref().unwrap().len()
@@ -532,7 +530,7 @@ fn down_conditions(editor: &mut EditorSpace) {
 // Down arrow key functionality
 pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Last line that the cursor can move to
 	let file_length = get_correct_file_length(editor);
 
@@ -553,7 +551,7 @@ pub fn home_key(editor: &mut EditorSpace) {
 // End key functionality
 pub fn end_key(editor: &mut EditorSpace) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	while check_cursor_end_line(editor, line_num) {
 		right_arrow(editor);
 	}
@@ -609,7 +607,7 @@ fn save_file(filename: &str, contents: Vec<String>) -> File {
 	// Get the number of lines
 	let len = contents.len();
 
-	// Write lines to the debug file
+	// Write lines to the file
 	for (idx, line) in contents.iter().enumerate() {
 		// If not last line, add a newline char
 		if idx < len - 1 {
@@ -632,19 +630,17 @@ fn save_file(filename: &str, contents: Vec<String>) -> File {
 }
 
 // Update the editor's scroll offset and blocks after saving
-fn post_save_editor_update(editor: &mut EditorSpace, blocks: Blocks) {
-	// Store the current cursor position
-	let curr_cursor = editor.cursor_position[1];
-	// Set cursor to first block of widget
-	editor.cursor_position[1] = 0;
+fn post_save_editor_update(editor: &mut EditorSpace, blocks: &mut Blocks) {
 	// Get the line number of the first line of the widget
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(0);
+	// Might need to add a new head block
+	if line_num < blocks.starting_line_num {
+		blocks.push_head(editor, false).unwrap();
+	}
 	// Reset scroll offset
 	editor.scroll_offset = line_num - blocks.starting_line_num;
-	// Reset the cursor
-	editor.cursor_position[1] = curr_cursor;
 	// Set the editor blocks to this new Blocks
-	editor.blocks = Some(blocks);
+	editor.blocks = Some(blocks.clone());
 }
 
 // Save key combo functionality
@@ -667,12 +663,12 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 	}
 
 	// Get the block number and line number of the current location
-	let (block_num, _) = match blocks.get_location(editor.get_line_num()) {
+	let (block_num, _) = match blocks.get_location(editor.get_line_num(editor.cursor_position[1])) {
 		Ok((block, line)) => (block, line),
 		Err(err) => panic!("{}::save_key_combo: line = {} | {}", file!(), line!(), err),
 	};
 	// Construct a new Blocks for the newly saved file
-	let blocks = match Blocks::new(editor, block_num) {
+	let mut blocks = match Blocks::new(editor, block_num) {
 		Ok(block) => block,
 		Err(err) => panic!(
 			"{}::save_key_combo: line = {}. Couldn't initialize Blocks for block_num = {} | {}",
@@ -683,5 +679,5 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 		),
 	};
 	// Update the editor's scroll offset and Blocks
-	post_save_editor_update(editor, blocks);
+	post_save_editor_update(editor, &mut blocks);
 }

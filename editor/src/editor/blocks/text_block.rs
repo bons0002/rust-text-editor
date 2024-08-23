@@ -63,20 +63,15 @@ impl TextBlock {
 		// Read in bytes
 		let num_bytes = editor.file.read(buffer)?;
 		// Parse bytes to String vector (with newlines intact)
-		let prev_block_content: Vec<String> = str::from_utf8(&buffer[..num_bytes])
-			.unwrap()
-			.split_inclusive('\n')
-			.map(String::from)
-			.collect();
+		let prev_block_content = String::from(str::from_utf8(&buffer[..num_bytes]).unwrap());
 		// Check if the previous block ends in a "complete" line
-		let prev_newline = match prev_block_content.last() {
-			Some(line) => line.ends_with('\n'),
-			None => true,
-		};
+		let prev_newline = prev_block_content.ends_with('\n');
 		// If it doesn't end in a newline, fix the first line of this block
 		if !prev_newline {
+			// The starting index of the last line of the previous block
+			let last_line_start = prev_block_content.match_indices('\n').last().unwrap().0 + 1;
 			// Construct a "complete" line
-			let line1 = prev_block_content.last().unwrap().clone() + content[0].as_str();
+			let line1 = String::from(&prev_block_content[last_line_start..]) + content[0].as_str();
 			// Set the first line of the block to this "fixed" first line
 			content[0] = line1;
 		}

@@ -100,18 +100,6 @@ pub mod editor {
 			}
 		}
 
-		// Initialize the file length variable
-		fn init_file_length(&mut self) -> Result<usize, Error> {
-			// Open the file
-			let file = File::open(&self.filename)?;
-			// Count the lines of the file (in parallel)
-			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
-			// The file has been initialized
-			self.has_file = true;
-			// Return the file length
-			Ok(self.file_length)
-		}
-
 		// Set the starting Position of the editing space cursor
 		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
 			// Set the bounds of the block
@@ -123,6 +111,18 @@ pub mod editor {
 
 			// Flag that cursor has been initialized
 			self.start_cursor_set = true;
+		}
+
+		// Initialize the file length variable
+		fn init_file_length(&mut self) -> Result<usize, Error> {
+			// Open the file
+			let file = File::open(&self.filename)?;
+			// Count the lines of the file (in parallel)
+			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
+			// The file has been initialized
+			self.has_file = true;
+			// Return the file length
+			Ok(self.file_length)
 		}
 
 		// Create the first block when the editor is opened
@@ -152,47 +152,75 @@ pub mod editor {
 			Ok("Success")
 		}
 
+		// Calculate the start and end indices for highlighting characters in the paragraph
+		fn calc_highlight_indices(&self) -> (usize, usize) {
+			if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
+				// The starting line number of the
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(0, self.selection.end[1] - line)
+			} else {
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(self.selection.start[1] - line, self.selection.end[1] - line)
+			}
+		}
+
+		// Highlight character on one line and return them as a Span
+		fn highlight_one_line(&self, loc: usize, character: String) -> Span {
+			// If within selection, highlight character
+			if loc >= self.selection.start[0] && loc < self.selection.end[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
+		// Highlight character if on the first line of a multiline selection
+		fn highlight_first_line(&self, loc: usize, character: String) -> Span {
+			// Highlight all characters on the line after the cursor
+			if loc >= self.selection.start[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
+		// Highlight character if on the last line of a multiline selection
+		fn highlight_last_line(&self, loc: usize, character: String) -> Span {
+			// Highlight all characters on the line before the cursor
+			if loc < self.selection.end[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
 		// Highlight a specific character on the line within the highlighting selection
 		fn highlight_char(&self, idx: usize, loc: usize, character: String) -> Span {
-			// Only highlight if selection isn't empty
-			if !self.selection.is_empty {
+			// Top line of the widget
+			let top_line = self.scroll_offset;
+			// The bottom line of the widget
+			let bottom_line = self.height.1 - self.height.0 - 3 + self.scroll_offset;
+
+			// Only highlight if selection isn't empty (and its within the widget's bounds)
+			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
 				// Indices for highlighting within the paragraph
-				let (start_line, end_line) =
-					if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
-						// The starting line number of the
-						let line = self.blocks.as_ref().unwrap().starting_line_num;
-						(0, self.selection.end[1] - line)
-					} else {
-						let line = self.blocks.as_ref().unwrap().starting_line_num;
-						(self.selection.start[1] - line, self.selection.end[1] - line)
-					};
+				let (start_line, end_line) = self.calc_highlight_indices();
+
 				// If only one line
 				if idx == start_line && start_line == end_line {
-					// If within selection, highlight character
-					if loc >= self.selection.start[0] && loc < self.selection.end[0] {
-						Span::from(character)
-							.style(Style::default().bg(self.config.theme.selection_highlight))
-					} else {
-						Span::from(character)
-					}
+					// Highlight character
+					self.highlight_one_line(loc, character)
 				// If on first line (and there are multiple lines in selection)
 				} else if idx == start_line {
-					// Highlight all characters on the line after the cursor
-					if loc >= self.selection.start[0] {
-						Span::from(character)
-							.style(Style::default().bg(self.config.theme.selection_highlight))
-					} else {
-						Span::from(character)
-					}
+					// Highlight character
+					self.highlight_first_line(loc, character)
 				// If on last line (and there are multiple lines in selection)
 				} else if idx == end_line {
-					// Highlight all characters on the line before the cursor
-					if loc < self.selection.end[0] {
-						Span::from(character)
-							.style(Style::default().bg(self.config.theme.selection_highlight))
-					} else {
-						Span::from(character)
-					}
+					// Highlight character
+					self.highlight_last_line(loc, character)
 				// If between first and last line in multine selection
 				} else if idx > start_line && idx < end_line {
 					Span::from(character)
@@ -238,15 +266,13 @@ pub mod editor {
 			Line::from(spans)
 		}
 
-		// Get the current line number
-		fn get_line_num(&self) -> usize {
-			self.cursor_position[1]
-				+ self.scroll_offset
-				+ self.blocks.as_ref().unwrap().starting_line_num
+		// Get the current line number for the given position
+		fn get_line_num(&self, position: usize) -> usize {
+			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
 		}
 
-		// Return the vector as a paragraph
-		pub fn get_paragraph(&mut self) -> Paragraph {
+		// Check that there are enough blocks loaded in, and return the blocks
+		fn check_blocks(&mut self) -> Blocks {
 			// Clone the blocks of text
 			let mut blocks = self.blocks.as_ref().unwrap().clone();
 			// Height of widget
@@ -261,9 +287,11 @@ pub mod editor {
 				// Add new tail block
 				blocks.push_tail(self, true).unwrap();
 			}
-			// Set the editor blocks to this new blocks
-			self.blocks = Some(blocks.clone());
+			// Return the blocks
+			blocks
+		}
 
+		fn get_lines_from_blocks(&self, blocks: Blocks) -> Vec<Line> {
 			// Convert the blocks into one text vector
 			let mut text: Vec<String> = Vec::new();
 			// Iterate through the blocks that are currently loaded in
@@ -273,8 +301,7 @@ pub mod editor {
 			}
 
 			// Create a vector of Lines from the text
-			let mut lines: Vec<Line> = text
-				.into_par_iter()
+			text.into_par_iter()
 				.enumerate()
 				.map(|(idx, line)| {
 					// If the line is empty, return a blank line
@@ -283,10 +310,19 @@ pub mod editor {
 					}
 					self.parse_line(idx, &line)
 				})
-				.collect();
+				.collect()
+		}
 
-			// The current line number in the text
-			let line_num = self.get_line_num() - blocks.starting_line_num;
+		// Return the vector as a paragraph
+		pub fn get_paragraph(&mut self) -> Paragraph {
+			// Check that there are enough blocks loaded
+			let blocks = self.check_blocks();
+			// Set the editor blocks to this new blocks
+			self.blocks = Some(blocks.clone());
+			// The current line number in the blocks
+			let line_num = self.get_line_num(self.cursor_position[1]) - blocks.starting_line_num;
+			// Get the lines of the currently loaded blocks as a vector
+			let mut lines = self.get_lines_from_blocks(blocks);
 
 			// Highlight the line that the cursor is on
 			lines[line_num] = lines[line_num].clone().style(
@@ -309,12 +345,12 @@ pub mod editor {
 
 		// Return a Paragraph of the line numbers that are displayed
 		pub fn get_line_numbers_paragraph(&self) -> Paragraph {
-			let line_nums: Vec<String> = self
+			// Construct a vector of line numbers
+			let line_nums: Vec<Line> = self
 				.get_line_numbers()
 				.into_par_iter()
-				.map(|num| format!("{}", num))
+				.map(|num| Line::from(format!("{}", num)))
 				.collect();
-			let line_nums: Vec<Line> = line_nums.into_par_iter().map(Line::from).collect();
 
 			Paragraph::new(Text::from(line_nums))
 		}
@@ -330,32 +366,25 @@ pub mod editor {
 			self.selection.is_empty = true;
 
 			// If the cursor is at the beginning of the selection
-			if (self.text_position, self.get_line_num()) == start {
+			if (
+				self.text_position,
+				self.get_line_num(self.cursor_position[1]),
+			) == start
+			{
 				// Move to the last line of the selection
-				while self.get_line_num() != end.1 {
+				while self.get_line_num(self.cursor_position[1]) != end.1 {
 					key_functions::down_arrow(self);
 				}
-
 				// Move the horizontal position to the end horizontal position
-				match self.text_position < end.0 {
-					// If the horizontal cursor is before the end position
-					true => {
-						// Move right until at the correct location
-						while self.text_position < end.0 {
-							key_functions::right_arrow(self);
-						}
-					}
-					// If the horizontal cursor is after the end position
-					false => {
-						// Move left until at the correct location
-						while self.text_position > end.0 {
-							key_functions::left_arrow(self);
-						}
-					}
+				key_functions::home_key(self);
+				while self.text_position < end.0 {
+					key_functions::right_arrow(self);
 				}
 			}
 			// Backspace until at the beginning of the selection
-			while self.text_position != start.0 || self.get_line_num() != start.1 {
+			while self.text_position != start.0
+				|| self.get_line_num(self.cursor_position[1]) != start.1
+			{
 				key_functions::backspace(self);
 			}
 		}
@@ -363,7 +392,7 @@ pub mod editor {
 		// Get the key pressed
 		pub fn handle_input(&mut self) {
 			// Non-blocking read
-			if event::poll(Duration::from_millis(100)).unwrap() {
+			if event::poll(Duration::from_millis(300)).unwrap() {
 				// Read input
 				match event::read().unwrap() {
 					// Return the character if only a key (without moodifier key) is pressed

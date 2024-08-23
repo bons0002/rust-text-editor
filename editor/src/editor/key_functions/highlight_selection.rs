@@ -43,26 +43,41 @@ fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 	editor.selection.original_cursor_position =
 		(editor.cursor_position[0], editor.cursor_position[1]);
 	// Store the original starting position in the text
-	editor.selection.original_text_position = (editor.text_position, editor.get_line_num());
+	editor.selection.original_text_position = (
+		editor.text_position,
+		editor.get_line_num(editor.cursor_position[1]),
+	);
 	// Store the original scroll offset of the text
 	editor.selection.original_scroll_offset = editor.scroll_offset;
 
 	// Initialize highlighting forward
 	if movement == Movement::Right || movement == Movement::Down || movement == Movement::End {
 		// Set the starting point of the selection
-		editor.selection.start = [editor.text_position, editor.get_line_num()];
+		editor.selection.start = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Use the corresponding movement key
 		movement.take_movement(editor);
 		// Set the endpoint of the selection
-		editor.selection.end = [editor.text_position, editor.get_line_num()];
+		editor.selection.end = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 	// Initialize highlighting backwards
 	} else {
 		// Set the endpoint of the selection
-		editor.selection.end = [editor.text_position, editor.get_line_num()];
+		editor.selection.end = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Use the corresponding movement key
 		movement.take_movement(editor);
 		// Set the starting point of the selection
-		editor.selection.start = [editor.text_position, editor.get_line_num()];
+		editor.selection.start = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 	}
 
 	// Flag selection as being not empty
@@ -79,7 +94,10 @@ pub fn highlight_right(editor: &mut EditorSpace) {
 		// Move right
 		right_arrow(editor);
 		// Get the new location after the move
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// If the last character of the selection has been deselected
 		if update == editor.selection.end {
 			// Reset selection
@@ -112,7 +130,10 @@ pub fn highlight_left(editor: &mut EditorSpace) {
 		// Move left
 		left_arrow(editor);
 		// Get the new location after the move
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// If the new location is at the start of the selection (de-selected last character)
 		if update == editor.selection.start {
 			// Reset selection
@@ -142,11 +163,17 @@ pub fn highlight_up(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = [editor.text_position, editor.get_line_num()];
+		let prior = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Move up
 		up_arrow(editor);
 		// Get the new location after moving
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// If the selection is now empty (but not on first line)
 		if update == editor.selection.start && update[1] > 0 {
 			// Reset selection
@@ -171,11 +198,17 @@ pub fn highlight_down(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = [editor.text_position, editor.get_line_num()];
+		let prior = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Move down
 		down_arrow(editor);
 		// Get the new location after moving
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// If the selection is now empty (but not on last line)
 		if update == editor.selection.end && update[1] < editor.file_length - 1 {
 			// Reset selection
@@ -231,11 +264,17 @@ pub fn highlight_end(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = [editor.text_position, editor.get_line_num()];
+		let prior = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Move to end of line
 		end_key(editor);
 		// Get new location after moving
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 
 		// If selection is now empty
 		if update == editor.selection.end {
@@ -288,11 +327,17 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Store the current location
-		let prior = [editor.text_position, editor.get_line_num()];
+		let prior = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 		// Move to beginning of line
 		home_key(editor);
 		// Get the new location after moving
-		let update = [editor.text_position, editor.get_line_num()];
+		let update = [
+			editor.text_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 
 		// If selection is now empty
 		if update == editor.selection.end {

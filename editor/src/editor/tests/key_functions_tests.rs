@@ -379,7 +379,7 @@ fn move_right_through_entire_file() {
 	}
 
 	// Should be on last line
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	assert_eq!(line_num, 319);
 }
@@ -402,7 +402,7 @@ fn move_left_through_entire_file() {
 	}
 
 	// Should be on last line
-	let line_num = editor.get_line_num();
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	assert_eq!(line_num, 0);
 }

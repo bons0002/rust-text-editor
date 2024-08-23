@@ -27,7 +27,7 @@ impl Theme {
 			app_bg: Color::Black,
 			line_highlight_fg_color: Color::White,
 			line_highlight_bg_color: Color::DarkGray,
-			selection_highlight: Color::Blue,
+			selection_highlight: Color::Rgb(80, 100, 150),
 			tab_fg: Color::White,
 			tab_bg: Color::Blue,
 		}
