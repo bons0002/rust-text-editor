@@ -9,6 +9,7 @@ use std::{
 	io::Write,
 };
 use unicode_segmentation::{GraphemeCursor, UnicodeSegmentation};
+use unicode_width::UnicodeWidthStr;
 
 // Contains logic for all highlighting keys
 pub mod highlight_selection;
@@ -35,6 +36,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
+	editor.index_position += 1;
 }
 
 // Functionality for the tab key
@@ -59,6 +61,7 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += editor.config.tab_width;
+	editor.index_position += 1;
 }
 
 // Functionality of pressing the enter key
@@ -122,7 +125,7 @@ fn backspace_normally(editor: &mut EditorSpace) {
 		.blocks
 		.as_mut()
 		.unwrap()
-		.delete_char_in_line(line_num, editor.text_position)
+		.delete_char_in_line(line_num, editor.index_position)
 		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
 }
 
@@ -166,7 +169,7 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.blocks
 			.as_mut()
 			.unwrap()
-			.delete_char_in_line(line_num, editor.text_position)
+			.delete_char_in_line(line_num, editor.index_position)
 			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
 	// If not at end of last line
 	} else if line_num < editor.file_length - 1 {
@@ -215,17 +218,21 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 		},
 		Err(_) => 0,
 	};
+
+	// Get the previous grapheme
+	let character = line
+		.graphemes(true)
+		.nth(editor.index_position - 1)
+		.unwrap_or("");
+	// Get the width of the current grapheme
+	let char_width = UnicodeWidthStr::width(character);
+	// Move the screen cursor
+	editor.cursor_position[0] -= char_width;
+
 	// Get the difference in the positions
 	let diff = editor.text_position - loc;
 	// Update editor text position
 	editor.text_position -= diff;
-	// Move the screen cursor
-	match diff > 1 {
-		// If there is a non ascii character there, the screen cursor needs to move two spaces
-		true => editor.cursor_position[0] -= 2,
-		// Otherwise, move one space
-		false => editor.cursor_position[0] -= 1,
-	}
 }
 
 // Logic for moving left if not at the beginning of the line
@@ -235,14 +242,16 @@ fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize) {
 		Ok(line) => line,
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
-	// If the next char isn't a tab, move normally
-	if line.graphemes(true).nth(editor.text_position - 1) != Some("\t") {
+	// If the previous char isn't a tab, move normally
+	if line.graphemes(true).nth(editor.index_position - 1) != Some("\t") {
 		left_not_tab(editor, line_num, &line);
 	// Otherwise, move by the number of tab spaces
 	} else {
 		editor.text_position -= 1;
 		editor.cursor_position[0] -= editor.config.tab_width;
 	}
+	// Update the index position
+	editor.index_position -= 1;
 }
 
 // Check the beginning of line cursor condition
@@ -311,17 +320,21 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 		},
 		Err(_) => line.len(),
 	};
+
+	// Get the current grapheme
+	let character = line
+		.graphemes(true)
+		.nth(editor.index_position)
+		.unwrap_or("");
+	// Get the width of the current grapheme
+	let char_width = UnicodeWidthStr::width(character);
+	// Move the screen cursor
+	editor.cursor_position[0] += char_width;
+
 	// Get the difference in the positions
 	let diff = loc - editor.text_position;
 	// Update editor text position
 	editor.text_position += diff;
-	// Move the screen cursor
-	match diff > 1 {
-		// If there is a non ascii character there, the screen cursor needs to move two spaces
-		true => editor.cursor_position[0] += 2,
-		// Otherwise, move one space
-		false => editor.cursor_position[0] += 1,
-	}
 }
 
 // Logic for moving right in the text before reaching the end of the line
@@ -332,7 +345,7 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize) {
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
 	// If not a tab character, move normally
-	if line.graphemes(true).nth(editor.text_position) != Some("\t") {
+	if line.graphemes(true).nth(editor.index_position) != Some("\t") {
 		// Move right for non-tab chars
 		right_not_tab(editor, line_num, &line);
 	// Otherwise, move the number of tab spaces
@@ -340,6 +353,8 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize) {
 		editor.text_position += 1;
 		editor.cursor_position[0] += editor.config.tab_width;
 	}
+	// Update the index position
+	editor.index_position += 1;
 }
 
 /* If the last line of the file is an empty line, using
@@ -546,6 +561,7 @@ pub fn home_key(editor: &mut EditorSpace) {
 	// Move to beginning of line
 	editor.text_position = 0;
 	editor.cursor_position[0] = 0;
+	editor.index_position = 0;
 }
 
 // End key functionality

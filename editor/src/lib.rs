@@ -14,8 +14,7 @@ pub mod editor {
 		widgets::Paragraph,
 	};
 	use rayon::iter::{
-		IndexedParallelIterator, IntoParallelIterator, ParallelBridge, ParallelExtend,
-		ParallelIterator,
+		IndexedParallelIterator, IntoParallelIterator, ParallelBridge, ParallelIterator,
 	};
 
 	use config::config::Config;
@@ -37,8 +36,6 @@ pub mod editor {
 		pub blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
-		// Position on the current line of text
-		text_position: usize,
 		// The config of the editor
 		pub config: Config,
 		// Position of cursor on the screen (and in the text)
@@ -53,6 +50,8 @@ pub mod editor {
 		pub has_file: bool,
 		// Vertical bounds of the editor block
 		pub height: (usize, usize),
+		// Position used to access indices within graphemes vector
+		index_position: usize,
 		// Horizontal bounds of the editor block
 		pub width: (usize, usize),
 		// Sets the amount to scroll the text
@@ -61,6 +60,8 @@ pub mod editor {
 		selection: Selection,
 		// Track if the starting cursor position has already been set
 		pub start_cursor_set: bool,
+		// Position on the current line of text
+		text_position: usize,
 	}
 
 	impl EditorSpace {
@@ -85,7 +86,6 @@ pub mod editor {
 			EditorSpace {
 				blocks: None,
 				break_loop: false,
-				text_position: 0,
 				config,
 				cursor_position: [0, 0],
 				filename,
@@ -93,10 +93,12 @@ pub mod editor {
 				file_length: 0,
 				has_file: false,
 				height: (0, 0),
+				index_position: 0,
 				width: (0, 0),
 				scroll_offset: 0,
 				selection: Selection::new(),
 				start_cursor_set: false,
+				text_position: 0,
 			}
 		}
 
@@ -197,73 +199,77 @@ pub mod editor {
 			}
 		}
 
-		// Highlight a specific character on the line within the highlighting selection
-		fn highlight_char(&self, idx: usize, loc: usize, character: String) -> Span {
-			// Top line of the widget
-			let top_line = self.scroll_offset;
-			// The bottom line of the widget
-			let bottom_line = self.height.1 - self.height.0 - 3 + self.scroll_offset;
-
-			// Only highlight if selection isn't empty (and its within the widget's bounds)
-			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
-				// Indices for highlighting within the paragraph
-				let (start_line, end_line) = self.calc_highlight_indices();
-
-				// If only one line
-				if idx == start_line && start_line == end_line {
-					// Highlight character
-					self.highlight_one_line(loc, character)
-				// If on first line (and there are multiple lines in selection)
-				} else if idx == start_line {
-					// Highlight character
-					self.highlight_first_line(loc, character)
-				// If on last line (and there are multiple lines in selection)
-				} else if idx == end_line {
-					// Highlight character
-					self.highlight_last_line(loc, character)
-				// If between first and last line in multine selection
-				} else if idx > start_line && idx < end_line {
-					Span::from(character)
-						.style(Style::default().bg(self.config.theme.selection_highlight))
-				// If not in selection
-				} else {
-					Span::from(character)
-				}
+		// Highlight an individual grapheme
+		fn highlight_grapheme(
+			&self,
+			idx: usize,
+			loc: usize,
+			character: &str,
+			tab_char: &str,
+			start_line: usize,
+			end_line: usize,
+		) -> Span {
+			if idx == start_line && start_line == end_line {
+				self.highlight_one_line(loc, String::from(character).replace("\t", tab_char))
+			// If on first line (and there are multiple lines in selection)
+			} else if idx == start_line {
+				// Highlight character
+				self.highlight_first_line(loc, String::from(character).replace("\t", tab_char))
+			// If on last line (and there are multiple lines in selection)
+			} else if idx == end_line {
+				// Highlight character
+				self.highlight_last_line(loc, String::from(character).replace("\t", tab_char))
+			// If between first and last line in multine selection
+			} else if idx > start_line && idx < end_line {
+				Span::from(String::from(character).replace("\t", tab_char))
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			// If not in selection
 			} else {
-				Span::from(character)
+				Span::from(String::from(character).replace("\t", tab_char))
 			}
+		}
+
+		// Highlight a line of text
+		fn highlight_line(&self, idx: usize, line: &str) -> Line {
+			// Indices for highlighting within the paragraph
+			let (start_line, end_line) = self.calc_highlight_indices();
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
+			// A vector of the graphemes as stylized spans
+			let graphemes: Vec<Span> = line
+				.graphemes(true)
+				.collect::<Vec<&str>>()
+				.into_par_iter()
+				.enumerate()
+				.map(|(loc, character)| {
+					// Highlight the grapheme
+					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
+				})
+				.collect();
+
+			Line::from(graphemes)
 		}
 
 		// Create a Line struct from the given String line
 		fn parse_line(&self, idx: usize, line: &str) -> Line {
-			// Split the line into individual words
-			let characters: Vec<&str> = line.graphemes(true).collect();
-			let mut spans: Vec<Span> = Vec::new();
-			// Iterate through each character on the line
-			spans.par_extend(
-				characters
-					.into_par_iter()
-					.enumerate()
-					.map(|(loc, character)| {
-						match character {
-							"\t" => {
-								// Start tab with a vertical line
-								let mut tab_char = String::from("\u{2502}");
-								// Iterator to create a string of tab_width - 1 number of	 spaces
-								tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
-								// Highlight this spaces representation of a tab
-								self.highlight_char(idx, loc, tab_char)
-							}
-							_ => {
-								// Highlight this (non-tab) character
-								self.highlight_char(idx, loc, String::from(character))
-							}
-						}
-					}),
-			);
+			// Top line of the widget
+			let top_line = self.scroll_offset;
+			// The bottom line of the widget
+			let bottom_line = self.height.1 - self.height.0 - 3 + self.scroll_offset;
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of	 spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
 
-			// Return the line
-			Line::from(spans)
+			// Only highlight if selection isn't empty (and its within the widget's bounds)
+			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
+				// Highlight characters
+				return self.highlight_line(idx, line);
+			}
+
+			Line::from(String::from(line).replace("\t", &tab_char))
 		}
 
 		// Get the current line number for the given position

@@ -44,7 +44,7 @@ fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 		(editor.cursor_position[0], editor.cursor_position[1]);
 	// Store the original starting position in the text
 	editor.selection.original_text_position = (
-		editor.text_position,
+		editor.index_position,
 		editor.get_line_num(editor.cursor_position[1]),
 	);
 	// Store the original scroll offset of the text
@@ -54,28 +54,28 @@ fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 	if movement == Movement::Right || movement == Movement::Down || movement == Movement::End {
 		// Set the starting point of the selection
 		editor.selection.start = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Use the corresponding movement key
 		movement.take_movement(editor);
 		// Set the endpoint of the selection
 		editor.selection.end = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 	// Initialize highlighting backwards
 	} else {
 		// Set the endpoint of the selection
 		editor.selection.end = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Use the corresponding movement key
 		movement.take_movement(editor);
 		// Set the starting point of the selection
 		editor.selection.start = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 	}
@@ -95,7 +95,7 @@ pub fn highlight_right(editor: &mut EditorSpace) {
 		right_arrow(editor);
 		// Get the new location after the move
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// If the last character of the selection has been deselected
@@ -131,7 +131,7 @@ pub fn highlight_left(editor: &mut EditorSpace) {
 		left_arrow(editor);
 		// Get the new location after the move
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// If the new location is at the start of the selection (de-selected last character)
@@ -164,14 +164,14 @@ pub fn highlight_up(editor: &mut EditorSpace) {
 	} else {
 		// Store the current location
 		let prior = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move up
 		up_arrow(editor);
 		// Get the new location after moving
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// If the selection is now empty (but not on first line)
@@ -199,14 +199,14 @@ pub fn highlight_down(editor: &mut EditorSpace) {
 	} else {
 		// Store the current location
 		let prior = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move down
 		down_arrow(editor);
 		// Get the new location after moving
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// If the selection is now empty (but not on last line)
@@ -265,14 +265,14 @@ pub fn highlight_end(editor: &mut EditorSpace) {
 	} else {
 		// Store the current location
 		let prior = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move to end of line
 		end_key(editor);
 		// Get new location after moving
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 
@@ -328,14 +328,14 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 	} else {
 		// Store the current location
 		let prior = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move to beginning of line
 		home_key(editor);
 		// Get the new location after moving
 		let update = [
-			editor.text_position,
+			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 
