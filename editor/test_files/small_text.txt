@@ -1,0 +1,12 @@
+#include<stdio.h>
+
+void test_func() {
+	printf("Testing the Blocks construction 🥹\n");
+}
+
+int main() {
+	printf("Hopefully it works 🥹🇺🇸🇳🇴\n");
+	test_func();
+
+	return 0;
+}

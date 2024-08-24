@@ -1,4 +1,5 @@
 pub mod config {
+	use std::default::Default;
 
 	use crossterm::cursor::SetCursorStyle;
 
@@ -6,6 +7,7 @@ pub mod config {
 	mod theme;
 
 	// Contains user configuration for the app
+	#[derive(Clone)]
 	pub struct Config {
 		// The cursor style for the editor
 		pub cursor_style: SetCursorStyle,
@@ -15,18 +17,17 @@ pub mod config {
 		pub theme: theme::Theme,
 	}
 
-	impl Config {
+	impl Default for Config {
 		// Create a new default config
-		pub fn default() -> Self {
+		fn default() -> Self {
 			Config {
 				// Use the terminal's default cursor
 				cursor_style: SetCursorStyle::DefaultUserShape,
 				// Set the number of spaces for a tab to 4
 				tab_width: 4,
 				// Set the theme as a default dark theme based on the terminal theme
-				theme: theme::Theme::light_terminal(),
+				theme: theme::Theme::dark_terminal(),
 			}
 		}
 	}
 }
-
