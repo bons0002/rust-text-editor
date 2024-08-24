@@ -1,5 +1,5 @@
 use std::{
-	io::{self, stdout},
+	io::{self, stdout, Error},
 	rc::Rc,
 };
 
@@ -8,17 +8,23 @@ use crossterm::{
 	execute,
 	terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*, widgets::*};
+use ratatui::{
+	layout::{Constraint, Direction, Layout, Rect},
+	prelude::CrosstermBackend,
+	terminal::Terminal,
+	Frame,
+};
 
 use config::config::Config;
-use editor::editor::*;
+use editor::editor::EditorSpace;
 
-// Initialize the terminal
-pub fn init(filename: String) -> io::Result<()> {
+// Initialize the terminal and the config
+fn init() -> Result<(Config, Terminal<CrosstermBackend<io::Stdout>>), Error> {
+	// Create a default config
+	let config = Config::default();
+
 	// Put stdout into raw mode (turn off canonical mode)
 	enable_raw_mode()?;
-	// Set configuration
-	let config = Config::default();
 	// Switches the terminal to an alternate screen and changes the cursor
 	execute!(
 		stdout(),
@@ -27,53 +33,11 @@ pub fn init(filename: String) -> io::Result<()> {
 		config.cursor_style,
 	)?;
 
-	// Draw the terminal widgets
-	match run(filename, config) {
-		Ok(_) => (),
-		Err(_) => {
-			// Turn off raw mode for stdout (enable canonical mode)
-			disable_raw_mode()?;
-			// Exit the alternate screen
-			execute!(stdout(), LeaveAlternateScreen,)?;
-			panic!("An error has occurred");
-		}
-	};
-
-	// Turn off raw mode for stdout (enable canonical mode)
-	disable_raw_mode()?;
-	// Exit the alternate screen
-	execute!(stdout(), LeaveAlternateScreen,)?;
-
-	Ok(())
-}
-
-// Main driver function
-fn run(filename: String, config: Config) -> io::Result<()> {
 	// Create a new terminal
-	let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+	let terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
-	// Struct to track the entire editing space
-	let mut editor_space = EditorSpace::new(filename, config);
-
-	// Loop while editing
-	loop {
-		// Draw the frame
-		terminal.draw(|frame| {
-			ui(frame, &mut editor_space);
-			frame.set_cursor(
-				(editor_space.cursor_position[0] + editor_space.width.0 + 1) as u16,
-				(editor_space.cursor_position[1] + editor_space.height.0 + 1) as u16,
-			);
-		})?;
-		// Get input and add to the string
-		editor_space.handle_input();
-		// Check if break loop
-		if editor_space.break_loop {
-			break;
-		}
-	}
-
-	Ok(())
+	// Return the config and terminal
+	Ok((config, terminal))
 }
 
 // Build the layout for displaying the widgets
@@ -96,55 +60,46 @@ fn build_layout(frame: &mut Frame) -> Rc<[Rect]> {
 
 // Define the frame ui
 fn ui(frame: &mut Frame, editor: &mut EditorSpace) {
+	// Create the layout for the line numbers and editor widgets
 	let layout = build_layout(frame);
+	// Render the editor and line numbers ui
+	editor.render_ui(frame, layout);
+}
 
-	// Set the starting position for the cursor of the editor space if it hasn't been set
-	if !editor.start_cursor_set {
-		let _ = editor.init_editor(
-			(layout[1].x as usize, layout[1].y as usize),
-			layout[1].width as usize,
-			layout[1].height as usize,
-		);
+// Reset the terminal before exiting the app
+fn end() -> io::Result<()> {
+	// Turn off raw mode for stdout (enable canonical mode)
+	disable_raw_mode()?;
+	// Exit the alternate screen
+	execute!(stdout(), LeaveAlternateScreen,)?;
+
+	Ok(())
+}
+
+// Main driver function
+pub fn run(filename: String) -> io::Result<()> {
+	// Initialize the config and terminal
+	let (config, mut terminal) = init()?;
+	// Struct to track the entire editing space
+	let mut editor_space = EditorSpace::new(filename, config);
+
+	// Run the app
+	loop {
+		// Draw the frame in the terminal
+		terminal.draw(|frame| {
+			// Draw the ui
+			ui(frame, &mut editor_space);
+		})?;
+		// Get input within the editor space
+		editor_space.handle_input();
+		// Check if user wants to quit the app
+		if editor_space.break_loop {
+			break;
+		}
 	}
-	// Main editor space
-	if !editor.blocks.as_ref().unwrap().blocks_list.is_empty() {
-		// Clone the config for the editor
-		let config = editor.config.clone();
-		frame.render_widget(
-			editor.get_paragraph().block(
-				Block::new()
-					.fg(config.theme.app_fg)
-					.bg(config.theme.app_bg)
-					.borders(Borders::ALL),
-			),
-			layout[1],
-		);
-		// Render line numbers
-		frame.render_widget(
-			editor.get_line_numbers_paragraph().block(
-				Block::new()
-					.fg(config.theme.app_fg)
-					.bg(config.theme.app_bg)
-					.borders(Borders::all()),
-			),
-			layout[0],
-		);
-	} else {
-		// If the file is empty, make an empty block
-		frame.render_widget(
-			Block::new()
-				.fg(editor.config.theme.app_fg)
-				.bg(editor.config.theme.app_bg)
-				.borders(Borders::ALL),
-			layout[1],
-		);
-		// If the file is empty, make an empty block
-		frame.render_widget(
-			Block::new()
-				.fg(editor.config.theme.app_fg)
-				.bg(editor.config.theme.app_bg)
-				.borders(Borders::ALL),
-			layout[0],
-		);
-	}
+
+	// Reset variables when leaving the app
+	end()?;
+
+	Ok(())
 }

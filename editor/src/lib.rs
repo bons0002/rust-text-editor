@@ -4,14 +4,17 @@ pub mod editor {
 		fs::{File, OpenOptions},
 		io::{self, BufRead, Error},
 		path::Path,
+		rc::Rc,
 		time::Duration,
 	};
 
 	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 	use ratatui::{
-		style::Style,
+		layout::Rect,
+		style::{Style, Stylize},
 		text::{Line, Span, Text},
-		widgets::Paragraph,
+		widgets::{Block, Borders, Paragraph},
+		Frame,
 	};
 	use rayon::iter::{
 		IndexedParallelIterator, IntoParallelIterator, ParallelBridge, ParallelIterator,
@@ -33,35 +36,33 @@ pub mod editor {
 
 	pub struct EditorSpace {
 		// Text block of current frame
-		pub blocks: Option<Blocks>,
+		blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
 		// The config of the editor
-		pub config: Config,
+		config: Config,
 		// Position of cursor on the screen (and in the text)
-		pub cursor_position: [usize; 2],
-		// Name of file opened in current editor frame
-		pub filename: String,
+		cursor_position: [usize; 2],
 		// The file that is open
 		file: File,
+		// Name of file opened in current editor frame
+		filename: String,
 		// The number of lines in the entire file
-		pub file_length: usize,
-		// Flag for if the file has been initialize
-		pub has_file: bool,
+		file_length: usize,
 		// Vertical bounds of the editor block
-		pub height: (usize, usize),
+		height: (usize, usize),
 		// Position used to access indices within graphemes vector
 		index_position: usize,
-		// Horizontal bounds of the editor block
-		pub width: (usize, usize),
 		// Sets the amount to scroll the text
 		scroll_offset: usize,
 		// Structure keeping track of the highlighted selection of text
 		selection: Selection,
 		// Track if the starting cursor position has already been set
-		pub start_cursor_set: bool,
+		is_initialized: bool,
 		// Position on the current line of text
 		text_position: usize,
+		// Horizontal bounds of the editor block
+		pub width: (usize, usize),
 	}
 
 	impl EditorSpace {
@@ -88,70 +89,17 @@ pub mod editor {
 				break_loop: false,
 				config,
 				cursor_position: [0, 0],
-				filename,
 				file,
+				filename,
 				file_length: 0,
-				has_file: false,
 				height: (0, 0),
 				index_position: 0,
-				width: (0, 0),
 				scroll_offset: 0,
 				selection: Selection::new(),
-				start_cursor_set: false,
+				is_initialized: false,
 				text_position: 0,
+				width: (0, 0),
 			}
-		}
-
-		// Set the starting Position of the editing space cursor
-		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
-			// Set the bounds of the block
-			self.width = (start.0, start.0 + width);
-			self.height = (start.1, start.1 + height);
-
-			// Set the cursor to the beginning of the block
-			self.cursor_position = [0, 0];
-
-			// Flag that cursor has been initialized
-			self.start_cursor_set = true;
-		}
-
-		// Initialize the file length variable
-		fn init_file_length(&mut self) -> Result<usize, Error> {
-			// Open the file
-			let file = File::open(&self.filename)?;
-			// Count the lines of the file (in parallel)
-			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
-			// The file has been initialized
-			self.has_file = true;
-			// Return the file length
-			Ok(self.file_length)
-		}
-
-		// Create the first block when the editor is opened
-		fn init_first_block(&mut self) -> Result<usize, Error> {
-			// Create a block at block number 0
-			let blocks = Blocks::new(self, 0)?;
-			// Wrap this Blocks in an Option
-			self.blocks = Some(blocks);
-			// Return 0 to indicate success
-			Ok(0)
-		}
-
-		// Initialize the editor
-		pub fn init_editor(
-			&mut self,
-			start: (usize, usize),
-			width: usize,
-			height: usize,
-		) -> Result<&str, Error> {
-			// Initialize the starting position of the screen cursor
-			self.init_starting_position(start, width, height);
-			// Initialize the length of the file
-			self.init_file_length()?;
-			// Create the first block of text in Blocks
-			self.init_first_block()?;
-			// Return the string "Success" (arbitrary)
-			Ok("Success")
 		}
 
 		// Calculate the start and end indices for highlighting characters in the paragraph
@@ -320,7 +268,7 @@ pub mod editor {
 		}
 
 		// Return the vector as a paragraph
-		pub fn get_paragraph(&mut self) -> Paragraph {
+		fn get_paragraph(&mut self) -> Paragraph {
 			// Check that there are enough blocks loaded
 			let blocks = self.check_blocks();
 			// Set the editor blocks to this new blocks
@@ -359,6 +307,138 @@ pub mod editor {
 				.collect();
 
 			Paragraph::new(Text::from(line_nums))
+		}
+
+		// Set the starting Position of the editing space cursor
+		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
+			// Set the bounds of the block
+			self.width = (start.0, start.0 + width);
+			self.height = (start.1, start.1 + height);
+
+			// Set the cursor to the beginning of the block
+			self.cursor_position = [0, 0];
+
+			// Flag that cursor has been initialized
+			self.is_initialized = true;
+		}
+
+		// Initialize the file length variable
+		fn init_file_length(&mut self) -> Result<usize, Error> {
+			// Open the file
+			let file = File::open(&self.filename)?;
+			// Count the lines of the file (in parallel)
+			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
+			// Return the file length
+			Ok(self.file_length)
+		}
+
+		// Create the first block when the editor is opened
+		fn init_first_block(&mut self) -> Result<usize, Error> {
+			// Create a block at block number 0
+			let blocks = Blocks::new(self, 0)?;
+			// Wrap this Blocks in an Option
+			self.blocks = Some(blocks);
+			// Return 0 to indicate success
+			Ok(0)
+		}
+
+		// Initialize the editor
+		fn init_editor(
+			&mut self,
+			start: (usize, usize),
+			width: usize,
+			height: usize,
+		) -> Result<&str, Error> {
+			// Initialize the starting position of the screen cursor
+			self.init_starting_position(start, width, height);
+			// Initialize the length of the file
+			self.init_file_length()?;
+			// Create the first block of text in Blocks
+			self.init_first_block()?;
+			// Return the string "Success" (arbitrary)
+			Ok("Success")
+		}
+
+		// Render a blank ui if there are no TextBlocks in the editor Blocks
+		fn render_empty_ui(&self, layout: Rc<[Rect]>, frame: &mut Frame) {
+			// If the file is empty, render an empty line numbers widget
+			frame.render_widget(
+				Block::new()
+					.fg(self.config.theme.app_fg)
+					.bg(self.config.theme.app_bg)
+					.borders(Borders::ALL),
+				layout[0],
+			);
+			// If the file is empty, render an empty EditorSpace widget
+			frame.render_widget(
+				Block::new()
+					.fg(self.config.theme.app_fg)
+					.bg(self.config.theme.app_bg)
+					.borders(Borders::ALL),
+				layout[1],
+			);
+		}
+
+		// Render the ui for the editor
+		fn render_full_ui(&mut self, layout: Rc<[Rect]>, frame: &mut Frame) {
+			// Clone the config for the editor
+			let config = self.config.clone();
+
+			// Render line numbers widget
+			frame.render_widget(
+				self.get_line_numbers_paragraph().block(
+					Block::new()
+						.fg(self.config.theme.app_fg)
+						.bg(self.config.theme.app_bg)
+						.borders(Borders::all()),
+				),
+				layout[0],
+			);
+
+			// Render the editor widget
+			frame.render_widget(
+				self.get_paragraph().block(
+					Block::new()
+						.fg(config.theme.app_fg)
+						.bg(config.theme.app_bg)
+						.borders(Borders::ALL),
+				),
+				layout[1],
+			);
+		}
+
+		// Render the widgets for the EditorSpace and its line numbers
+		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
+			// Only initialize this if it hasn't been already
+			if !self.is_initialized {
+				// Initialize the editor's cursor, file length, and first text block
+				let _ = self.init_editor(
+					(layout[1].x as usize, layout[1].y as usize),
+					layout[1].width as usize,
+					layout[1].height as usize,
+				);
+			}
+
+			// Set the cursor position on screen
+			frame.set_cursor(
+				(self.cursor_position[0] + self.width.0 + 1) as u16,
+				(self.cursor_position[1] + self.height.0 + 1) as u16,
+			);
+
+			// If the editor is empty, render an empty widget
+			if self.is_empty() {
+				// Render an empty
+				self.render_empty_ui(layout, frame);
+			// Otherwise, render the text blocks in a widget
+			} else {
+				// Render the editor widget
+				self.render_full_ui(layout, frame);
+			}
+		}
+
+		// Check if the editor is empty (no blocks loaded in)
+		pub fn is_empty(&self) -> bool {
+			self.blocks.as_ref().unwrap().blocks_list.is_empty()
 		}
 
 		// Delete a highlighted selection of text
