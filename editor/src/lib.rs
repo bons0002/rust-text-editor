@@ -393,7 +393,7 @@ pub mod editor {
 					Block::new()
 						.fg(self.config.theme.app_fg)
 						.bg(self.config.theme.app_bg)
-						.borders(Borders::all()),
+						.borders(Borders::ALL),
 				),
 				layout[0],
 			);
@@ -544,6 +544,20 @@ pub mod editor {
 								// End key functionality
 								key_functions::end_key(self, true);
 							}
+							// The Page Up key moves up one `height` of the editor widget
+							KeyCode::PageUp => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Move one page up
+								key_functions::page_up(self);
+							}
+							// The Page Down key moves down one `height` of the editor widget
+							KeyCode::PageDown => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Move one page down
+								key_functions::page_down(self);
+							}
 							_ => (),
 						}
 					}
@@ -578,6 +592,14 @@ pub mod editor {
 							// Home key highlights to beginning of line
 							KeyCode::Home => {
 								key_functions::highlight_selection::highlight_home(self)
+							}
+							// Highlight one page up
+							KeyCode::PageUp => {
+								key_functions::highlight_selection::highlight_page_up(self)
+							}
+							// Highlight one page down
+							KeyCode::PageDown => {
+								key_functions::highlight_selection::highlight_page_down(self)
 							}
 							_ => (),
 						}
