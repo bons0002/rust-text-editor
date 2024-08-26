@@ -92,7 +92,7 @@ pub fn highlight_right(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Move right
-		right_arrow(editor);
+		right_arrow(editor, true);
 		// Get the new location after the move
 		let update = [
 			editor.index_position,
@@ -128,7 +128,7 @@ pub fn highlight_left(editor: &mut EditorSpace) {
 	// Otherwise, add to the existing selection
 	} else {
 		// Move left
-		left_arrow(editor);
+		left_arrow(editor, true);
 		// Get the new location after the move
 		let update = [
 			editor.index_position,
@@ -269,7 +269,7 @@ pub fn highlight_end(editor: &mut EditorSpace) {
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move to end of line
-		end_key(editor);
+		end_key(editor, true);
 		// Get new location after moving
 		let update = [
 			editor.index_position,
@@ -332,7 +332,7 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 		// Move to beginning of line
-		home_key(editor);
+		home_key(editor, true);
 		// Get the new location after moving
 		let update = [
 			editor.index_position,

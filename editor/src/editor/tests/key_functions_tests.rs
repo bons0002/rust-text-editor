@@ -7,7 +7,7 @@
 use super::*;
 use key_functions::{
 	backspace, down_arrow, end_key, highlight_selection::highlight_down, home_key, left_arrow,
-	right_arrow, save_key_combo,
+	right_arrow, save_key_combo, up_arrow,
 };
 use std::fs::{self, read_to_string};
 
@@ -192,16 +192,16 @@ fn modified_small_file_save() {
 		down_arrow(&mut editor);
 	}
 	// Delete line
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 	// Move down three lines
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	// Move down three lines
 	for _i in 0..3 {
 		down_arrow(&mut editor);
 	}
 	// Delete line
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 
 	// Write the file to a different debug file
@@ -235,7 +235,7 @@ fn modified_large_file_save() {
 
 	// Move down one line
 	down_arrow(&mut editor);
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 
 	// Highlight down 312 lines
 	for i in 0..312 {
@@ -294,7 +294,7 @@ fn multiple_modifications_save() {
 
 	// Move down one line
 	down_arrow(&mut editor);
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 
 	// Highlight down 58 lines
 	for i in 0..58 {
@@ -311,7 +311,7 @@ fn multiple_modifications_save() {
 
 	// Move down one line
 	down_arrow(&mut editor);
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 
 	// Highlight down 101 lines
 	for i in 0..101 {
@@ -328,7 +328,7 @@ fn multiple_modifications_save() {
 
 	// Move down one line
 	down_arrow(&mut editor);
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 
 	// Highlight down 151 lines
 	for i in 0..151 {
@@ -375,7 +375,7 @@ fn move_right_through_entire_file() {
 
 	// Move right through the entire file
 	for _i in 0..26000 {
-		right_arrow(&mut editor);
+		right_arrow(&mut editor, true);
 	}
 
 	// Should be on last line
@@ -394,15 +394,231 @@ fn move_left_through_entire_file() {
 	for _i in 0..330 {
 		down_arrow(&mut editor);
 	}
-	end_key(&mut editor);
+	end_key(&mut editor, true);
 
 	// Move left through the entire file
 	for _i in 0..26000 {
-		left_arrow(&mut editor);
+		left_arrow(&mut editor, true);
 	}
 
 	// Should be on last line
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	assert_eq!(line_num, 0);
+}
+
+/*
+===========================================
+			STORED CURSOR TESTS
+===========================================
+*/
+
+// Test storing the cursor when moving right
+#[test]
+fn store_cursor_right() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Move down three lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	home_key(&mut editor, true);
+
+	// Move right 30 times
+	for _i in 0..30 {
+		right_arrow(&mut editor, true);
+	}
+	// Move down for lines
+	for i in 0..4 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 1),
+			1 => assert_eq!(editor.cursor_position[0], 0),
+			2 => assert_eq!(editor.cursor_position[0], 12),
+			3 => {
+				/* Check that the cursor ended in the correct location.
+				It is at 33 not 30 because the line starts with a four wide tab,
+				and the emoji is 2 wide. */
+				assert_eq!(editor.cursor_position[0], 33);
+			}
+			_ => (),
+		}
+	}
+}
+
+// Test storing the cursor when moving left
+#[test]
+fn store_cursor_left() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Move down three lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	home_key(&mut editor, true);
+
+	// Move right 30 times (and not storing cursor)
+	for _i in 0..30 {
+		right_arrow(&mut editor, false);
+	}
+	// Move left 8 times
+	for _in in 0..8 {
+		left_arrow(&mut editor, true);
+	}
+	// Move down 3 lines
+	for i in 0..4 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 1),
+			1 => assert_eq!(editor.cursor_position[0], 0),
+			2 => {
+				// Check that the cursor stops at the end of the line
+				assert_eq!(editor.cursor_position[0], 12);
+			}
+			3 => {
+				/* Check that the cursor ended in the correct location.
+				It is at 25 not 22 because the line starts with a four wide tab. */
+				assert_eq!(editor.cursor_position[0], 25);
+			}
+			_ => (),
+		}
+	}
+}
+
+// Test storing the cursor position for the home and end keys
+#[test]
+fn store_cursor_home_end() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Move to the end of the first line
+	end_key(&mut editor, true);
+	assert_eq!(editor.cursor_position[0], 17);
+
+	// Move down two lines
+	for i in 0..2 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 0),
+			1 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
+	// Move to the end of the line
+	end_key(&mut editor, true);
+	assert_eq!(editor.cursor_position[0], 18);
+	// Move to the beginning of the line
+	home_key(&mut editor, true);
+	assert_eq!(editor.cursor_position[0], 0);
+
+	// Move down four lines
+	for _i in 0..4 {
+		down_arrow(&mut editor);
+		assert_eq!(editor.cursor_position[0], 0);
+	}
+}
+
+/* The previous tests checked the cursor by moving down, this will check that
+it works up as well. */
+#[test]
+fn store_cursor_up() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the end of the first line
+	end_key(&mut editor, true);
+	assert_eq!(editor.cursor_position[0], 17);
+
+	// Move down five lines
+	for i in 0..5 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 0),
+			1 => assert_eq!(editor.cursor_position[0], 17),
+			2 => assert_eq!(editor.cursor_position[0], 17),
+			3 => assert_eq!(editor.cursor_position[0], 1),
+			4 => assert_eq!(editor.cursor_position[0], 0),
+			_ => (),
+		}
+	}
+	// Move up five lines
+	for i in 0..5 {
+		up_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 1),
+			1 => assert_eq!(editor.cursor_position[0], 17),
+			2 => assert_eq!(editor.cursor_position[0], 17),
+			3 => assert_eq!(editor.cursor_position[0], 0),
+			4 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
+}
+
+// Test storing the cursor when moving right at the end of a line
+#[test]
+fn store_cursor_end_of_line_right() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the end of the first line
+	end_key(&mut editor, true);
+
+	// Move right six times (starting at the end of the line)
+	for i in 0..6 {
+		right_arrow(&mut editor, true);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 0),
+			1 => assert_eq!(editor.cursor_position[0], 0),
+			2 => assert_eq!(editor.cursor_position[0], 1),
+			3 => assert_eq!(editor.cursor_position[0], 2),
+			4 => assert_eq!(editor.cursor_position[0], 3),
+			5 => assert_eq!(editor.cursor_position[0], 4),
+			_ => (),
+		}
+	}
+	// Move down four lines
+	for i in 0..4 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 4),
+			1 => assert_eq!(editor.cursor_position[0], 1),
+			2 => assert_eq!(editor.cursor_position[0], 0),
+			3 => assert_eq!(editor.cursor_position[0], 4),
+			_ => (),
+		}
+	}
+}
+
+// Test storing the cursor when moving left at the beginning of a line
+#[test]
+fn store_cursor_beginning_of_line_left() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move down two lines
+	for _i in 0..2 {
+		down_arrow(&mut editor);
+	}
+	// Make sure at beginning of line
+	home_key(&mut editor, true);
+
+	// Move left twice
+	for i in 0..2 {
+		left_arrow(&mut editor, true);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 0),
+			1 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
+	// Move down three times
+	for i in 0..3 {
+		down_arrow(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 0),
+			1 => assert_eq!(editor.cursor_position[0], 17),
+			2 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
 }

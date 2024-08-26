@@ -35,34 +35,36 @@ pub mod editor {
 	mod tests;
 
 	pub struct EditorSpace {
-		// Text block of current frame
+		// Object containing multiple text blocks
 		blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
 		// The config of the editor
 		config: Config,
-		// Position of cursor on the screen (and in the text)
+		// Position of cursor on the screen
 		cursor_position: [usize; 2],
 		// The file that is open
 		file: File,
-		// Name of file opened in current editor frame
+		// Name of file opened in current editor space
 		filename: String,
 		// The number of lines in the entire file
 		file_length: usize,
-		// Vertical bounds of the editor block
+		// Vertical bounds of the editor widget
 		height: (usize, usize),
-		// Position used to access indices within graphemes vector
+		// Position used to access indices within graphemes vectors
 		index_position: usize,
-		// Sets the amount to scroll the text
+		// Used to scroll the text on screen (and calculate line number)
 		scroll_offset: usize,
 		// Structure keeping track of the highlighted selection of text
 		selection: Selection,
-		// Track if the starting cursor position has already been set
+		// Used to store the horizontal position in the text
+		stored_position: usize,
+		// Track if the editor has been intialized
 		is_initialized: bool,
-		// Position on the current line of text
+		// Actual position on the current line of text
 		text_position: usize,
 		// Horizontal bounds of the editor block
-		pub width: (usize, usize),
+		width: (usize, usize),
 	}
 
 	impl EditorSpace {
@@ -96,6 +98,7 @@ pub mod editor {
 				index_position: 0,
 				scroll_offset: 0,
 				selection: Selection::new(),
+				stored_position: 0,
 				is_initialized: false,
 				text_position: 0,
 				width: (0, 0),
@@ -462,9 +465,9 @@ pub mod editor {
 					key_functions::down_arrow(self);
 				}
 				// Move the horizontal position to the end horizontal position
-				key_functions::home_key(self);
+				key_functions::home_key(self, true);
 				while self.text_position < end.0 {
-					key_functions::right_arrow(self);
+					key_functions::right_arrow(self, true);
 				}
 			}
 			// Backspace until at the beginning of the selection
@@ -504,14 +507,14 @@ pub mod editor {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Left arrow functionality
-								key_functions::left_arrow(self);
+								key_functions::left_arrow(self, true);
 							}
 							// Right arrow moves cursor right
 							KeyCode::Right => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Right arrow functionality
-								key_functions::right_arrow(self);
+								key_functions::right_arrow(self, true);
 							}
 							// Up arrow move cursor up one line
 							KeyCode::Up => {
@@ -532,14 +535,14 @@ pub mod editor {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Home key functionality
-								key_functions::home_key(self);
+								key_functions::home_key(self, true);
 							}
 							// End button move to end of line
 							KeyCode::End => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// End key functionality
-								key_functions::end_key(self);
+								key_functions::end_key(self, true);
 							}
 							_ => (),
 						}
