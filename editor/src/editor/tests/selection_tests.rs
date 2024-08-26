@@ -7,10 +7,10 @@
 use key_functions::{
 	backspace, delete_key, down_arrow, end_key,
 	highlight_selection::{
-		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_right,
-		highlight_up,
+		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_page_up,
+		highlight_right, highlight_up,
 	},
-	right_arrow,
+	page_down, right_arrow,
 };
 
 use super::*;
@@ -198,4 +198,85 @@ fn page_down_selection() {
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
 	// Check that the file is empty
 	assert_eq!(actual_content, vec![""]);
+}
+
+// Test undoing part of a selection with page down
+#[test]
+fn page_down_undo_selection() {
+	// Make and editor for the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	for _i in 0..2 {
+		down_arrow(&mut editor);
+	}
+	// Highlight page down
+	highlight_page_down(&mut editor);
+	highlight_end(&mut editor);
+	// Delete the selection
+	editor.delete_selection();
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	let expected_content: Vec<&str> = PAGE_DOWN_DESELECT.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test highlighting with the page up key
+#[test]
+#[ignore]
+fn page_up_selection() {
+	// Make and editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight the whole file
+	for i in 0..10 {
+		if i % 2 == 0 {
+			editor.get_paragraph();
+		}
+		page_down(&mut editor);
+	}
+	end_key(&mut editor, true);
+
+	// Highlight the entire file
+	for i in 0..10 {
+		if i % 2 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_up(&mut editor);
+	}
+	highlight_home(&mut editor);
+	// Delete the selection
+	editor.delete_selection();
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Check that the file is empty
+	assert_eq!(actual_content, vec![""]);
+}
+
+// Test undoing part of a selection with page up
+#[test]
+fn page_up_undo_selection() {
+	// Make and editor for the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	for _i in 0..2 {
+		down_arrow(&mut editor);
+	}
+	// Highlight page down
+	highlight_page_down(&mut editor);
+	highlight_end(&mut editor);
+
+	// Highlight up
+	highlight_page_up(&mut editor);
+	highlight_home(&mut editor);
+	// Delete selection
+	editor.delete_selection();
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	let expected_content: Vec<&str> = PAGE_UP_DESELECT.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
 }

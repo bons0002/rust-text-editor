@@ -433,6 +433,15 @@ const MULTI_LINE_SELECTION_DELETION: &str = "123456789🥹\n\
     abc4321\n\
     +_)=-\\🥹,./";
 
+const PAGE_DOWN_DESELECT: &str = "123456789🥹\n\
+    abcdefghi\n\
+    ";
+
+const PAGE_UP_DESELECT: &str = "!@#$%🥹^&*(\n\
+    jklmnopqr\n\
+    987654321\n\
+    +_)=-\\🥹,./";
+
 /*
 ===============================================
 			KEY FUNCTIONS CONSTANTS

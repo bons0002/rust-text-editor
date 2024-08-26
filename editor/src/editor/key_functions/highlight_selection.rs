@@ -2,7 +2,8 @@
 // Also defines the Selection struct for track the highlighted selection.
 
 use super::{
-	down_arrow, end_key, home_key, left_arrow, page_down, right_arrow, up_arrow, EditorSpace,
+	down_arrow, end_key, home_key, left_arrow, page_down, page_up, right_arrow, up_arrow,
+	EditorSpace,
 };
 
 // Module containing direction keys to track movement
@@ -358,6 +359,38 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 }
 
 // Highlight (or un-highlight) one page up
+pub fn highlight_page_up(editor: &mut EditorSpace) {
+	// If there is no selection, initialize it
+	if editor.selection.is_empty {
+		init_selection(editor, Movement::PageUp);
+	// If the current position is at the end of the selection
+	} else if [
+		editor.index_position,
+		editor.get_line_num(editor.cursor_position[1]),
+	] == editor.selection.end
+	{
+		// Set the end of the selection to the current start point
+		editor.selection.end = editor.selection.start;
+		// Move one page up
+		page_up(editor);
+		// Update the start point of the selection
+		editor.selection.start = [
+			editor.index_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
+	// If the current position is at the start of the selection
+	} else {
+		// Move one page up
+		page_up(editor);
+		// Update the start point of the selection
+		editor.selection.start = [
+			editor.index_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
+	}
+}
+
+// Highlight (or un-highlight) one page down
 pub fn highlight_page_down(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
