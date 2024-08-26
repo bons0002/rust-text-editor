@@ -593,6 +593,10 @@ pub mod editor {
 							KeyCode::Home => {
 								key_functions::highlight_selection::highlight_home(self)
 							}
+							// Highlight one page down
+							KeyCode::PageDown => {
+								key_functions::highlight_selection::highlight_page_down(self)
+							}
 							_ => (),
 						}
 					}

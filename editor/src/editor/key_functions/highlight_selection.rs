@@ -1,7 +1,9 @@
 // Defines the logic of the movement keys that highlight selections of text.
 // Also defines the Selection struct for track the highlighted selection.
 
-use super::{down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, EditorSpace};
+use super::{
+	down_arrow, end_key, home_key, left_arrow, page_down, right_arrow, up_arrow, EditorSpace,
+};
 
 // Module containing direction keys to track movement
 mod movement;
@@ -51,7 +53,11 @@ fn init_selection(editor: &mut EditorSpace, movement: Movement) {
 	editor.selection.original_scroll_offset = editor.scroll_offset;
 
 	// Initialize highlighting forward
-	if movement == Movement::Right || movement == Movement::Down || movement == Movement::End {
+	if movement == Movement::Right
+		|| movement == Movement::Down
+		|| movement == Movement::End
+		|| movement == Movement::PageDown
+	{
 		// Set the starting point of the selection
 		editor.selection.start = [
 			editor.index_position,
@@ -348,5 +354,37 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 			// Highlight to the beginning of the line
 			home_subroutine(editor, update, prior);
 		}
+	}
+}
+
+// Highlight (or un-highlight) one page up
+pub fn highlight_page_down(editor: &mut EditorSpace) {
+	// If there is no selection, initialize it
+	if editor.selection.is_empty {
+		init_selection(editor, Movement::PageDown);
+	// If the current position is at the beginning of the selection
+	} else if [
+		editor.index_position,
+		editor.get_line_num(editor.cursor_position[1]),
+	] == editor.selection.start
+	{
+		// Set the start to the end
+		editor.selection.start = editor.selection.end;
+		// Move one page down
+		page_down(editor);
+		// Update the endpoint of the selection
+		editor.selection.end = [
+			editor.index_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
+	// If current postition is at the end of the selection
+	} else {
+		// Move one page down
+		page_down(editor);
+		// Update the endpoint of the selection
+		editor.selection.end = [
+			editor.index_position,
+			editor.get_line_num(editor.cursor_position[1]),
+		];
 	}
 }

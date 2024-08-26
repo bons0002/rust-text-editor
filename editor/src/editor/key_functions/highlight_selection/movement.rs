@@ -1,3 +1,5 @@
+use crate::editor::key_functions::{page_down, page_up};
+
 use super::*;
 
 // Keep track of which movement key is used
@@ -8,6 +10,8 @@ pub enum Movement {
 	Right,
 	Home,
 	End,
+	PageUp,
+	PageDown,
 }
 
 impl Movement {
@@ -20,6 +24,8 @@ impl Movement {
 			Self::Right => right_arrow(editor, true),
 			Self::Home => home_key(editor, true),
 			Self::End => end_key(editor, true),
+			Self::PageUp => page_up(editor),
+			Self::PageDown => page_down(editor),
 		};
 	}
 }
@@ -36,6 +42,8 @@ impl PartialEq for Movement {
 				| (Self::Right, Self::Right)
 				| (Self::Home, Self::Home)
 				| (Self::End, Self::End)
+				| (Self::PageUp, Self::PageUp)
+				| (Self::PageDown, Self::PageDown)
 		)
 	}
 }

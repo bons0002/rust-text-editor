@@ -7,7 +7,8 @@
 use key_functions::{
 	backspace, delete_key, down_arrow, end_key,
 	highlight_selection::{
-		highlight_down, highlight_end, highlight_home, highlight_right, highlight_up,
+		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_right,
+		highlight_up,
 	},
 	right_arrow,
 };
@@ -173,4 +174,28 @@ fn repeated_selection_deletion() {
 	// Check that the content of this file is now empty
 	assert_eq!(actual_content, vec![""]);
 	assert_eq!(actual_length, 1); // 1 empty line at the beginning
+}
+
+// Test highlighting with the page down key
+#[test]
+#[ignore]
+fn page_down_selection() {
+	// Make and editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight the whole file
+	for i in 0..10 {
+		if i % 2 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	highlight_end(&mut editor);
+	// Delete the selection
+	editor.delete_selection();
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Check that the file is empty
+	assert_eq!(actual_content, vec![""]);
 }
