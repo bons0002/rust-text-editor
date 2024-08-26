@@ -393,7 +393,7 @@ pub mod editor {
 					Block::new()
 						.fg(self.config.theme.app_fg)
 						.bg(self.config.theme.app_bg)
-						.borders(Borders::all()),
+						.borders(Borders::ALL),
 				),
 				layout[0],
 			);
@@ -543,6 +543,13 @@ pub mod editor {
 								self.selection.is_empty = true;
 								// End key functionality
 								key_functions::end_key(self, true);
+							}
+							// The Page Up key moves up one `height` of the editor widget
+							KeyCode::PageUp => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Move one page up
+								key_functions::page_up(self);
 							}
 							_ => (),
 						}

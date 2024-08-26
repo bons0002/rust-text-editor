@@ -549,7 +549,7 @@ fn down_with_scroll(editor: &mut EditorSpace) {
 fn down_conditions(editor: &mut EditorSpace) {
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
-	// Ensure that the cursor doesn't move below the editor block
+	// Ensure that the cursor doesn't move below the editor block (sub 3 because 2 lines of borders)
 	if cursor_line_num < (editor.height.1 - editor.height.0) - 3 {
 		// Move down without scrolling
 		down_no_scroll(editor);
@@ -592,6 +592,15 @@ pub fn end_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	while check_cursor_end_line(editor, line_num) {
 		right_arrow(editor, will_store_cursor);
+	}
+}
+
+// Move up one page
+pub fn page_up(editor: &mut EditorSpace) {
+	/* Move up one page.
+	Subtract 2 from the upper bound of the height because there are 2 border lines. */
+	for _i in editor.height.0..(editor.height.1 - 2) {
+		up_arrow(editor);
 	}
 }
 
