@@ -36,6 +36,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
+	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
 }
 
@@ -61,6 +62,7 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	// Move cursor
 	editor.text_position += 1;
 	editor.cursor_position[0] += editor.config.tab_width;
+	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
 }
 
@@ -88,7 +90,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 
 	// Reset cursor to beginning of line
 	down_arrow(editor);
-	home_key(editor);
+	home_key(editor, true);
 }
 
 // Backspace at the beginning of line, moving to the above line
@@ -96,7 +98,7 @@ fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 	if editor.file_length > 1 {
 		// Move up one line
 		up_arrow(editor);
-		end_key(editor);
+		end_key(editor, true);
 		// Line number of current line in the text
 		let line_num = editor.get_line_num(editor.cursor_position[1]);
 
@@ -116,7 +118,7 @@ fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 // Backspace after the beginning of the line deletes a char normally
 fn backspace_normally(editor: &mut EditorSpace) {
 	// Move left
-	left_arrow(editor);
+	left_arrow(editor, true);
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
@@ -198,7 +200,7 @@ pub fn delete_key(editor: &mut EditorSpace) {
 }
 
 // Logic for moving left for a non-tab char
-fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
+fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_store_cursor: bool) {
 	// Create a cursor to navigate the grapheme cluster
 	let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
 	// Get the previous location in the text
@@ -228,6 +230,10 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 	let char_width = UnicodeWidthStr::width(character);
 	// Move the screen cursor
 	editor.cursor_position[0] -= char_width;
+	// Store the cursor position if the flag is set
+	if will_store_cursor {
+		editor.stored_position = editor.cursor_position[0];
+	}
 
 	// Get the difference in the positions
 	let diff = editor.text_position - loc;
@@ -236,7 +242,7 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 }
 
 // Logic for moving left if not at the beginning of the line
-fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize) {
+fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// The line of text
 	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
 		Ok(line) => line,
@@ -244,11 +250,15 @@ fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize) {
 	};
 	// If the previous char isn't a tab, move normally
 	if line.graphemes(true).nth(editor.index_position - 1) != Some("\t") {
-		left_not_tab(editor, line_num, &line);
+		left_not_tab(editor, line_num, &line, will_store_cursor);
 	// Otherwise, move by the number of tab spaces
 	} else {
 		editor.text_position -= 1;
 		editor.cursor_position[0] -= editor.config.tab_width;
+		// Store the cursor position if the flag is set
+		if will_store_cursor {
+			editor.stored_position = editor.cursor_position[0];
+		}
 	}
 	// Update the index position
 	editor.index_position -= 1;
@@ -264,21 +274,21 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 }
 
 // Left arrow key functionality
-pub fn left_arrow(editor: &mut EditorSpace) {
+pub fn left_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// If the cursor doesn't move before the beginning of the line
 	if check_cursor_begin_line(editor) {
 		// Move left if not at the beginning of the line (move normally)
-		left_not_beginning_of_line(editor, line_num);
+		left_not_beginning_of_line(editor, line_num, will_store_cursor);
 	} else {
 		// Move to above line
 		if line_num > 0 {
 			up_arrow(editor);
-			end_key(editor);
+			end_key(editor, will_store_cursor);
 		} else {
-			home_key(editor);
+			home_key(editor, will_store_cursor);
 		}
 	}
 }
@@ -300,7 +310,7 @@ fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 }
 
 // Logic for moving right in the text for a non-tab char
-fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
+fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_store_cursor: bool) {
 	// Create a cursor to navigate the grapheme cluster
 	let mut cursor = GraphemeCursor::new(editor.text_position, line.len(), true);
 	// Get the next location in the text
@@ -330,6 +340,10 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 	let char_width = UnicodeWidthStr::width(character);
 	// Move the screen cursor
 	editor.cursor_position[0] += char_width;
+	// Set the stored cursor position if the flag is set
+	if will_store_cursor {
+		editor.stored_position = editor.cursor_position[0];
+	}
 
 	// Get the difference in the positions
 	let diff = loc - editor.text_position;
@@ -338,7 +352,7 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str) {
 }
 
 // Logic for moving right in the text before reaching the end of the line
-fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize) {
+fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// The line of text
 	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
 		Ok(line) => line,
@@ -347,11 +361,15 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize) {
 	// If not a tab character, move normally
 	if line.graphemes(true).nth(editor.index_position) != Some("\t") {
 		// Move right for non-tab chars
-		right_not_tab(editor, line_num, &line);
+		right_not_tab(editor, line_num, &line, will_store_cursor);
 	// Otherwise, move the number of tab spaces
 	} else {
-		editor.text_position += 1;
+		editor.text_position += 1; // tabs are width 1
 		editor.cursor_position[0] += editor.config.tab_width;
+		// Store the cursor if the flag is set
+		if will_store_cursor {
+			editor.stored_position = editor.cursor_position[0];
+		}
 	}
 	// Update the index position
 	editor.index_position += 1;
@@ -379,32 +397,32 @@ fn get_correct_file_length(editor: &mut EditorSpace) -> usize {
 }
 
 // Logic for moving right in the text when at the end of the line (move to next line)
-fn right_end_of_line(editor: &mut EditorSpace, line_num: usize) {
+fn right_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// Last line that the cursor can move to
 	let file_length = get_correct_file_length(editor);
 
 	// Move to next line
 	if line_num < file_length {
 		down_arrow(editor);
-		home_key(editor);
+		home_key(editor, will_store_cursor);
 	} else {
-		end_key(editor);
+		end_key(editor, will_store_cursor);
 	}
 }
 
 // Right arrow key functionality
-pub fn right_arrow(editor: &mut EditorSpace) {
+pub fn right_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// If the cursor doesn't go beyond the end of the line
 	if check_cursor_end_line(editor, line_num) {
 		// Move right normally
-		right_not_end_of_line(editor, line_num);
+		right_not_end_of_line(editor, line_num, will_store_cursor);
 	// If the cursor goes beyond the end of the line
 	} else {
 		// Move right at the end of the line (move to next line)
-		right_end_of_line(editor, line_num);
+		right_end_of_line(editor, line_num, will_store_cursor);
 	}
 }
 
@@ -415,13 +433,13 @@ fn up_no_scroll(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
-	let position = editor.cursor_position[0];
+	let position = editor.stored_position;
 	// Move cursor to beginning of line
-	home_key(editor);
+	home_key(editor, false);
 	// Loop until in correct position
 	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 		// Move right
-		right_arrow(editor);
+		right_arrow(editor, false);
 	}
 }
 
@@ -432,13 +450,13 @@ fn up_with_scroll(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
-	let position = editor.cursor_position[0];
+	let position = editor.stored_position;
 	// Move cursor to beginning of line
-	home_key(editor);
+	home_key(editor, false);
 	// Loop until in correct position
 	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 		// Move right
-		right_arrow(editor);
+		right_arrow(editor, false);
 	}
 }
 
@@ -482,13 +500,13 @@ fn down_no_scroll(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Save current position
-	let position = editor.cursor_position[0];
+	let position = editor.stored_position;
 	// Move cursor to beginning of line
-	home_key(editor);
+	home_key(editor, false);
 	// Loop until in correct position
 	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 		// Move right
-		right_arrow(editor);
+		right_arrow(editor, false);
 	}
 }
 
@@ -517,13 +535,13 @@ fn down_with_scroll(editor: &mut EditorSpace) {
 		down_load_blocks(editor);
 	}
 	// Save current position
-	let position = editor.cursor_position[0];
+	let position = editor.stored_position;
 	// Move cursor to beginning of line
-	home_key(editor);
+	home_key(editor, false);
 	// Loop until in correct position
 	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
 		// Move right
-		right_arrow(editor);
+		right_arrow(editor, false);
 	}
 }
 
@@ -557,19 +575,23 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 }
 
 // Home key functionality
-pub fn home_key(editor: &mut EditorSpace) {
+pub fn home_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 	// Move to beginning of line
 	editor.text_position = 0;
 	editor.cursor_position[0] = 0;
 	editor.index_position = 0;
+	// Set the stored cursor to the beginning of the line if the flag is set
+	if will_store_cursor {
+		editor.stored_position = 0;
+	}
 }
 
 // End key functionality
-pub fn end_key(editor: &mut EditorSpace) {
+pub fn end_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	while check_cursor_end_line(editor, line_num) {
-		right_arrow(editor);
+		right_arrow(editor, will_store_cursor);
 	}
 }
 

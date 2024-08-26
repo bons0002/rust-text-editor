@@ -16,10 +16,10 @@ impl Movement {
 		match self {
 			Self::Up => up_arrow(editor),
 			Self::Down => down_arrow(editor),
-			Self::Left => left_arrow(editor),
-			Self::Right => right_arrow(editor),
-			Self::Home => home_key(editor),
-			Self::End => end_key(editor),
+			Self::Left => left_arrow(editor, true),
+			Self::Right => right_arrow(editor, true),
+			Self::Home => home_key(editor, true),
+			Self::End => end_key(editor, true),
 		};
 	}
 }

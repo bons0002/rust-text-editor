@@ -51,7 +51,7 @@ fn mutli_line_selection_deletion() {
 	down_arrow(&mut editor);
 	// Move right three chars
 	for _i in 0..3 {
-		right_arrow(&mut editor);
+		right_arrow(&mut editor, true);
 	}
 	// Highlight down three lines
 	for _i in 0..3 {
@@ -117,7 +117,7 @@ fn multi_block_selection_deletion_back_to_front() {
 		}
 		down_arrow(&mut editor);
 	}
-	end_key(&mut editor);
+	end_key(&mut editor, true);
 
 	// Highlight the entire file
 	for i in 0..330 {

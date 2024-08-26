@@ -178,9 +178,9 @@ fn modified_blocks_length() {
 	}
 
 	// Deletion sequence
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 
 	// Get the length after the deletion sequence
@@ -222,7 +222,7 @@ fn end_of_file_deletion() {
 		}
 		down_arrow(&mut editor);
 	}
-	end_key(&mut editor);
+	end_key(&mut editor, true);
 
 	// Delete all text in the file
 	for i in 0..26000 {
@@ -278,7 +278,7 @@ fn disjointed_deletion() {
 		down_arrow(&mut editor);
 	}
 	// Delete line
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 
 	// Move to end of file
@@ -290,7 +290,7 @@ fn disjointed_deletion() {
 		down_arrow(&mut editor);
 	}
 	// Delete line
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 
 	// Move up 100 lines
@@ -302,7 +302,7 @@ fn disjointed_deletion() {
 		up_arrow(&mut editor);
 	}
 	// Delete line
-	home_key(&mut editor);
+	home_key(&mut editor, true);
 	backspace(&mut editor);
 
 	// Verify that three lines have been deleted (and no panic occurred)
