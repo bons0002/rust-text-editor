@@ -7,7 +7,7 @@
 use super::*;
 use key_functions::{
 	backspace, down_arrow, end_key, highlight_selection::highlight_down, home_key, left_arrow,
-	page_up, right_arrow, save_key_combo, up_arrow,
+	page_down, page_up, right_arrow, save_key_combo, up_arrow,
 };
 use std::fs::{self, read_to_string};
 
@@ -640,12 +640,35 @@ fn page_up_test() {
 		down_arrow(&mut editor);
 	}
 	// Page up twice
-	for i in 0..2 {
+	for i in 0..3 {
 		page_up(&mut editor);
 		match i {
 			// (Height of editor is only 48 here)
 			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 52),
 			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 4),
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 0),
+			_ => (),
+		}
+	}
+}
+
+// Test the page down key
+#[test]
+fn page_down_test() {
+	// Make and editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+	// Page down twice
+	for i in 0..8 {
+		page_down(&mut editor);
+		match i {
+			// (Height of editor is only 48 here)
+			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 48),
+			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 96),
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 144),
+			3 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 192),
+			4 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 240),
+			5 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 288),
+			6 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 319),
 			_ => (),
 		}
 	}

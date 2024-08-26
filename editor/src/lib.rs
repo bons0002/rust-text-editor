@@ -551,6 +551,13 @@ pub mod editor {
 								// Move one page up
 								key_functions::page_up(self);
 							}
+							// The Page Down key moves down one `height` of the editor widget
+							KeyCode::PageDown => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Move one page down
+								key_functions::page_down(self);
+							}
 							_ => (),
 						}
 					}

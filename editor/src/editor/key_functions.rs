@@ -604,6 +604,15 @@ pub fn page_up(editor: &mut EditorSpace) {
 	}
 }
 
+// Move down one page
+pub fn page_down(editor: &mut EditorSpace) {
+	/* Move down one page.
+	Subtract 2 from the upper bound of the height because there are 2 border lines. */
+	for _i in editor.height.0..(editor.height.1 - 2) {
+		down_arrow(editor);
+	}
+}
+
 fn load_blocks(editor: &mut EditorSpace) -> Blocks {
 	// Clone the editor blocks
 	let mut blocks = editor.blocks.as_ref().unwrap().clone();
