@@ -5,10 +5,7 @@
 */
 
 use super::*;
-use key_functions::{
-	backspace, down_arrow, end_key, highlight_selection::highlight_down, home_key, left_arrow,
-	page_down, page_up, right_arrow, save_key_combo, up_arrow,
-};
+use key_functions::{highlight_selection::*, *};
 use std::fs::{self, read_to_string};
 
 /*
@@ -672,4 +669,44 @@ fn page_down_test() {
 			_ => (),
 		}
 	}
+}
+
+// Test inserting a new line at the end of the file
+#[test]
+fn end_of_file_new_line_insert() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the end of the file
+	page_down(&mut editor);
+	// Check that the cursor is on the last line
+	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12);
+
+	// Insert a new line
+	enter_key(&mut editor);
+	// Ensure the cursor is moved down
+	down_arrow(&mut editor);
+	// Check that the cursor moved to this new last line
+	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 13);
+}
+
+// Test deleting the last empty line of the file, then pressing enter
+#[test]
+fn end_of_file_delete_and_enter() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the end of the file
+	page_down(&mut editor);
+	// Delete the last line
+	backspace(&mut editor);
+	// Check that the cursor is on the last line
+	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 11);
+
+	// Move left
+	left_arrow(&mut editor, true);
+	// Add a new line
+	enter_key(&mut editor);
+	// Move down to make sure on the last line
+	down_arrow(&mut editor);
+	// Check that the cursor is on the new last line
+	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12);
 }
