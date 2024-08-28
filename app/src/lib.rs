@@ -5,6 +5,7 @@ use std::{
 
 use crossterm::{
 	cursor::EnableBlinking,
+	event::{KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
 	execute,
 	terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -30,6 +31,7 @@ fn init() -> Result<(Config, Terminal<CrosstermBackend<io::Stdout>>), Error> {
 		stdout(),
 		EnterAlternateScreen,
 		EnableBlinking,
+		PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES),
 		config.cursor_style,
 	)?;
 
@@ -71,7 +73,7 @@ fn end() -> io::Result<()> {
 	// Turn off raw mode for stdout (enable canonical mode)
 	disable_raw_mode()?;
 	// Exit the alternate screen
-	execute!(stdout(), LeaveAlternateScreen,)?;
+	execute!(stdout(), LeaveAlternateScreen, PopKeyboardEnhancementFlags)?;
 
 	Ok(())
 }

@@ -489,13 +489,12 @@ pub mod editor {
 			// Non-blocking read
 			if event::poll(Duration::from_millis(300)).unwrap() {
 				// Read input
-				match event::read().unwrap() {
-					// Return the character if only a key (without moodifier key) is pressed
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::NONE,
-						..
-					}) => {
+				if let Event::Key(KeyEvent {
+					code, modifiers, ..
+				}) = event::read().unwrap()
+				{
+					// If no modifier key is pressed
+					if modifiers.is_empty() {
 						// Return the key
 						match code {
 							// If normal character, insert that character
@@ -566,14 +565,8 @@ pub mod editor {
 							}
 							_ => (),
 						}
-					}
-
-					// Shift modifier key
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::SHIFT,
-						..
-					}) => {
+					// If the Shift modifier is pressed
+					} else if modifiers == KeyModifiers::SHIFT {
 						match code {
 							// Uppercase characters
 							KeyCode::Char(code) => {
@@ -597,14 +590,8 @@ pub mod editor {
 							KeyCode::PageDown => highlight_selection::highlight_page_down(self),
 							_ => (),
 						}
-					}
-
-					// Control modified keys
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::CONTROL,
-						..
-					}) => {
+					// If the Control modifier is pressed
+					} else if modifiers == KeyModifiers::CONTROL {
 						match code {
 							// Save the frame to the file
 							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
@@ -626,9 +613,16 @@ pub mod editor {
 							}
 							_ => (),
 						}
+					// If Control and Shift modifiers are both pressed
+					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
+						match code {
+							// Highlight the entire unicode word to the right
+							KeyCode::Right => key_functions::jump_right(self, true),
+							// Highlight the entire unicode word to the left
+							KeyCode::Left => key_functions::jump_left(self, true),
+							_ => (),
+						}
 					}
-
-					_ => (),
 				}
 			}
 		}
