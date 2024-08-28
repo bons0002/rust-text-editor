@@ -525,6 +525,21 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 	}
 }
 
+// Move the cursor up 10 lines
+pub fn jump_up(editor: &mut EditorSpace, will_highlight: bool) {
+	/* Move up half of one page.
+	Subtract 2 from the upper bound of the height because there are 2 border lines. */
+	for _i in 0..10 {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_up(editor);
+		// If set to not highlight
+		} else {
+			up_arrow(editor);
+		}
+	}
+}
+
 // Logic for moving down without scrolling
 fn down_no_scroll(editor: &mut EditorSpace) {
 	// Move the cursor to the next line

@@ -801,3 +801,24 @@ fn jump_left_tests() {
 		}
 	}
 }
+
+// Test the jump_up function
+#[test]
+fn jump_up_test() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the bottom of the file
+	page_down(&mut editor);
+
+	// Jump up 3 times
+	for i in 0..3 {
+		jump_up(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 2),
+			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 0),
+			// On first line
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 0),
+			_ => (),
+		}
+	}
+}

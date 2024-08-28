@@ -599,17 +599,24 @@ pub mod editor {
 							KeyCode::Char('q') => self.break_loop = true,
 							// Jump to the next word
 							KeyCode::Right => {
-								// Clear the selection
+								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump to the next word
 								key_functions::jump_right(self, false);
 							}
 							// Jump to the previous word
 							KeyCode::Left => {
-								// Clear the selection
+								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump to the previous word
 								key_functions::jump_left(self, false);
+							}
+							// Jump up 10 lines
+							KeyCode::Up => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump up 10 lines
+								key_functions::jump_up(self, false);
 							}
 							_ => (),
 						}
@@ -620,6 +627,8 @@ pub mod editor {
 							KeyCode::Right => key_functions::jump_right(self, true),
 							// Highlight the entire unicode word to the left
 							KeyCode::Left => key_functions::jump_left(self, true),
+							// Highlight upwards 10 lines
+							KeyCode::Up => key_functions::jump_up(self, true),
 							_ => (),
 						}
 					}
