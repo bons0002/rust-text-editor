@@ -280,3 +280,44 @@ fn page_up_undo_selection() {
 
 	assert_eq!(actual_content, expected_content);
 }
+
+// Testing deleting entire file when the last line is empty
+#[test]
+fn empty_last_line_deletion() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Highlight the whole file
+	highlight_page_down(&mut editor);
+	// Delete the selection
+	editor.delete_selection();
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Check that the file is empty
+	assert_eq!(actual_content, vec![""]);
+}
+
+// Test deleting upwards where the start of the selection is at the end of a line
+#[test]
+fn end_of_line_upward_deletion() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Move down 8 lines
+	for _i in 0..8 {
+		down_arrow(&mut editor);
+	}
+	// Move to the end of the line
+	end_key(&mut editor, true);
+
+	// Highlight up to the end of the above line
+	highlight_up(&mut editor);
+	highlight_end(&mut editor);
+
+	editor.delete_selection();
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// What the contents should be
+	let expected_content: Vec<&str> = END_OF_LINE_DELETION.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}

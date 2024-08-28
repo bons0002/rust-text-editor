@@ -456,22 +456,22 @@ pub mod editor {
 
 			// If the cursor is at the beginning of the selection
 			if (
-				self.text_position,
+				self.index_position,
 				self.get_line_num(self.cursor_position[1]),
 			) == start
 			{
 				// Move to the last line of the selection
-				while self.get_line_num(self.cursor_position[1]) != end.1 {
+				while self.get_line_num(self.cursor_position[1]) < end.1 {
 					key_functions::down_arrow(self);
 				}
 				// Move the horizontal position to the end horizontal position
 				key_functions::home_key(self, true);
-				while self.text_position < end.0 {
+				while self.index_position < end.0 {
 					key_functions::right_arrow(self, true);
 				}
 			}
 			// Backspace until at the beginning of the selection
-			while self.text_position != start.0
+			while self.index_position != start.0
 				|| self.get_line_num(self.cursor_position[1]) != start.1
 			{
 				key_functions::backspace(self);

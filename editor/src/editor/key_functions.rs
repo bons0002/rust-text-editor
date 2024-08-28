@@ -95,7 +95,7 @@ pub fn enter_key(editor: &mut EditorSpace) {
 
 // Backspace at the beginning of line, moving to the above line
 fn backspace_beginning_of_line(editor: &mut EditorSpace) {
-	if editor.file_length > 1 {
+	if editor.file_length > 0 {
 		// Move up one line
 		up_arrow(editor);
 		end_key(editor, true);

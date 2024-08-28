@@ -442,6 +442,19 @@ const PAGE_UP_DESELECT: &str = "!@#$%🥹^&*(\n\
     987654321\n\
     +_)=-\\🥹,./";
 
+const END_OF_LINE_DELETION: &str = "#include<stdio.h>\n\
+    \n\
+    void test_func() {\n\
+	\tprintf(\"Testing the Blocks construction 🥹\\n\");\n\
+    }\n\
+    \n\
+    int main() {\n\
+	\tprintf(\"Hopefully it works 🥹🇺🇸🇳🇴\\n\");\n\
+    \n\
+	\treturn 0;\n\
+    }\n\
+    ";
+
 /*
 ===============================================
 			KEY FUNCTIONS CONSTANTS
