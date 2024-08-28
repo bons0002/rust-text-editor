@@ -375,31 +375,10 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_c
 	editor.index_position += 1;
 }
 
-/* If the last line of the file is an empty line, using
-file_length = editor.file_length - 1 will cause the cursor to
-stop at the second to last line, so file_length = editor.file_length
-must be used. */
-fn get_correct_file_length(editor: &mut EditorSpace) -> usize {
-	// Last line that the cursor can move to
-	let mut file_length = editor.file_length - 1;
-	// Check if last line is empty
-	if editor.blocks.as_ref().unwrap().blocks_list
-		[editor.blocks.as_ref().unwrap().blocks_list.len() - 1]
-		.content
-		.last()
-		.unwrap()
-		.clone() == *""
-	{
-		file_length = editor.file_length;
-	}
-	// Return the file length
-	file_length
-}
-
 // Logic for moving right in the text when at the end of the line (move to next line)
 fn right_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// Last line that the cursor can move to
-	let file_length = get_correct_file_length(editor);
+	let file_length = editor.file_length - 1;
 
 	// Move to next line
 	if line_num < file_length {
@@ -565,7 +544,7 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Last line that the cursor can move to
-	let file_length = get_correct_file_length(editor);
+	let file_length = editor.file_length - 1;
 
 	// Ensure that the cursor doesn't move beyond the end of the file
 	if line_num < file_length {

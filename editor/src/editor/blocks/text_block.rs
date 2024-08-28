@@ -92,10 +92,7 @@ impl TextBlock {
 		content: &mut Vec<String>,
 	) -> TextBlock {
 		// If the last line is incomplete, remove it
-		if !ends_with_newline
-			//&& editor.file_length >= (editor.height.1 - editor.height.0)
-			&& block_num < max_blocks - 1
-		{
+		if !ends_with_newline && block_num < max_blocks - 1 {
 			content.pop();
 		}
 		// Push a blank new line if the last block ends in a newline char

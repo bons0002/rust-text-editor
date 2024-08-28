@@ -1,8 +1,8 @@
 pub mod editor {
 
 	use std::{
-		fs::{File, OpenOptions},
-		io::{self, BufRead, Error},
+		fs::{read_to_string, File, OpenOptions},
+		io::Error,
 		path::Path,
 		rc::Rc,
 		time::Duration,
@@ -17,7 +17,7 @@ pub mod editor {
 		Frame,
 	};
 	use rayon::iter::{
-		IndexedParallelIterator, IntoParallelIterator, ParallelBridge, ParallelIterator,
+		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 	};
 
 	use config::config::Config;
@@ -326,13 +326,19 @@ pub mod editor {
 		}
 
 		// Initialize the file length variable
-		fn init_file_length(&mut self) -> Result<usize, Error> {
-			// Open the file
-			let file = File::open(&self.filename)?;
-			// Count the lines of the file (in parallel)
-			self.file_length = io::BufReader::new(file).lines().par_bridge().count();
-			// Return the file length
-			Ok(self.file_length)
+		fn init_file_length(&mut self) {
+			// Get the lines of the file (with their newline chars)
+			let lines: Vec<String> = read_to_string(&self.filename)
+				.unwrap()
+				.split_inclusive('\n')
+				.map(String::from)
+				.collect();
+			// Count the number of lines in the file
+			self.file_length = lines.par_iter().count();
+			// If there is a blank final line, add one to the file length
+			if lines[lines.len() - 1].ends_with('\n') {
+				self.file_length += 1;
+			}
 		}
 
 		// Create the first block when the editor is opened
@@ -355,7 +361,7 @@ pub mod editor {
 			// Initialize the starting position of the screen cursor
 			self.init_starting_position(start, width, height);
 			// Initialize the length of the file
-			self.init_file_length()?;
+			self.init_file_length();
 			// Create the first block of text in Blocks
 			self.init_first_block()?;
 			// Return the string "Success" (arbitrary)
