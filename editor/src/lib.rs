@@ -19,6 +19,7 @@ pub mod editor {
 	use rayon::iter::{
 		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 	};
+	use unicode_segmentation::UnicodeSegmentation;
 
 	use config::config::Config;
 
@@ -27,8 +28,7 @@ pub mod editor {
 
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
-	use key_functions::highlight_selection::Selection;
-	use unicode_segmentation::UnicodeSegmentation;
+	use key_functions::highlight_selection::{self, Selection};
 
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
@@ -580,33 +580,21 @@ pub mod editor {
 								key_functions::char_key(self, code.to_ascii_uppercase())
 							}
 							// Right arrow highlight text to the right
-							KeyCode::Right => {
-								key_functions::highlight_selection::highlight_right(self)
-							}
+							KeyCode::Right => highlight_selection::highlight_right(self),
 							// Left arrow highlight text to the left
-							KeyCode::Left => {
-								key_functions::highlight_selection::highlight_left(self)
-							}
+							KeyCode::Left => highlight_selection::highlight_left(self),
 							// Up arrow highlights text upwards
-							KeyCode::Up => key_functions::highlight_selection::highlight_up(self),
+							KeyCode::Up => highlight_selection::highlight_up(self),
 							// Down arrow highlights text downwards
-							KeyCode::Down => {
-								key_functions::highlight_selection::highlight_down(self)
-							}
+							KeyCode::Down => highlight_selection::highlight_down(self),
 							// End key highlights to end of line
-							KeyCode::End => key_functions::highlight_selection::highlight_end(self),
+							KeyCode::End => highlight_selection::highlight_end(self),
 							// Home key highlights to beginning of line
-							KeyCode::Home => {
-								key_functions::highlight_selection::highlight_home(self)
-							}
+							KeyCode::Home => highlight_selection::highlight_home(self),
 							// Highlight one page up
-							KeyCode::PageUp => {
-								key_functions::highlight_selection::highlight_page_up(self)
-							}
+							KeyCode::PageUp => highlight_selection::highlight_page_up(self),
 							// Highlight one page down
-							KeyCode::PageDown => {
-								key_functions::highlight_selection::highlight_page_down(self)
-							}
+							KeyCode::PageDown => highlight_selection::highlight_page_down(self),
 							_ => (),
 						}
 					}
@@ -622,6 +610,13 @@ pub mod editor {
 							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
 							// Break the loop to end the program
 							KeyCode::Char('q') => self.break_loop = true,
+							// Jump to the next word
+							KeyCode::Right => {
+								// Clear the selection
+								self.selection.is_empty = true;
+								// Jump to the next word
+								key_functions::jump_right(self);
+							}
 							_ => (),
 						}
 					}

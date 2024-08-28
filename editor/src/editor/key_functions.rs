@@ -405,6 +405,26 @@ pub fn right_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	}
 }
 
+// Jump multiple places to the right
+pub fn jump_right(editor: &mut EditorSpace) {
+	// Line number of current line in the text
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Line number of current line in the text
+	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+
+	// Get the index of the next word
+	let index = line
+		.unicode_word_indices()
+		.find(|(idx, _)| *idx > editor.text_position)
+		.unwrap_or((line.len(), ""))
+		.0;
+
+	// Move to the beginning of the next word
+	while editor.text_position < index {
+		right_arrow(editor, true);
+	}
+}
+
 // Logic for moving up without scrolling
 fn up_no_scroll(editor: &mut EditorSpace) {
 	// Move the cursor to the prev line

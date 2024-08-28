@@ -710,3 +710,48 @@ fn end_of_file_delete_and_enter() {
 	// Check that the cursor is on the new last line
 	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12);
 }
+
+// Test the jump_right function
+#[test]
+fn jump_right_tests() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Jump right 4 times
+	for i in 0..4 {
+		jump_right(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 1),
+			1 => assert_eq!(editor.cursor_position[0], 9),
+			2 => assert_eq!(editor.cursor_position[0], 17),
+			// End of line
+			3 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
+
+	// Move down 3 lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	// Move to the beginning of the line
+	home_key(&mut editor, true);
+
+	// Jump right to the end of the line
+	for i in 0..8 {
+		jump_right(&mut editor);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 4),
+			1 => assert_eq!(editor.cursor_position[0], 12),
+			2 => assert_eq!(editor.cursor_position[0], 20),
+			3 => assert_eq!(editor.cursor_position[0], 24),
+			4 => assert_eq!(editor.cursor_position[0], 31),
+			// Emoji is 2 wide
+			5 => assert_eq!(editor.cursor_position[0], 47),
+			6 => assert_eq!(editor.cursor_position[0], 51),
+			// End of line
+			7 => assert_eq!(editor.cursor_position[0], 51),
+			_ => (),
+		}
+	}
+}
