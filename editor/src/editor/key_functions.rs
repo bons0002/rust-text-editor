@@ -293,6 +293,33 @@ pub fn left_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	}
 }
 
+// Jump one unicode word to the left
+pub fn jump_left(editor: &mut EditorSpace, will_highlight: bool) {
+	// Line number of current line in the text
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Line number of current line in the text
+	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+
+	// Get the index of the previous word
+	let index = line
+		.unicode_word_indices()
+		.filter(|(idx, _)| *idx < editor.text_position)
+		.last()
+		.unwrap_or((0, ""))
+		.0;
+
+	// Move to the beginning of the previous word
+	while editor.text_position > index {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_left(editor);
+		// If set to not highlight
+		} else {
+			left_arrow(editor, true);
+		}
+	}
+}
+
 // Check the end of line cursor condition
 fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 	// The line of text
@@ -405,8 +432,8 @@ pub fn right_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	}
 }
 
-// Jump multiple places to the right
-pub fn jump_right(editor: &mut EditorSpace) {
+// Jump one unicode word to the right
+pub fn jump_right(editor: &mut EditorSpace, will_highlight: bool) {
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Line number of current line in the text
@@ -421,7 +448,13 @@ pub fn jump_right(editor: &mut EditorSpace) {
 
 	// Move to the beginning of the next word
 	while editor.text_position < index {
-		right_arrow(editor, true);
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_right(editor);
+		// If set to not highlight
+		} else {
+			right_arrow(editor, true);
+		}
 	}
 }
 

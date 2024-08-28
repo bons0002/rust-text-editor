@@ -719,7 +719,7 @@ fn jump_right_tests() {
 
 	// Jump right 4 times
 	for i in 0..4 {
-		jump_right(&mut editor);
+		jump_right(&mut editor, false);
 		match i {
 			0 => assert_eq!(editor.cursor_position[0], 1),
 			1 => assert_eq!(editor.cursor_position[0], 9),
@@ -739,7 +739,7 @@ fn jump_right_tests() {
 
 	// Jump right to the end of the line
 	for i in 0..8 {
-		jump_right(&mut editor);
+		jump_right(&mut editor, false);
 		match i {
 			0 => assert_eq!(editor.cursor_position[0], 4),
 			1 => assert_eq!(editor.cursor_position[0], 12),
@@ -751,6 +751,52 @@ fn jump_right_tests() {
 			6 => assert_eq!(editor.cursor_position[0], 51),
 			// End of line
 			7 => assert_eq!(editor.cursor_position[0], 51),
+			_ => (),
+		}
+	}
+}
+
+// Test the jump_left function
+#[test]
+fn jump_left_tests() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	end_key(&mut editor, true);
+	// Jump left 4 times
+	for i in 0..4 {
+		jump_left(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 9),
+			1 => assert_eq!(editor.cursor_position[0], 1),
+			2 => assert_eq!(editor.cursor_position[0], 0),
+			// Start of line
+			3 => assert_eq!(editor.cursor_position[0], 0),
+			_ => (),
+		}
+	}
+
+	// Move down 3 lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	// Move to the beginning of the line
+	end_key(&mut editor, true);
+
+	// Jump left to the beginning of the line
+	for i in 0..8 {
+		jump_left(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 47),
+			// Emoji is 2 wide
+			1 => assert_eq!(editor.cursor_position[0], 31),
+			2 => assert_eq!(editor.cursor_position[0], 24),
+			3 => assert_eq!(editor.cursor_position[0], 20),
+			4 => assert_eq!(editor.cursor_position[0], 12),
+			5 => assert_eq!(editor.cursor_position[0], 4),
+			6 => assert_eq!(editor.cursor_position[0], 0),
+			// Beginning of line
+			7 => assert_eq!(editor.cursor_position[0], 0),
 			_ => (),
 		}
 	}

@@ -615,7 +615,14 @@ pub mod editor {
 								// Clear the selection
 								self.selection.is_empty = true;
 								// Jump to the next word
-								key_functions::jump_right(self);
+								key_functions::jump_right(self, false);
+							}
+							// Jump to the previous word
+							KeyCode::Left => {
+								// Clear the selection
+								self.selection.is_empty = true;
+								// Jump to the previous word
+								key_functions::jump_left(self, false);
 							}
 							_ => (),
 						}
