@@ -293,6 +293,33 @@ pub fn left_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	}
 }
 
+// Jump one unicode word to the left
+pub fn jump_left(editor: &mut EditorSpace, will_highlight: bool) {
+	// Line number of current line in the text
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Line number of current line in the text
+	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+
+	// Get the index of the previous word
+	let index = line
+		.unicode_word_indices()
+		.filter(|(idx, _)| *idx < editor.text_position)
+		.last()
+		.unwrap_or((0, ""))
+		.0;
+
+	// Move to the beginning of the previous word
+	while editor.text_position > index {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_left(editor);
+		// If set to not highlight
+		} else {
+			left_arrow(editor, true);
+		}
+	}
+}
+
 // Check the end of line cursor condition
 fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
 	// The line of text
@@ -405,6 +432,32 @@ pub fn right_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	}
 }
 
+// Jump one unicode word to the right
+pub fn jump_right(editor: &mut EditorSpace, will_highlight: bool) {
+	// Line number of current line in the text
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Line number of current line in the text
+	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+
+	// Get the index of the next word
+	let index = line
+		.unicode_word_indices()
+		.find(|(idx, _)| *idx > editor.text_position)
+		.unwrap_or((line.len(), ""))
+		.0;
+
+	// Move to the beginning of the next word
+	while editor.text_position < index {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_right(editor);
+		// If set to not highlight
+		} else {
+			right_arrow(editor, true);
+		}
+	}
+}
+
 // Logic for moving up without scrolling
 fn up_no_scroll(editor: &mut EditorSpace) {
 	// Move the cursor to the prev line
@@ -469,6 +522,20 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 	} else if line_num < editor.blocks.as_ref().unwrap().starting_line_num + 1 && line_num > 0 {
 		// Move up and load blocks
 		up_load_blocks(editor);
+	}
+}
+
+// Move the cursor up 10 lines
+pub fn jump_up(editor: &mut EditorSpace, will_highlight: bool) {
+	// Move up 10 lines
+	for _i in 0..10 {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_up(editor);
+		// If set to not highlight
+		} else {
+			up_arrow(editor);
+		}
 	}
 }
 
@@ -550,6 +617,20 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 	if line_num < file_length {
 		// Following proper control flow for moving down
 		down_conditions(editor);
+	}
+}
+
+// Move the cursor down 10 lines
+pub fn jump_down(editor: &mut EditorSpace, will_highlight: bool) {
+	// Move down 10 lines
+	for _i in 0..10 {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_down(editor);
+		// If set to not highlight
+		} else {
+			down_arrow(editor);
+		}
 	}
 }
 

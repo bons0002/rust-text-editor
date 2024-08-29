@@ -19,6 +19,7 @@ pub mod editor {
 	use rayon::iter::{
 		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
 	};
+	use unicode_segmentation::UnicodeSegmentation;
 
 	use config::config::Config;
 
@@ -27,8 +28,7 @@ pub mod editor {
 
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
-	use key_functions::highlight_selection::Selection;
-	use unicode_segmentation::UnicodeSegmentation;
+	use key_functions::highlight_selection::{self, Selection};
 
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
@@ -489,13 +489,12 @@ pub mod editor {
 			// Non-blocking read
 			if event::poll(Duration::from_millis(300)).unwrap() {
 				// Read input
-				match event::read().unwrap() {
-					// Return the character if only a key (without moodifier key) is pressed
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::NONE,
-						..
-					}) => {
+				if let Event::Key(KeyEvent {
+					code, modifiers, ..
+				}) = event::read().unwrap()
+				{
+					// If no modifier key is pressed
+					if modifiers.is_empty() {
 						// Return the key
 						match code {
 							// If normal character, insert that character
@@ -566,67 +565,82 @@ pub mod editor {
 							}
 							_ => (),
 						}
-					}
-
-					// Shift modifier key
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::SHIFT,
-						..
-					}) => {
+					// If the Shift modifier is pressed
+					} else if modifiers == KeyModifiers::SHIFT {
 						match code {
 							// Uppercase characters
 							KeyCode::Char(code) => {
 								key_functions::char_key(self, code.to_ascii_uppercase())
 							}
 							// Right arrow highlight text to the right
-							KeyCode::Right => {
-								key_functions::highlight_selection::highlight_right(self)
-							}
+							KeyCode::Right => highlight_selection::highlight_right(self),
 							// Left arrow highlight text to the left
-							KeyCode::Left => {
-								key_functions::highlight_selection::highlight_left(self)
-							}
+							KeyCode::Left => highlight_selection::highlight_left(self),
 							// Up arrow highlights text upwards
-							KeyCode::Up => key_functions::highlight_selection::highlight_up(self),
+							KeyCode::Up => highlight_selection::highlight_up(self),
 							// Down arrow highlights text downwards
-							KeyCode::Down => {
-								key_functions::highlight_selection::highlight_down(self)
-							}
+							KeyCode::Down => highlight_selection::highlight_down(self),
 							// End key highlights to end of line
-							KeyCode::End => key_functions::highlight_selection::highlight_end(self),
+							KeyCode::End => highlight_selection::highlight_end(self),
 							// Home key highlights to beginning of line
-							KeyCode::Home => {
-								key_functions::highlight_selection::highlight_home(self)
-							}
+							KeyCode::Home => highlight_selection::highlight_home(self),
 							// Highlight one page up
-							KeyCode::PageUp => {
-								key_functions::highlight_selection::highlight_page_up(self)
-							}
+							KeyCode::PageUp => highlight_selection::highlight_page_up(self),
 							// Highlight one page down
-							KeyCode::PageDown => {
-								key_functions::highlight_selection::highlight_page_down(self)
-							}
+							KeyCode::PageDown => highlight_selection::highlight_page_down(self),
 							_ => (),
 						}
-					}
-
-					// Control modified keys
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::CONTROL,
-						..
-					}) => {
+					// If the Control modifier is pressed
+					} else if modifiers == KeyModifiers::CONTROL {
 						match code {
 							// Save the frame to the file
 							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
 							// Break the loop to end the program
 							KeyCode::Char('q') => self.break_loop = true,
+							// Jump to the next word
+							KeyCode::Right => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump to the next word
+								key_functions::jump_right(self, false);
+							}
+							// Jump to the previous word
+							KeyCode::Left => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump to the previous word
+								key_functions::jump_left(self, false);
+							}
+							// Jump up 10 lines
+							KeyCode::Up => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump up 10 lines
+								key_functions::jump_up(self, false);
+							}
+							// Jump down 10 lines
+							KeyCode::Down => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump down 10 lines
+								key_functions::jump_down(self, false);
+							}
+							_ => (),
+						}
+					// If Control and Shift modifiers are both pressed
+					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
+						match code {
+							// Highlight the entire unicode word to the right
+							KeyCode::Right => key_functions::jump_right(self, true),
+							// Highlight the entire unicode word to the left
+							KeyCode::Left => key_functions::jump_left(self, true),
+							// Highlight upwards 10 lines
+							KeyCode::Up => key_functions::jump_up(self, true),
+							// Highlight down 10 lines
+							KeyCode::Down => key_functions::jump_down(self, true),
 							_ => (),
 						}
 					}
-
-					_ => (),
 				}
 			}
 		}
