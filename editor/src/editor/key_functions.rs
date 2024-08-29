@@ -527,8 +527,7 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 
 // Move the cursor up 10 lines
 pub fn jump_up(editor: &mut EditorSpace, will_highlight: bool) {
-	/* Move up half of one page.
-	Subtract 2 from the upper bound of the height because there are 2 border lines. */
+	// Move up 10 lines
 	for _i in 0..10 {
 		// If set to highlight
 		if will_highlight {
@@ -618,6 +617,20 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 	if line_num < file_length {
 		// Following proper control flow for moving down
 		down_conditions(editor);
+	}
+}
+
+// Move the cursor down 10 lines
+pub fn jump_down(editor: &mut EditorSpace, will_highlight: bool) {
+	// Move down 10 lines
+	for _i in 0..10 {
+		// If set to highlight
+		if will_highlight {
+			highlight_selection::highlight_down(editor);
+		// If set to not highlight
+		} else {
+			down_arrow(editor);
+		}
 	}
 }
 

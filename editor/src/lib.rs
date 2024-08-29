@@ -618,6 +618,13 @@ pub mod editor {
 								// Jump up 10 lines
 								key_functions::jump_up(self, false);
 							}
+							// Jump down 10 lines
+							KeyCode::Down => {
+								// Clear the highlighted selection of text
+								self.selection.is_empty = true;
+								// Jump down 10 lines
+								key_functions::jump_down(self, false);
+							}
 							_ => (),
 						}
 					// If Control and Shift modifiers are both pressed
@@ -629,6 +636,8 @@ pub mod editor {
 							KeyCode::Left => key_functions::jump_left(self, true),
 							// Highlight upwards 10 lines
 							KeyCode::Up => key_functions::jump_up(self, true),
+							// Highlight down 10 lines
+							KeyCode::Down => key_functions::jump_down(self, true),
 							_ => (),
 						}
 					}

@@ -822,3 +822,22 @@ fn jump_up_test() {
 		}
 	}
 }
+
+// Test the jump_down function
+#[test]
+fn jump_down_test() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Jump down 3 times
+	for i in 0..3 {
+		jump_down(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 10),
+			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12),
+			// On last line
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12),
+			_ => (),
+		}
+	}
+}

@@ -10,7 +10,7 @@ use key_functions::{
 		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_page_up,
 		highlight_right, highlight_up,
 	},
-	jump_left, jump_right, jump_up, page_down, right_arrow,
+	jump_down, jump_left, jump_right, jump_up, page_down, right_arrow,
 };
 
 use super::*;
@@ -367,6 +367,24 @@ fn jump_up_selection() {
 	// Highlight the entire file
 	for _i in 0..3 {
 		jump_up(&mut editor, true);
+	}
+	// Delete the entire file
+	backspace(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![""]);
+}
+
+// Test highlighting with the jump_down function
+#[test]
+fn jump_down_selection() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight the entire file
+	for _i in 0..3 {
+		jump_down(&mut editor, true);
 	}
 	// Delete the entire file
 	backspace(&mut editor);
