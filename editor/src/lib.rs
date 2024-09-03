@@ -8,6 +8,7 @@ pub mod editor {
 		time::Duration,
 	};
 
+	use cli_clipboard::{ClipboardContext, ClipboardProvider};
 	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 	use ratatui::{
 		layout::Rect,
@@ -39,6 +40,8 @@ pub mod editor {
 		blocks: Option<Blocks>,
 		// Flag for whether to break rendering loop in main app
 		pub break_loop: bool,
+		// The clipboard to copy from and paste to
+		clipboard: Option<ClipboardContext>,
 		// The config of the editor
 		config: Config,
 		// Position of cursor on the screen
@@ -85,10 +88,16 @@ pub mod editor {
 		pub fn new(filename: String, config: Config) -> Self {
 			// Open (and create if necessary) the given file
 			let file = Self::open_file(&filename);
+			// Create a clipboard
+			let clipboard = match ClipboardContext::new() {
+				Ok(clip) => Some(clip),
+				Err(_) => None,
+			};
 			// Construct an EditorSpace
 			EditorSpace {
 				blocks: None,
 				break_loop: false,
+				clipboard,
 				config,
 				cursor_position: [0, 0],
 				file,
@@ -597,6 +606,12 @@ pub mod editor {
 							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
 							// Break the loop to end the program
 							KeyCode::Char('q') => self.break_loop = true,
+							// Paste text into the editor (if there is a clipboard)
+							KeyCode::Char('v') => {
+								if self.clipboard.is_some() {
+									key_functions::paste_from_clipboard(self)
+								}
+							}
 							// Jump to the next word
 							KeyCode::Right => {
 								// Clear the highlighted selection of text

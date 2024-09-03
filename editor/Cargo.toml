@@ -4,9 +4,10 @@ version.workspace = true
 edition = "2021"
 
 [dependencies]
-rayon = {workspace = true}
-ratatui = {workspace = true}
+cli-clipboard = {workspace = true}
 crossterm = {workspace = true}
+ratatui = {workspace = true}
+rayon = {workspace = true}
 unicode-segmentation = {workspace = true}
 unicode-width = {workspace = true}
 config = { path = "../config" }

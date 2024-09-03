@@ -334,4 +334,36 @@ impl Blocks {
 			.map(|block| block.len)
 			.reduce(|| 0, |a, b| a + b)
 	}
+
+	// Update a line of text in the Blocks
+	pub fn update_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+		// Get the location of the line that needs to be updated
+		let (block_num, line_num) = self.get_location(line_num)?;
+		// Update the line
+		self.blocks_list[block_num].content[line_num] = text;
+
+		Ok(())
+	}
+
+	// Add a blank line to the Blocks
+	fn insert_blank_line(&mut self, line_num: usize) -> Result<(), Error> {
+		// Get the location of where this line needs to be inserted
+		let (block_num, line_num) = self.get_location(line_num)?;
+		// Insert the blank line
+		self.blocks_list[block_num]
+			.content
+			.insert(line_num, String::new());
+
+		Ok(())
+	}
+
+	// Insert a new line with a full line of text
+	pub fn insert_full_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+		// Add a blank line at the location
+		self.insert_blank_line(line_num)?;
+		// Update this blank line with the text
+		self.update_line(text, line_num)?;
+
+		Ok(())
+	}
 }

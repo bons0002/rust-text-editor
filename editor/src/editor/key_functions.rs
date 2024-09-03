@@ -3,6 +3,7 @@
 
 use super::blocks::Blocks;
 use super::EditorSpace;
+use cli_clipboard::ClipboardProvider;
 use rayon::iter::ParallelExtend;
 use std::{
 	fs::{File, OpenOptions},
@@ -796,4 +797,81 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 	};
 	// Update the editor's scroll offset and Blocks
 	post_save_editor_update(editor, &mut blocks);
+}
+
+// Get the text content of the clipboard (and the length of the text)
+fn get_clipboard_content(editor: &mut EditorSpace) -> (Vec<String>, usize) {
+	// Clear the clipboard (use the text in the OS clipboard instead)
+	//	editor.clipboard.as_mut().unwrap().clear().unwrap();
+	// Get the text stored in the clipboard
+	let text = editor.clipboard.as_mut().unwrap().get_contents().unwrap();
+
+	(
+		// The text from the clipboard as a text vector
+		text.split('\n').map(String::from).collect::<Vec<String>>(),
+		// The length of the text in the clipboard
+		text.graphemes(true).count(),
+	)
+}
+
+// Get the text on the line before and after the cursor
+fn split_line(editor: &mut EditorSpace, line_num: usize) -> (String, String) {
+	// The current line of text
+	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+	// The current line of text before the text position
+	let before_cursor = String::from(&line[..editor.text_position]);
+	// The current line of text after the text position
+	let after_cursor = String::from(&line[editor.text_position..]);
+
+	(before_cursor, after_cursor)
+}
+
+// Paste text from the clipboard
+pub fn paste_from_clipboard(editor: &mut EditorSpace) {
+	// The text content of the clipboard (and the length of the text)
+	let (text, text_length) = get_clipboard_content(editor);
+	// The line number to start pasting to
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Get the text on the current line before and after the cursor
+	let (before_cursor, after_cursor) = split_line(editor, line_num);
+	// The number of lines in the clipboard text vector
+	let num_lines = text.len();
+
+	// Loop through the lines of the clipboard content
+	for (idx, mut line) in text.into_iter().enumerate() {
+		// First line
+		if idx == 0 {
+			// Concat the current line before the cursor with the first line of the clipboard content
+			let mut new_line = before_cursor.clone() + &line;
+			// If only one line in the clipboard, append the after_cursor string
+			if num_lines == 1 {
+				new_line.push_str(&after_cursor);
+			}
+			// Update the line in the Blocks with this new line
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.update_line(new_line, line_num)
+				.unwrap();
+		// Rest of the lines
+		} else {
+			// Append after_cursor to the line if at the last line
+			if idx == num_lines - 1 {
+				line.push_str(&after_cursor);
+			}
+			// Add a new line of text to the Blocks
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.insert_full_line(line, line_num + idx)
+				.unwrap();
+		}
+	}
+
+	// Move to the end of the paste
+	for _i in 0..text_length {
+		right_arrow(editor, true);
+	}
 }
