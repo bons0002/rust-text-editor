@@ -9,7 +9,7 @@ pub mod editor {
 	};
 
 	use cli_clipboard::{ClipboardContext, ClipboardProvider};
-	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 	use ratatui::{
 		layout::Rect,
 		style::{Style, Stylize},
@@ -499,7 +499,10 @@ pub mod editor {
 			if event::poll(Duration::from_millis(300)).unwrap() {
 				// Read input
 				if let Event::Key(KeyEvent {
-					code, modifiers, ..
+					code,
+					modifiers,
+					kind: KeyEventKind::Press,
+					..
 				}) = event::read().unwrap()
 				{
 					// If no modifier key is pressed
