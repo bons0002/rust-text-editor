@@ -344,8 +344,10 @@ pub mod editor {
 				.collect();
 			// Count the number of lines in the file
 			self.file_length = lines.par_iter().count();
+
+			let default = String::from("\n");
 			// If there is a blank final line, add one to the file length
-			if lines[lines.len() - 1].ends_with('\n') {
+			if lines.last().unwrap_or(&default).ends_with('\n') {
 				self.file_length += 1;
 			}
 		}
