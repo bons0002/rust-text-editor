@@ -1,4 +1,5 @@
 use std::{
+	env::consts,
 	io::{self, stdout, Error},
 	rc::Rc,
 };
@@ -31,9 +32,15 @@ fn init() -> Result<(Config, Terminal<CrosstermBackend<io::Stdout>>), Error> {
 		stdout(),
 		EnterAlternateScreen,
 		EnableBlinking,
-		PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES),
 		config.cursor_style,
 	)?;
+	// Only enable keyboard enhancments if not on windows
+	if consts::OS != "windows" {
+		execute!(
+			stdout(),
+			PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
+		)?;
+	}
 
 	// Create a new terminal
 	let terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
@@ -73,7 +80,12 @@ fn end() -> io::Result<()> {
 	// Turn off raw mode for stdout (enable canonical mode)
 	disable_raw_mode()?;
 	// Exit the alternate screen
-	execute!(stdout(), LeaveAlternateScreen, PopKeyboardEnhancementFlags)?;
+	execute!(stdout(), LeaveAlternateScreen)?;
+
+	// Keyboard enhancements were only enabled on non-windows platforms
+	if consts::OS != "windows" {
+		execute!(stdout(), PopKeyboardEnhancementFlags)?;
+	}
 
 	Ok(())
 }
