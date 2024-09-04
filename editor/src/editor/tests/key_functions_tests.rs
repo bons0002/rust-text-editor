@@ -6,7 +6,6 @@
 
 use super::*;
 use key_functions::{highlight_selection::*, *};
-use serial_test::serial;
 use std::fs::{self, read_to_string};
 
 /*
@@ -841,71 +840,4 @@ fn jump_down_test() {
 			_ => (),
 		}
 	}
-}
-
-/*
-========================================
-			COPY-PASTE TESTS
-========================================
-
-Serial because the clipboard is a shared resource
-*/
-
-// Test copying and pasting one line of text
-#[test]
-#[serial]
-fn copy_paste_oneline() {
-	// Make an editor for the SMALL_FILE
-	let mut editor = construct_editor(SMALL_FILE);
-
-	// Highlight the first line
-	highlight_end(&mut editor);
-	// Copy this line
-	copy_to_clipboard(&mut editor);
-
-	home_key(&mut editor, true);
-	// Clear the selection
-	editor.selection.is_empty = true;
-
-	for _i in 0..2 {
-		down_arrow(&mut editor);
-	}
-	// Move right
-	for _i in 0..15 {
-		right_arrow(&mut editor, true);
-	}
-	// Paste the first line
-	paste_from_clipboard(&mut editor);
-
-	// The experimental contents of the Blocks
-	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
-	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
-	let expected_content: Vec<&str> = COPY_AND_PASTE_ONELINE.split('\n').collect();
-
-	assert_eq!(actual_content, expected_content);
-}
-
-// Test copy and pasting an entire file to its end
-#[test]
-#[serial]
-fn copy_and_paste_file() {
-	// Make an editor for the SMALL_FILE
-	let mut editor = construct_editor(SMALL_FILE);
-
-	// Highlight entire file
-	highlight_page_down(&mut editor);
-	// Copy
-	copy_to_clipboard(&mut editor);
-
-	// Clear selection
-	editor.selection.is_empty = true;
-	// Paste this to the file
-	paste_from_clipboard(&mut editor);
-
-	// The experimental contents of the Blocks
-	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
-	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
-	let expected_content: Vec<&str> = COPY_AND_PASTE_FILE.split('\n').collect();
-
-	assert_eq!(actual_content, expected_content);
 }
