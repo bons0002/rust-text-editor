@@ -4,7 +4,7 @@
 use super::blocks::Blocks;
 use super::EditorSpace;
 use cli_clipboard::ClipboardProvider;
-use rayon::iter::ParallelExtend;
+use rayon::iter::{IntoParallelIterator, ParallelExtend, ParallelIterator};
 use std::{
 	fs::{File, OpenOptions},
 	io::Write,
@@ -801,8 +801,6 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 
 // Get the text content of the clipboard (and the length of the text)
 fn get_clipboard_content(editor: &mut EditorSpace) -> (Vec<String>, usize) {
-	// Clear the clipboard (use the text in the OS clipboard instead)
-	//	editor.clipboard.as_mut().unwrap().clear().unwrap();
 	// Get the text stored in the clipboard
 	let text = editor.clipboard.as_mut().unwrap().get_contents().unwrap();
 
@@ -867,6 +865,8 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 				.unwrap()
 				.insert_full_line(line, line_num + idx)
 				.unwrap();
+			// Update the file length
+			editor.file_length += 1;
 		}
 	}
 
@@ -874,4 +874,52 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 	for _i in 0..text_length {
 		right_arrow(editor, true);
 	}
+}
+
+// Copy a selection of text to the clipboard
+pub fn copy_to_clipboard(editor: &mut EditorSpace) {
+	// Start of the highlighted selection
+	let start = (editor.selection.start[0], editor.selection.start[1]);
+	// End of the highlighted selection
+	let end = (editor.selection.end[0], editor.selection.end[1]);
+	// The line number of the first line in the selection
+	let starting_line_num = editor.get_line_num(start.1);
+	// The line number of the last line in the selection
+	let ending_line_num = editor.get_line_num(end.1);
+
+	// Create a copy of the text blocks
+	let blocks = editor.blocks.as_ref().unwrap().clone();
+
+	// Get the lines of text
+	let lines = (starting_line_num..ending_line_num + 1)
+		.into_par_iter()
+		// Get the lines as a vector
+		.map(|line_num| {
+			let line;
+			// If first line
+			if line_num == starting_line_num {
+				line = String::from(&blocks.get_line(line_num).unwrap()[start.0..])
+			// If last line
+			} else if line_num == ending_line_num {
+				line = String::from(&blocks.get_line(line_num).unwrap()[..end.0])
+			// If middle line
+			} else {
+				line = String::from(&blocks.get_line(line_num).unwrap())
+			}
+			// Add a newline on all but the last line
+			if line_num != ending_line_num {
+				line + "\n"
+			} else {
+				line
+			}
+		})
+		.collect::<String>();
+
+	// Write to the clipboard
+	editor
+		.clipboard
+		.as_mut()
+		.unwrap()
+		.set_contents(lines)
+		.unwrap();
 }

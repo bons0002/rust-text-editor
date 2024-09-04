@@ -14,7 +14,7 @@ pub mod editor {
 		layout::Rect,
 		style::{Style, Stylize},
 		text::{Line, Span, Text},
-		widgets::{Block, Borders, Paragraph},
+		widgets::{Block, BorderType, Borders, Paragraph},
 		Frame,
 	};
 	use rayon::iter::{
@@ -85,6 +85,7 @@ pub mod editor {
 			file
 		}
 
+		// Create a new EditorSpace
 		pub fn new(filename: String, config: Config) -> Self {
 			// Open (and create if necessary) the given file
 			let file = Self::open_file(&filename);
@@ -410,7 +411,8 @@ pub mod editor {
 					Block::new()
 						.fg(self.config.theme.app_fg)
 						.bg(self.config.theme.app_bg)
-						.borders(Borders::ALL),
+						.borders(Borders::LEFT | Borders::TOP | Borders::BOTTOM)
+						.border_type(BorderType::Thick),
 				),
 				layout[0],
 			);
@@ -421,7 +423,8 @@ pub mod editor {
 					Block::new()
 						.fg(config.theme.app_fg)
 						.bg(config.theme.app_bg)
-						.borders(Borders::ALL),
+						.borders(Borders::ALL)
+						.border_type(BorderType::Thick),
 				),
 				layout[1],
 			);
@@ -615,6 +618,12 @@ pub mod editor {
 							KeyCode::Char('v') => {
 								if self.clipboard.is_some() {
 									key_functions::paste_from_clipboard(self)
+								}
+							}
+							// Copy text from the editor and write it to the clipboard
+							KeyCode::Char('c') => {
+								if self.clipboard.is_some() {
+									key_functions::copy_to_clipboard(self)
 								}
 							}
 							// Jump to the next word
