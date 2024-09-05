@@ -4,7 +4,9 @@
 use super::blocks::Blocks;
 use super::EditorSpace;
 use cli_clipboard::ClipboardProvider;
-use rayon::iter::{IntoParallelIterator, ParallelExtend, ParallelIterator};
+use rayon::iter::{
+	IndexedParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator,
+};
 use std::{
 	fs::{File, OpenOptions},
 	io::Write,
@@ -826,6 +828,10 @@ fn split_line(editor: &mut EditorSpace, line_num: usize) -> (String, String) {
 
 // Paste text from the clipboard
 pub fn paste_from_clipboard(editor: &mut EditorSpace) {
+	// Delete a selection to paste over
+	if !editor.selection.is_empty {
+		editor.delete_selection();
+	}
 	// The text content of the clipboard (and the length of the text)
 	let (text, text_length) = get_clipboard_content(editor);
 	// The line number to start pasting to
@@ -876,44 +882,150 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 	}
 }
 
-// Copy a selection of text to the clipboard
+// Move the cursor to the end of the selection
+fn move_cursor_to_end(editor: &mut EditorSpace, start: (usize, usize), is_cursor_init_end: bool) {
+	// If at the end of the selection, move to the start
+	if is_cursor_init_end {
+		// Move to the first line of the selection
+		while editor.get_line_num(editor.cursor_position[1]) > start.1 {
+			up_arrow(editor);
+		}
+		// Move to the correct horizontal position
+		home_key(editor, true);
+		while editor.index_position < start.0 {
+			right_arrow(editor, true);
+		}
+	}
+}
+
+// Get the selection if there is one line
+fn get_single_line_selection(
+	editor: &mut EditorSpace,
+	start: (usize, usize),
+	end: (usize, usize),
+) -> Vec<String> {
+	let mut lines: Vec<String> = Vec::new();
+
+	// Store the beginning of the selection
+	let begin = editor.text_position;
+	// Move to the end of the selection
+	while editor.index_position < end.0 {
+		right_arrow(editor, true);
+	}
+	// Add the slice to the lines
+	lines.push(String::from(
+		&editor.blocks.as_ref().unwrap().get_line(start.1).unwrap()[begin..editor.text_position],
+	));
+
+	// Return the line
+	lines
+}
+
+// Get The lines of a multiline selection
+fn get_multiline_selection(
+	editor: &mut EditorSpace,
+	start: (usize, usize),
+	end: (usize, usize),
+) -> Vec<String> {
+	let mut lines: Vec<String> = Vec::new();
+
+	// Iterate throught the lines
+	for line_num in start.1..(end.1 + 1) {
+		// For the first line
+		if line_num == start.1 {
+			// Add the first line after the cursor to the vector
+			lines.push(String::from(
+				&editor.blocks.as_ref().unwrap().get_line(line_num).unwrap()
+					[editor.text_position..],
+			));
+			// Move down a line
+			down_arrow(editor);
+		// For the last line
+		} else if line_num == end.1 {
+			// Correct the horizontal position
+			home_key(editor, true);
+			while editor.index_position < end.0 {
+				right_arrow(editor, true);
+			}
+			// Push the line before the cursor
+			lines.push(String::from(
+				&editor.blocks.as_ref().unwrap().get_line(end.1).unwrap()[..editor.text_position],
+			));
+		// For the other lines
+		} else {
+			// Push the whole line
+			lines.push(String::from(
+				&editor.blocks.as_ref().unwrap().get_line(line_num).unwrap(),
+			));
+			// Move down a line
+			down_arrow(editor);
+		}
+	}
+
+	lines
+}
+
+// Get the lines of the highlighted selection as a vector
+fn get_lines_as_vec(
+	editor: &mut EditorSpace,
+	start: (usize, usize),
+	end: (usize, usize),
+) -> Vec<String> {
+	// If only one line
+	if start.1 == end.1 {
+		return get_single_line_selection(editor, start, end);
+	}
+	// If multiline
+	get_multiline_selection(editor, start, end)
+}
+
+// If the cursor started at the beginning of the selection, move it back to the beginning
+fn reset_cursor(editor: &mut EditorSpace, start: (usize, usize), is_cursor_init_end: bool) {
+	// If the cursor began at the start of the selection
+	if !is_cursor_init_end {
+		// Move to the first line of the selection
+		while editor.get_line_num(editor.cursor_position[1]) > start.1 {
+			up_arrow(editor);
+		}
+		// Move to the correct horizontal position
+		home_key(editor, true);
+		while editor.index_position < start.0 {
+			right_arrow(editor, true);
+		}
+	}
+}
+
+// Copy the contents of the highlighted selection to the clipboard
 pub fn copy_to_clipboard(editor: &mut EditorSpace) {
 	// Start of the highlighted selection
 	let start = (editor.selection.start[0], editor.selection.start[1]);
 	// End of the highlighted selection
 	let end = (editor.selection.end[0], editor.selection.end[1]);
-	// The line number of the first line in the selection
-	let starting_line_num = editor.get_line_num(start.1);
-	// The line number of the last line in the selection
-	let ending_line_num = editor.get_line_num(end.1);
+	// Flag for if the cursor began at the end of the selection
+	let is_cursor_init_end = (
+		editor.index_position,
+		editor.get_line_num(editor.cursor_position[1]),
+	) == end;
 
-	// Create a copy of the text blocks
-	let blocks = editor.blocks.as_ref().unwrap().clone();
+	// Move the cursor to the end of the selection
+	move_cursor_to_end(editor, start, is_cursor_init_end);
 
-	// Get the lines of text
-	let lines = (starting_line_num..ending_line_num + 1)
+	// Convert the vector of Strings to a single String
+	let lines = get_lines_as_vec(editor, start, end)
 		.into_par_iter()
-		// Get the lines as a vector
-		.map(|line_num| {
-			let line;
-			// If first line
-			if line_num == starting_line_num {
-				line = String::from(&blocks.get_line(line_num).unwrap()[start.0..])
-			// If last line
-			} else if line_num == ending_line_num {
-				line = String::from(&blocks.get_line(line_num).unwrap()[..end.0])
-			// If middle line
-			} else {
-				line = String::from(&blocks.get_line(line_num).unwrap())
-			}
+		.enumerate()
+		.map(|(line_num, line)| {
 			// Add a newline on all but the last line
-			if line_num != ending_line_num {
+			if line_num < end.1 {
 				line + "\n"
 			} else {
 				line
 			}
 		})
-		.collect::<String>();
+		.collect();
+
+	// Reset cursor (if need be)
+	reset_cursor(editor, start, is_cursor_init_end);
 
 	// Write to the clipboard
 	editor

@@ -510,3 +510,47 @@ const MULTIPLE_MODIFICATIONS_SAVE: &str = ">NM_000014.6 Homo sapiens alpha-2-mac
     TTGGCATGGACAAGCCGCTCACCCTTCCAGACTTCCTGGCCAAGTTTGACTACTACATGCCTGCTATCGCGGGCTGCCGG\n\
     GAGGCTATCAAAAGGATCGCCTATGAGTTTGTAGAGATGAAGGCCAAAGAGGGCGTGGTGTATGTGGAGGTGCGGTACAG\n\
     TCCGCACCTGCTGGCCA";
+
+/* Commented out because tests commented out
+
+const COPY_AND_PASTE_ONELINE: &str = "#include<stdio.h>\n\
+	\n\
+	void test_func(#include<stdio.h>) {\n\
+	\tprintf(\"Testing the Blocks construction 🥹\\n\");\n\
+	}\n\
+	\n\
+	int main() {\n\
+	\tprintf(\"Hopefully it works 🥹🇺🇸🇳🇴\\n\");\n\
+	\ttest_func();\n\
+	\n\
+	\treturn 0;\n\
+	}\n\
+	";
+
+const COPY_AND_PASTE_FILE: &str = "#include<stdio.h>\n\
+	\n\
+	void test_func() {\n\
+	\tprintf(\"Testing the Blocks construction 🥹\\n\");\n\
+	}\n\
+	\n\
+	int main() {\n\
+	\tprintf(\"Hopefully it works 🥹🇺🇸🇳🇴\\n\");\n\
+	\ttest_func();\n\
+	\n\
+	\treturn 0;\n\
+	}\n\
+	#include<stdio.h>\n\
+	\n\
+	void test_func() {\n\
+	\tprintf(\"Testing the Blocks construction 🥹\\n\");\n\
+	}\n\
+	\n\
+	int main() {\n\
+	\tprintf(\"Hopefully it works 🥹🇺🇸🇳🇴\\n\");\n\
+	\ttest_func();\n\
+	\n\
+	\treturn 0;\n\
+	}\n\
+	";
+
+*/

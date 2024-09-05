@@ -3,7 +3,7 @@ members = ["editor", "app", "config"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.15"
+version = "0.3.16"
 repository = "https://github.com/bons0002/rust-text-editor"
 license = "MIT"
 
@@ -12,5 +12,6 @@ cli-clipboard = "0.4.0"
 crossterm = "0.27"
 ratatui = "0.26"
 rayon = "1.10"
+serial_test = "3.1.1"
 unicode-segmentation = "1.11"
 unicode-width = "0.1.13"

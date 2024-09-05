@@ -6,6 +6,7 @@
 
 use super::*;
 use key_functions::{highlight_selection::*, *};
+//use serial_test::serial;
 use std::fs::{self, read_to_string};
 
 /*
@@ -841,3 +842,121 @@ fn jump_down_test() {
 		}
 	}
 }
+
+/*
+========================================
+			COPY-PASTE TESTS
+========================================
+Serial because the clipboard is a shared resource
+*/
+
+/* I put these tests back in (but commented out) because they are
+useful on my local machine: even if not on GitHub
+
+// Test copying and pasting one line of text
+#[test]
+#[serial]
+fn copy_paste_oneline() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight the first line
+	highlight_end(&mut editor);
+	// Copy this line
+	copy_to_clipboard(&mut editor);
+
+	home_key(&mut editor, true);
+	// Clear the selection
+	editor.selection.is_empty = true;
+
+	for _i in 0..2 {
+		down_arrow(&mut editor);
+	}
+	// Move right
+	for _i in 0..15 {
+		right_arrow(&mut editor, true);
+	}
+	// Paste the first line
+	paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = COPY_AND_PASTE_ONELINE.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test copy and pasting an entire file to its end
+#[test]
+#[serial]
+fn copy_and_paste_file() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight entire file
+	highlight_page_down(&mut editor);
+	// Copy
+	copy_to_clipboard(&mut editor);
+
+	// Clear selection
+	editor.selection.is_empty = true;
+	// Paste this to the file
+	paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = COPY_AND_PASTE_FILE.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test copying an entire large, multiblock file and pasting it again
+#[test]
+#[serial]
+fn copy_and_paste_multiblock() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Copy
+	copy_to_clipboard(&mut editor);
+	// Clear selection
+	editor.selection.is_empty = true;
+	// Create a blank line before pasting
+	enter_key(&mut editor);
+	enter_key(&mut editor);
+
+	// Paste this to the file
+	paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5
+		+ "\n\n" + GENOME_BLOCK_1
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+*/
