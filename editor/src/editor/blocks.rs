@@ -273,7 +273,7 @@ impl Blocks {
 	}
 
 	// Fully delete the given line
-	fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
+	pub fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
 		// Get the (block num, line num) location of the below line
 		let location = self.get_location(line_num)?;
 

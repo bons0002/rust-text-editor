@@ -446,6 +446,67 @@ pub mod editor {
 			self.blocks.as_ref().unwrap().blocks_list.is_empty()
 		}
 
+		// Create the remaining line after deleting a selection of text
+		fn construct_remaining_line(
+			blocks: &mut Blocks,
+			start: (usize, usize),
+			end: (usize, usize),
+		) -> String {
+			// Get the text on the first line of the selection before the cursor
+			let before_selection = blocks
+				.get_line(start.1)
+				.unwrap()
+				.graphemes(true)
+				.enumerate()
+				.filter_map(|(idx, graph)| {
+					if idx < start.0 {
+						Some(String::from(graph))
+					} else {
+						None
+					}
+				})
+				.collect::<String>();
+
+			// Get the text on the last line of the selection after the cursor
+			let after_selection = blocks
+				.get_line(end.1)
+				.unwrap()
+				.graphemes(true)
+				.enumerate()
+				.filter_map(|(idx, graph)| {
+					if idx >= end.0 {
+						Some(String::from(graph))
+					} else {
+						None
+					}
+				})
+				.collect::<String>();
+
+			before_selection + after_selection.as_str()
+		}
+
+		/*  Reset the position of the cursor after a selection deletion (if need be).
+		Also, reset the scroll offset (if need be). */
+		fn reset_cursor(&mut self, end: (usize, usize)) {
+			// Only reset cursor and scroll offset if at the end of the selection
+			if self.get_line_num(self.cursor_position[1]) == end.1 {
+				// Reset scroll offset
+				self.scroll_offset = self.selection.original_scroll_offset;
+				// Reset the cursor's line number
+				self.cursor_position[1] = self.selection.original_cursor_position.1;
+				// Move to the beginning of the line
+				key_functions::home_key(self, true);
+				// Move to the correct horizontal position on the line
+				while self.cursor_position[0] < self.selection.original_cursor_position.0
+					&& key_functions::check_cursor_end_line(
+						self,
+						self.get_line_num(self.cursor_position[1]),
+					) {
+					key_functions::right_arrow(self, true);
+				}
+			}
+		}
+
 		// Delete a highlighted selection of text
 		fn delete_selection(&mut self) {
 			// Start point of the selection (as an immutable tuple)
@@ -453,31 +514,29 @@ pub mod editor {
 			// End point of the selection (as an immutable tuple)
 			let end = (self.selection.end[0], self.selection.end[1]);
 
+			// Clone the blocks
+			let mut blocks = self.blocks.as_ref().unwrap().clone();
+			// Create the remaining line after deleting the selection
+			let remaining_line = Self::construct_remaining_line(&mut blocks, start, end);
+			// Update the first line of the selection
+			blocks.update_line(remaining_line, start.1).unwrap();
+
+			// Loop to delete the selection
+			for _i in start.1..end.1 {
+				// Ensure that the blocks are valid
+				blocks.check_blocks(self);
+				// Delete the next line
+				blocks.delete_line(start.1 + 1).unwrap();
+				// Reduce the file length
+				self.file_length -= 1;
+			}
+			// Set the editor blocks
+			self.blocks = Some(blocks);
+
+			// Reset the position of the cursor (and the scroll offset)
+			self.reset_cursor(end);
 			// Clear the selection
 			self.selection.is_empty = true;
-
-			// If the cursor is at the beginning of the selection
-			if (
-				self.index_position,
-				self.get_line_num(self.cursor_position[1]),
-			) == start
-			{
-				// Move to the last line of the selection
-				while self.get_line_num(self.cursor_position[1]) < end.1 {
-					key_functions::down_arrow(self);
-				}
-				// Move the horizontal position to the end horizontal position
-				key_functions::home_key(self, true);
-				while self.index_position < end.0 {
-					key_functions::right_arrow(self, true);
-				}
-			}
-			// Backspace until at the beginning of the selection
-			while self.index_position != start.0
-				|| self.get_line_num(self.cursor_position[1]) != start.1
-			{
-				key_functions::backspace(self);
-			}
 		}
 
 		// Get the key pressed
