@@ -381,4 +381,20 @@ impl Blocks {
 
 		Ok(())
 	}
+
+	// Check that the Blocks is valid for the current widget
+	pub fn check_blocks(&mut self, editor: &mut EditorSpace) {
+		// Height of widget
+		let height = editor.height.1 - editor.height.0;
+
+		/* If the Blocks is too short, but there is more text to be shown,
+		add a new TextBlock to the tail. */
+		if self.len() < height + editor.scroll_offset
+			&& editor.file_length > height
+			&& self.tail_block < self.max_blocks - 1
+		{
+			// Add new tail block
+			self.push_tail(editor, true).unwrap();
+		}
+	}
 }

@@ -171,22 +171,22 @@ pub mod editor {
 			end_line: usize,
 		) -> Span {
 			if idx == start_line && start_line == end_line {
-				self.highlight_one_line(loc, String::from(character).replace("\t", tab_char))
+				self.highlight_one_line(loc, String::from(character).replace('\t', tab_char))
 			// If on first line (and there are multiple lines in selection)
 			} else if idx == start_line {
 				// Highlight character
-				self.highlight_first_line(loc, String::from(character).replace("\t", tab_char))
+				self.highlight_first_line(loc, String::from(character).replace('\t', tab_char))
 			// If on last line (and there are multiple lines in selection)
 			} else if idx == end_line {
 				// Highlight character
-				self.highlight_last_line(loc, String::from(character).replace("\t", tab_char))
+				self.highlight_last_line(loc, String::from(character).replace('\t', tab_char))
 			// If between first and last line in multine selection
 			} else if idx > start_line && idx < end_line {
-				Span::from(String::from(character).replace("\t", tab_char))
+				Span::from(String::from(character).replace('\t', tab_char))
 					.style(Style::default().bg(self.config.theme.selection_highlight))
 			// If not in selection
 			} else {
-				Span::from(String::from(character).replace("\t", tab_char))
+				Span::from(String::from(character).replace('\t', tab_char))
 			}
 		}
 
@@ -230,32 +230,12 @@ pub mod editor {
 				return self.highlight_line(idx, line);
 			}
 
-			Line::from(String::from(line).replace("\t", &tab_char))
+			Line::from(String::from(line).replace('\t', &tab_char))
 		}
 
 		// Get the current line number for the given position
 		fn get_line_num(&self, position: usize) -> usize {
 			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
-		}
-
-		// Check that there are enough blocks loaded in, and return the blocks
-		fn check_blocks(&mut self) -> Blocks {
-			// Clone the blocks of text
-			let mut blocks = self.blocks.as_ref().unwrap().clone();
-			// Height of widget
-			let height = self.height.1 - self.height.0;
-
-			/* If the Blocks is too short, but there is more text to be shown,
-			add a new TextBlock to the tail. */
-			if blocks.len() < height + self.scroll_offset
-				&& self.file_length > height
-				&& blocks.tail_block < blocks.max_blocks - 1
-			{
-				// Add new tail block
-				blocks.push_tail(self, true).unwrap();
-			}
-			// Return the blocks
-			blocks
 		}
 
 		fn get_lines_from_blocks(&self, blocks: Blocks) -> Vec<Line> {
@@ -282,8 +262,10 @@ pub mod editor {
 
 		// Return the vector as a paragraph
 		fn get_paragraph(&mut self) -> Paragraph {
-			// Check that there are enough blocks loaded
-			let blocks = self.check_blocks();
+			// Clone the blocks
+			let mut blocks = self.blocks.as_ref().unwrap().clone();
+			// Check the blocks are valid
+			blocks.check_blocks(self);
 			// Set the editor blocks to this new blocks
 			self.blocks = Some(blocks.clone());
 			// The current line number in the blocks

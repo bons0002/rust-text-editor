@@ -882,156 +882,117 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 	}
 }
 
-// Move the cursor to the end of the selection
-fn move_cursor_to_end(editor: &mut EditorSpace, start: (usize, usize), is_cursor_init_end: bool) {
-	// If at the end of the selection, move to the start
-	if is_cursor_init_end {
-		// Move to the first line of the selection
-		while editor.get_line_num(editor.cursor_position[1]) > start.1 {
-			up_arrow(editor);
-		}
-		// Move to the correct horizontal position
-		home_key(editor, true);
-		while editor.index_position < start.0 {
-			right_arrow(editor, true);
-		}
-	}
-}
-
-// Get the selection if there is one line
-fn get_single_line_selection(
-	editor: &mut EditorSpace,
-	start: (usize, usize),
-	end: (usize, usize),
-) -> Vec<String> {
-	let mut lines: Vec<String> = Vec::new();
-
-	// Store the beginning of the selection
-	let begin = editor.text_position;
-	// Move to the end of the selection
-	while editor.index_position < end.0 {
-		right_arrow(editor, true);
-	}
-	// Add the slice to the lines
-	lines.push(String::from(
-		&editor.blocks.as_ref().unwrap().get_line(start.1).unwrap()[begin..editor.text_position],
-	));
-
-	// Return the line
-	lines
-}
-
-// Get The lines of a multiline selection
-fn get_multiline_selection(
-	editor: &mut EditorSpace,
-	start: (usize, usize),
-	end: (usize, usize),
-) -> Vec<String> {
-	let mut lines: Vec<String> = Vec::new();
-
-	// Iterate throught the lines
-	for line_num in start.1..(end.1 + 1) {
-		// For the first line
-		if line_num == start.1 {
-			// Add the first line after the cursor to the vector
-			lines.push(String::from(
-				&editor.blocks.as_ref().unwrap().get_line(line_num).unwrap()
-					[editor.text_position..],
-			));
-			// Move down a line
-			down_arrow(editor);
-		// For the last line
-		} else if line_num == end.1 {
-			// Correct the horizontal position
-			home_key(editor, true);
-			while editor.index_position < end.0 {
-				right_arrow(editor, true);
+// Collect the graphemes of a one line selection into a string
+fn one_line_selection(indices: &Vec<String>, start: usize, end: usize) -> String {
+	indices
+		.into_par_iter()
+		.enumerate()
+		.filter_map(|(idx, graph)| {
+			// Get all graphemes on the line between the two indices
+			if idx >= start && idx < end {
+				Some(String::from(graph))
+			} else {
+				None
 			}
-			// Push the line before the cursor
-			lines.push(String::from(
-				&editor.blocks.as_ref().unwrap().get_line(end.1).unwrap()[..editor.text_position],
-			));
-		// For the other lines
+		})
+		.collect::<String>()
+}
+
+// Collect the graphemes of the first line of a multiline selection into a string
+fn first_line_selection(indices: &Vec<String>, start: usize) -> String {
+	indices
+		.into_par_iter()
+		.enumerate()
+		.filter_map(|(idx, graph)| {
+			// Get all graphemes on the line after the index
+			if idx >= start {
+				Some(String::from(graph))
+			} else {
+				None
+			}
+		})
+		.collect::<String>()
+}
+
+// Collect the graphemes of the last line of a multiline seelction into a string
+fn last_line_selection(indices: &Vec<String>, end: usize) -> String {
+	indices
+		.into_par_iter()
+		.enumerate()
+		.filter_map(|(idx, graph)| {
+			// Get all graphemes on the line before the index
+			if idx < end {
+				Some(String::from(graph))
+			} else {
+				None
+			}
+		})
+		.collect::<String>()
+}
+
+fn copy_loop(
+	editor: &mut EditorSpace,
+	start: (usize, usize),
+	end: (usize, usize),
+	blocks: &mut Blocks,
+) -> Vec<String> {
+	// Get the lines of text
+	let mut lines = Vec::new();
+	// Iterate through the lines of the selection
+	for line_num in start.1..end.1 + 1 {
+		let line;
+		// Ensure the blocks are valid
+		if line_num % (editor.height.1 - editor.height.0) == 0 {
+			blocks.check_blocks(editor);
+		}
+		// Get the indices of the graphemes
+		let indices = &blocks
+			.get_line(line_num)
+			.unwrap()
+			.graphemes(true)
+			.map(String::from)
+			.collect::<Vec<String>>();
+		// If only one line
+		if start.1 == end.1 {
+			line = one_line_selection(indices, start.0, end.0);
+		// If first line
+		} else if line_num == start.1 {
+			line = first_line_selection(indices, start.0);
+		// If last line
+		} else if line_num == end.1 {
+			line = last_line_selection(indices, end.0);
+		// If middle line
 		} else {
-			// Push the whole line
-			lines.push(String::from(
-				&editor.blocks.as_ref().unwrap().get_line(line_num).unwrap(),
-			));
-			// Move down a line
-			down_arrow(editor);
+			line = String::from(&blocks.get_line(line_num).unwrap())
+		}
+		// Add a newline on all but the last line
+		if line_num != end.1 {
+			lines.push(line + "\n");
+		} else {
+			lines.push(line);
 		}
 	}
 
 	lines
 }
 
-// Get the lines of the highlighted selection as a vector
-fn get_lines_as_vec(
-	editor: &mut EditorSpace,
-	start: (usize, usize),
-	end: (usize, usize),
-) -> Vec<String> {
-	// If only one line
-	if start.1 == end.1 {
-		return get_single_line_selection(editor, start, end);
-	}
-	// If multiline
-	get_multiline_selection(editor, start, end)
-}
-
-// If the cursor started at the beginning of the selection, move it back to the beginning
-fn reset_cursor(editor: &mut EditorSpace, start: (usize, usize), is_cursor_init_end: bool) {
-	// If the cursor began at the start of the selection
-	if !is_cursor_init_end {
-		// Move to the first line of the selection
-		while editor.get_line_num(editor.cursor_position[1]) > start.1 {
-			up_arrow(editor);
-		}
-		// Move to the correct horizontal position
-		home_key(editor, true);
-		while editor.index_position < start.0 {
-			right_arrow(editor, true);
-		}
-	}
-}
-
-// Copy the contents of the highlighted selection to the clipboard
+// Copy a selection of text to the clipboard
 pub fn copy_to_clipboard(editor: &mut EditorSpace) {
 	// Start of the highlighted selection
 	let start = (editor.selection.start[0], editor.selection.start[1]);
 	// End of the highlighted selection
 	let end = (editor.selection.end[0], editor.selection.end[1]);
-	// Flag for if the cursor began at the end of the selection
-	let is_cursor_init_end = (
-		editor.index_position,
-		editor.get_line_num(editor.cursor_position[1]),
-	) == end;
+	// Create a copy of the text blocks
+	let mut blocks = editor.blocks.as_ref().unwrap().clone();
 
-	// Move the cursor to the end of the selection
-	move_cursor_to_end(editor, start, is_cursor_init_end);
-
-	// Convert the vector of Strings to a single String
-	let lines = get_lines_as_vec(editor, start, end)
-		.into_par_iter()
-		.enumerate()
-		.map(|(line_num, line)| {
-			// Add a newline on all but the last line
-			if line_num < end.1 {
-				line + "\n"
-			} else {
-				line
-			}
-		})
-		.collect();
-
-	// Reset cursor (if need be)
-	reset_cursor(editor, start, is_cursor_init_end);
+	// Copy the lines of text in the selection into a vector
+	let lines = copy_loop(editor, start, end, &mut blocks);
 
 	// Write to the clipboard
 	editor
 		.clipboard
 		.as_mut()
 		.unwrap()
-		.set_contents(lines)
+		.set_contents(lines.into_par_iter().collect::<String>())
 		.unwrap();
 }
