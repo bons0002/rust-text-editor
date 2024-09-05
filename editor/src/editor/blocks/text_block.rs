@@ -96,7 +96,7 @@ impl TextBlock {
 			content.pop();
 		}
 		// Push a blank new line if the last block ends in a newline char
-		if ends_with_newline && block_num == max_blocks - 1 {
+		if ends_with_newline && (max_blocks == 0 || block_num == max_blocks - 1) {
 			content.push(String::from(""));
 		}
 		// Trim the newlines

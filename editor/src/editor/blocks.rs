@@ -334,4 +334,67 @@ impl Blocks {
 			.map(|block| block.len)
 			.reduce(|| 0, |a, b| a + b)
 	}
+
+	// Update a line of text in the Blocks
+	pub fn update_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+		// Get the location of the line that needs to be updated
+		let (block_num, line_num) = self.get_location(line_num)?;
+		// Update the line
+		self.blocks_list[block_num].content[line_num] = text;
+
+		Ok(())
+	}
+
+	// Add a blank line to the Blocks
+	fn insert_blank_line(&mut self, line_num: usize) -> Result<(), Error> {
+		// Get the location of where this line needs to be inserted
+		match self.get_location(line_num) {
+			// If the location is valid, INSERT a line into the block
+			Ok((block_num, line_num)) => {
+				// Insert the blank line
+				self.blocks_list[block_num]
+					.content
+					.insert(line_num, String::new());
+				// Update the length of the block
+				self.blocks_list[block_num].len += 1;
+			}
+			// If the location is invalid, PUSH a new line to the last block
+			Err(_) => {
+				// Last block
+				let idx = self.blocks_list.len() - 1;
+				// Add new line
+				self.blocks_list[idx].content.push(String::new());
+				// Update the length of the block
+				self.blocks_list[idx].len += 1;
+			}
+		}
+
+		Ok(())
+	}
+
+	// Insert a new line with a full line of text
+	pub fn insert_full_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+		// Add a blank line at the location
+		self.insert_blank_line(line_num)?;
+		// Update this blank line with the text
+		self.update_line(text, line_num)?;
+
+		Ok(())
+	}
+
+	// Check that the Blocks is valid for the current widget
+	pub fn check_blocks(&mut self, editor: &mut EditorSpace) {
+		// Height of widget
+		let height = editor.height.1 - editor.height.0;
+
+		/* If the Blocks is too short, but there is more text to be shown,
+		add a new TextBlock to the tail. */
+		if self.len() < height + editor.scroll_offset
+			&& editor.file_length > height
+			&& self.tail_block < self.max_blocks - 1
+		{
+			// Add new tail block
+			self.push_tail(editor, true).unwrap();
+		}
+	}
 }
