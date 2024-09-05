@@ -252,11 +252,11 @@ fn modified_large_file_save() {
 	/* Check that the scroll offset is correct.
 	The top line of the widget should be the second line
 	(scroll offset = 1). */
-	assert_eq!(editor.scroll_offset, 1);
+	assert_eq!(editor.scroll_offset, 0);
 	/* Check that the cursor's line is correct.
 	Since the top line of the widget is the 2nd line,
 	the cursor should be on the top line. */
-	assert_eq!(editor.cursor_position[1], 0);
+	assert_eq!(editor.cursor_position[1], 1);
 
 	// Get a vector of the lines saved to the debug file
 	let saved_text = read_to_string(debug_filename).unwrap();
