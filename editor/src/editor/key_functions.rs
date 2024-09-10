@@ -676,37 +676,6 @@ pub fn page_down(editor: &mut EditorSpace) {
 	}
 }
 
-fn load_blocks(editor: &mut EditorSpace) -> Blocks {
-	// Clone the editor blocks
-	let mut blocks = editor.blocks.as_ref().unwrap().clone();
-	// The block number of the head and tail blocks respectively
-	let (head_block, tail_block) = (blocks.head_block, blocks.tail_block);
-
-	// Load in all blocks in the file that aren't currently in the Blocks
-	for i in 0..blocks.max_blocks {
-		if i >= head_block && i <= tail_block {
-			continue;
-		} else if i < head_block {
-			match blocks.push_head(editor, false) {
-				Ok(_) => (),
-				Err(err) => {
-					panic!("{}", err);
-				}
-			}
-		} else if i > tail_block {
-			match blocks.push_tail(editor, false) {
-				Ok(_) => (),
-				Err(err) => {
-					panic!("{}", err);
-				}
-			}
-		}
-	}
-
-	// Return the blocks
-	blocks
-}
-
 // Recreate an existing file (for saving)
 fn recreate_file(filename: &str) -> File {
 	// Create a new blank version of the file
@@ -749,12 +718,17 @@ fn save_file(filename: &str, contents: Vec<String>) -> File {
 }
 
 // Update the editor's scroll offset and blocks after saving
-fn post_save_editor_update(editor: &mut EditorSpace, blocks: &mut Blocks) {
+fn post_save_editor_update(editor: &mut EditorSpace) {
+	// Get the current line number
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Construct a block from that line number
+	let mut blocks = Blocks::from_line(editor, line_num).unwrap();
+
 	// Get the line number of the first line of the widget
 	let line_num = editor.get_line_num(0);
 	// Might need to add a new head block
-	if line_num < blocks.starting_line_num {
-		blocks.push_head(editor, false).unwrap();
+	while line_num < blocks.starting_line_num {
+		blocks.push_head(editor, true).unwrap();
 	}
 	// Reset scroll offset
 	editor.scroll_offset = line_num - blocks.starting_line_num;
@@ -764,16 +738,17 @@ fn post_save_editor_update(editor: &mut EditorSpace, blocks: &mut Blocks) {
 
 // Save key combo functionality
 pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filename: &str) {
-	// Load in all the blocks
-	let blocks = load_blocks(editor);
+	// Load in all the blocks in the file
+	let mut blocks = editor.blocks.as_ref().unwrap().clone();
+	blocks.load_all_blocks(editor);
+
 	// Get all the lines of the Blocks in one vector
 	let mut contents: Vec<String> = Vec::new();
-	for block in blocks.clone().blocks_list {
+	for block in blocks.blocks_list {
 		contents.par_extend(block.content)
 	}
 
-	/* Write to different files based on if this function is in
-	debug mode. */
+	// Write to different files based on if this function is in debug mode
 	match in_debug_mode {
 		// If in debug mode, write to debug_filename
 		true => _ = save_file(debug_filename, contents),
@@ -781,24 +756,8 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 		false => editor.file = save_file(&editor.filename, contents),
 	}
 
-	// Get the block number and line number of the current location
-	let (block_num, _) = match blocks.get_location(editor.get_line_num(editor.cursor_position[1])) {
-		Ok((block, line)) => (block, line),
-		Err(err) => panic!("{}::save_key_combo: line = {} | {}", file!(), line!(), err),
-	};
-	// Construct a new Blocks for the newly saved file
-	let mut blocks = match Blocks::new(editor, block_num) {
-		Ok(block) => block,
-		Err(err) => panic!(
-			"{}::save_key_combo: line = {}. Couldn't initialize Blocks for block_num = {} | {}",
-			file!(),
-			line!(),
-			block_num,
-			err
-		),
-	};
 	// Update the editor's scroll offset and Blocks
-	post_save_editor_update(editor, &mut blocks);
+	post_save_editor_update(editor);
 }
 
 // Get the text content of the clipboard (and the length of the text)
