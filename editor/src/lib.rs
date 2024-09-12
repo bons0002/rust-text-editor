@@ -18,7 +18,8 @@ pub mod editor {
 		Frame,
 	};
 	use rayon::iter::{
-		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
+		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
+		ParallelIterator,
 	};
 	use unicode_segmentation::UnicodeSegmentation;
 
@@ -244,7 +245,7 @@ pub mod editor {
 			// Iterate through the blocks that are currently loaded in
 			for block in blocks.blocks_list {
 				// Add all of the lines in these blocks into the `text` vector
-				text.extend(block.content);
+				text.par_extend(block.content);
 			}
 
 			// Create a vector of Lines from the text
@@ -274,11 +275,13 @@ pub mod editor {
 			let mut lines = self.get_lines_from_blocks(blocks);
 
 			// Highlight the line that the cursor is on
-			lines[line_num] = lines[line_num].clone().style(
-				Style::default()
-					.fg(self.config.theme.line_highlight_fg_color)
-					.bg(self.config.theme.line_highlight_bg_color),
-			);
+			if let Some(line) = lines.get(line_num) {
+				lines[line_num] = line.clone().style(
+					Style::default()
+						.fg(self.config.theme.line_highlight_fg_color)
+						.bg(self.config.theme.line_highlight_bg_color),
+				);
+			}
 
 			// Return a paragraph from the lines
 			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
@@ -489,7 +492,7 @@ pub mod editor {
 		Also, reset the scroll offset (if need be). */
 		fn reset_cursor(&mut self, end: (usize, usize)) {
 			// Only reset cursor and scroll offset if at the end of the selection
-			if self.get_line_num(self.cursor_position[1]) == end.1 {
+			if self.get_line_num(self.cursor_position[1]) == end.1 && self.index_position == end.0 {
 				// Reset scroll offset
 				self.scroll_offset = self.selection.original_scroll_offset;
 				// Reset the cursor's line number

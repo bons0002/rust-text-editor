@@ -31,7 +31,11 @@ impl Blocks {
 		// Get the number of bytes in the file
 		let size = editor.file.metadata()?.len() as usize;
 		// Find the max number of blocks for this file
-		let max_blocks = size.div_ceil(text_block::BLOCK_SIZE as usize);
+		let mut max_blocks = size.div_ceil(text_block::BLOCK_SIZE as usize);
+		// Can't have max of 0 blocks
+		if max_blocks == 0 {
+			max_blocks += 1;
+		}
 		// Construct the block
 		Ok(Blocks {
 			head_block: block_num,
@@ -43,6 +47,51 @@ impl Blocks {
 			// Add the current block to the vector of blocks
 			blocks_list: vec![TextBlock::new(editor, block_num, max_blocks)?],
 		})
+	}
+
+	// Load in all TextBlocks of a file into one Blocks
+	pub fn load_all_blocks(&mut self, editor: &mut EditorSpace) {
+		// The block number of the head and tail blocks respectively
+		let (head_block, tail_block) = (self.head_block, self.tail_block);
+
+		// Load in all blocks in the file that aren't currently in the Blocks
+		for i in 0..self.max_blocks {
+			// Don't bother with blocks that are already loaded in
+			if i >= head_block && i <= tail_block {
+				continue;
+			// Load in blocks before the head block
+			} else if i < head_block {
+				match self.push_head(editor, false) {
+					Ok(_) => (),
+					Err(err) => {
+						panic!("{}", err);
+					}
+				}
+			// Load in blocks after the tail block
+			} else if i > tail_block {
+				match self.push_tail(editor, false) {
+					Ok(_) => (),
+					Err(err) => {
+						panic!("{}", err);
+					}
+				}
+			}
+		}
+	}
+
+	// Create a new Blocks from a line number rather than a block number
+	pub fn from_line(editor: &mut EditorSpace, line_num: usize) -> Result<Self, Error> {
+		// Create a Blocks from the first block
+		let mut blocks = Self::new(editor, 0)?;
+
+		// Create a Blocks for the given line number
+
+		// Load in all blocks to find the block for the line number
+		blocks.load_all_blocks(editor);
+		// Get the block number for the given line number
+		let (block_num, _) = blocks.get_location(line_num)?;
+		// Return the Blocks
+		Blocks::new(editor, block_num)
 	}
 
 	// Return the head block
