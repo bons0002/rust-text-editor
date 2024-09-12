@@ -1,10 +1,9 @@
 // Defines the logic of the movement keys that highlight selections of text.
 // Also defines the Selection struct for track the highlighted selection.
 
-use super::{
-	down_arrow, end_key, home_key, left_arrow, page_down, page_up, right_arrow, up_arrow,
-	EditorSpace,
-};
+use std::cmp::Ordering;
+
+use super::{down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, EditorSpace};
 
 // Module containing direction keys to track movement
 mod movement;
@@ -162,6 +161,48 @@ pub fn highlight_left(editor: &mut EditorSpace) {
 	}
 }
 
+// Subroutine for controlling highlighting up boundary updates
+fn up_subroutine(editor: &mut EditorSpace, update: [usize; 2]) {
+	// Check the line number that the cursor has moved onto
+	match update[1].cmp(&editor.selection.start[1]) {
+		// If moving at the beginning of the selection
+		Ordering::Less => {
+			// If only one line above the last line
+			if editor.selection.start[1] - update[1] == 1 {
+				// Make sure the end doesn't shift around
+				editor.selection.end = [
+					editor.selection.original_text_position.0,
+					editor.selection.original_text_position.1,
+				];
+			}
+			// Update the beginning of the selection
+			editor.selection.start = update;
+		}
+		// If the cursor has moved onto the starting line
+		Ordering::Equal => {
+			// If the cursor is before the start
+			match update[0].cmp(&editor.selection.start[0]) {
+				Ordering::Less => {
+					// Set the new end of the selection to the old start
+					editor.selection.end = editor.selection.start;
+					// Set the new start to the new cursor position
+					editor.selection.start = update;
+				}
+				Ordering::Greater => {
+					// Update the end of the selection
+					editor.selection.end = update;
+				}
+				_ => (),
+			}
+		}
+		// If moving at the end of the selection
+		Ordering::Greater => {
+			// Deselect from the end
+			editor.selection.end = update;
+		}
+	}
+}
+
 // Highlight (or un-highlight) up to the cursor position on the above line
 pub fn highlight_up(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
@@ -169,11 +210,6 @@ pub fn highlight_up(editor: &mut EditorSpace) {
 		init_selection(editor, Movement::Up);
 	// Otherwise, add to the existing selection
 	} else {
-		// Store the current location
-		let prior = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
 		// Move up
 		up_arrow(editor);
 		// Get the new location after moving
@@ -181,17 +217,46 @@ pub fn highlight_up(editor: &mut EditorSpace) {
 			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
-		// If the selection is now empty (but not on first line)
-		if update == editor.selection.start && update[1] > 0 {
-			// Reset selection
-			editor.selection.is_empty = true;
+		// Update the selection boundaries
+		up_subroutine(editor, update);
+	}
+}
+
+// Subroutine for controlling highlighting down boundary updates
+fn down_subroutine(editor: &mut EditorSpace, update: [usize; 2]) {
+	// Check the line number that the cursor has moved onto
+	match update[1].cmp(&editor.selection.end[1]) {
 		// If moving at the beginning of the selection
-		} else if prior[1] <= editor.selection.start[1] {
-			// Update the beginning of the selection
+		Ordering::Less => {
+			// Deselect from the beginning
 			editor.selection.start = update;
+		}
+		Ordering::Equal => {
+			// If the cursor is before the end
+			match update[0].cmp(&editor.selection.end[0]) {
+				Ordering::Less => {
+					// Set the new start to the new cursor position
+					editor.selection.start = update;
+				}
+				Ordering::Greater => {
+					editor.selection.start = editor.selection.end;
+					// Update the end of the selection
+					editor.selection.end = update;
+				}
+				_ => (),
+			}
+		}
 		// If moving at the end of the selection
-		} else {
-			// Deselect from the end
+		Ordering::Greater => {
+			// If on the second line
+			if update[1] - editor.selection.end[1] == 1 {
+				// Make sure the start doesn't shift around
+				editor.selection.start = [
+					editor.selection.original_text_position.0,
+					editor.selection.original_text_position.1,
+				];
+			}
+			// Update the end of the selection
 			editor.selection.end = update;
 		}
 	}
@@ -204,11 +269,6 @@ pub fn highlight_down(editor: &mut EditorSpace) {
 		init_selection(editor, Movement::Down);
 	// Otherwise, add to the existing selection
 	} else {
-		// Store the current location
-		let prior = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
 		// Move down
 		down_arrow(editor);
 		// Get the new location after moving
@@ -216,24 +276,12 @@ pub fn highlight_down(editor: &mut EditorSpace) {
 			editor.index_position,
 			editor.get_line_num(editor.cursor_position[1]),
 		];
-		// If the selection is now empty (but not on last line)
-		if update == editor.selection.end && update[1] < editor.file_length - 1 {
-			// Reset selection
-			editor.selection.is_empty = true;
-		// If moving at the end of the selection
-		} else if prior[1] >= editor.selection.end[1] {
-			// Update the end of the selection
-			editor.selection.end = update;
-		// If moving at the beginning of the selection
-		} else {
-			// Deselect from the beginning
-			editor.selection.start = update;
-		}
+		// Update the selection boundaries
+		down_subroutine(editor, update);
 	}
 }
 
-/* highlight_end subroutine for highlighting text until the end of the line,
-provided that the selection is not empty now. */
+// Highlight_end subroutine for highlighting text until the end of the line
 fn end_subroutine(editor: &mut EditorSpace, update: [usize; 2], prior: [usize; 2]) {
 	// If only one line
 	if editor.selection.start[1] == editor.selection.end[1]
@@ -283,20 +331,12 @@ pub fn highlight_end(editor: &mut EditorSpace) {
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 
-		// If selection is now empty
-		if update == editor.selection.end {
-			// Reset selection
-			editor.selection.is_empty = true;
-		// If selection is not empty
-		} else {
-			// Highlight to the end of the line
-			end_subroutine(editor, update, prior);
-		}
+		// Highlight to the end of the line
+		end_subroutine(editor, update, prior);
 	}
 }
 
-/* highlight_home subroutine for highlighting text until the beginning of the line,
-provided that the selection is not empty now. */
+// highlight_home subroutine for highlighting text until the beginning of the line
 fn home_subroutine(editor: &mut EditorSpace, update: [usize; 2], prior: [usize; 2]) {
 	// If only one line
 	if editor.selection.start[1] == editor.selection.end[1]
@@ -346,15 +386,8 @@ pub fn highlight_home(editor: &mut EditorSpace) {
 			editor.get_line_num(editor.cursor_position[1]),
 		];
 
-		// If selection is now empty
-		if update == editor.selection.end {
-			// Reset selection
-			editor.selection.is_empty = true;
-		// If not empty
-		} else {
-			// Highlight to the beginning of the line
-			home_subroutine(editor, update, prior);
-		}
+		// Highlight to the beginning of the line
+		home_subroutine(editor, update, prior);
 	}
 }
 
@@ -363,30 +396,20 @@ pub fn highlight_page_up(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
 		init_selection(editor, Movement::PageUp);
-	// If the current position is at the end of the selection
-	} else if [
-		editor.index_position,
-		editor.get_line_num(editor.cursor_position[1]),
-	] == editor.selection.end
-	{
-		// Set the end of the selection to the current start point
-		editor.selection.end = editor.selection.start;
-		// Move one page up
-		page_up(editor);
-		// Update the start point of the selection
-		editor.selection.start = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
-	// If the current position is at the start of the selection
 	} else {
-		// Move one page up
-		page_up(editor);
-		// Update the start point of the selection
-		editor.selection.start = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
+		// Get the height of the editor widget
+		let height = editor.height.1 - editor.height.0 - 3;
+		// If file short than the widget, only move up for the number of lines in the file
+		if editor.file_length < height {
+			for _i in 0..editor.file_length {
+				highlight_up(editor);
+			}
+		// Otherwise, move up one widget
+		} else {
+			for _i in editor.height.0..(editor.height.1 - 2) {
+				highlight_up(editor);
+			}
+		}
 	}
 }
 
@@ -395,29 +418,19 @@ pub fn highlight_page_down(editor: &mut EditorSpace) {
 	// If there is no selection, initialize it
 	if editor.selection.is_empty {
 		init_selection(editor, Movement::PageDown);
-	// If the current position is at the beginning of the selection
-	} else if [
-		editor.index_position,
-		editor.get_line_num(editor.cursor_position[1]),
-	] == editor.selection.start
-	{
-		// Set the start to the end
-		editor.selection.start = editor.selection.end;
-		// Move one page down
-		page_down(editor);
-		// Update the endpoint of the selection
-		editor.selection.end = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
-	// If current postition is at the end of the selection
 	} else {
-		// Move one page down
-		page_down(editor);
-		// Update the endpoint of the selection
-		editor.selection.end = [
-			editor.index_position,
-			editor.get_line_num(editor.cursor_position[1]),
-		];
+		// Get the height of the editor widget
+		let height = editor.height.1 - editor.height.0 - 3;
+		// If file short than the widget, only move down for the number of lines in the file
+		if editor.file_length < height {
+			for _i in 0..editor.file_length {
+				highlight_down(editor);
+			}
+		// Otherwise, move down one widget
+		} else {
+			for _i in editor.height.0..(editor.height.1 - 2) {
+				highlight_down(editor);
+			}
+		}
 	}
 }
