@@ -35,3 +35,47 @@ impl<T> Stack<T> {
 		self.items = LinkedList::new();
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::Stack;
+
+	#[test]
+	// Test pushing to and popping from the stack
+	fn push_pop_stack() {
+		let mut stack = Stack::new();
+
+		// Push 64 items to the stack
+		for i in 0..64 {
+			stack.push(i);
+		}
+
+		// Pop all items from the stack and collect them in a vector
+		let mut actual = Vec::new();
+		for _i in 0..64 {
+			actual.push(stack.pop().unwrap());
+		}
+
+		// Check that the stack is empty
+		assert_eq!(stack.pop(), None);
+
+		// Check that the items were popped correctly
+		let expected = (0..64).rev().collect::<Vec<i32>>();
+		assert_eq!(actual, expected);
+	}
+
+	#[test]
+	// Test clearing a populated stack
+	fn clear_stack() {
+		let mut stack = Stack::default();
+
+		// Push 128 arbitrary strings
+		for i in 0..128 {
+			stack.push(format!("item: {}", i));
+		}
+		// Clear the stack
+		stack.clear();
+		// Check that the stack is empty
+		assert_eq!(stack.pop(), None);
+	}
+}
