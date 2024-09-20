@@ -1,9 +1,7 @@
 use super::*;
 
-use std::{
-	io::{Error, Read, Seek, SeekFrom},
-	str,
-};
+use core::str;
+use std::io::{Error, Read, Seek, SeekFrom};
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
@@ -38,13 +36,14 @@ impl TextBlock {
 		// Read in bytes
 		let num_bytes = editor.file.read(buffer)?;
 
-		/* Parse bytes to String vector (with newlines intact)
-		and return it. */
-		Ok(str::from_utf8(&buffer[..num_bytes])
-			.unwrap()
-			.split_inclusive('\n')
-			.map(String::from)
-			.collect())
+		// Parse bytes to String vector (with newlines intact)
+		let text: &str;
+		/* The TextBlock could begin or end in the middle of a unicode character,
+		so the utf8 validity check needs to not be used, which is unsafe. */
+		unsafe {
+			text = str::from_utf8_unchecked(&buffer[..num_bytes]);
+		}
+		Ok(text.split_inclusive('\n').map(String::from).collect())
 	}
 
 	/* Complete the first line of this block if the previous
@@ -63,7 +62,13 @@ impl TextBlock {
 		// Read in bytes
 		let num_bytes = editor.file.read(buffer)?;
 		// Parse bytes to String vector (with newlines intact)
-		let prev_block_content = String::from(str::from_utf8(&buffer[..num_bytes]).unwrap());
+		let prev_block_content: String;
+		/* The content could begin or end in the middle of a unicode character,
+		so the utf8 validity check needs to not be used, which is unsafe. */
+		unsafe {
+			prev_block_content = String::from(str::from_utf8_unchecked(&buffer[..num_bytes]));
+		}
+
 		// Check if the previous block ends in a "complete" line
 		let prev_newline = prev_block_content.ends_with('\n');
 		// If it doesn't end in a newline, fix the first line of this block
