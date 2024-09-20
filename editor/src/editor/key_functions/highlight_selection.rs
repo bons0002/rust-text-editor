@@ -397,16 +397,14 @@ pub fn highlight_page_up(editor: &mut EditorSpace) {
 	if editor.selection.is_empty {
 		init_selection(editor, Movement::PageUp);
 	} else {
-		// Get the height of the editor widget
-		let height = editor.height.1 - editor.height.0 - 3;
 		// If file short than the widget, only move up for the number of lines in the file
-		if editor.file_length < height {
+		if editor.file_length < editor.height {
 			for _i in 0..editor.file_length {
 				highlight_up(editor);
 			}
 		// Otherwise, move up one widget
 		} else {
-			for _i in editor.height.0..(editor.height.1 - 2) {
+			for _i in 0..editor.height + 1 {
 				highlight_up(editor);
 			}
 		}
@@ -419,16 +417,14 @@ pub fn highlight_page_down(editor: &mut EditorSpace) {
 	if editor.selection.is_empty {
 		init_selection(editor, Movement::PageDown);
 	} else {
-		// Get the height of the editor widget
-		let height = editor.height.1 - editor.height.0 - 3;
 		// If file short than the widget, only move down for the number of lines in the file
-		if editor.file_length < height {
+		if editor.file_length < editor.height {
 			for _i in 0..editor.file_length {
 				highlight_down(editor);
 			}
 		// Otherwise, move down one widget
 		} else {
-			for _i in editor.height.0..(editor.height.1 - 2) {
+			for _i in 0..editor.height + 1 {
 				highlight_down(editor);
 			}
 		}

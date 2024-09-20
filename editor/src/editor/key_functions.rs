@@ -332,7 +332,7 @@ pub fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool 
 	};
 	// If the x position is beyond the end of the line, return false
 	if editor.text_position >= line.len()
-		|| editor.text_position >= editor.width.1 - editor.width.0 - 2
+		|| editor.text_position >= editor.widget_horz_bounds.1 - editor.widget_horz_bounds.0 - 2
 	{
 		return false;
 	}
@@ -599,7 +599,7 @@ fn down_conditions(editor: &mut EditorSpace) {
 	// Line number of the screen number
 	let cursor_line_num = editor.cursor_position[1];
 	// Ensure that the cursor doesn't move below the editor block (sub 3 because 2 lines of borders)
-	if cursor_line_num < (editor.height.1 - editor.height.0) - 3 {
+	if cursor_line_num < editor.height {
 		// Move down without scrolling
 		down_no_scroll(editor);
 	// If the cursor goes below the bound
@@ -660,18 +660,16 @@ pub fn end_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 
 // Move up one page
 pub fn page_up(editor: &mut EditorSpace) {
-	/* Move up one page.
-	Subtract 2 from the upper bound of the height because there are 2 border lines. */
-	for _i in editor.height.0..(editor.height.1 - 2) {
+	// Move up one page.
+	for _i in 0..editor.height + 1 {
 		up_arrow(editor);
 	}
 }
 
 // Move down one page
 pub fn page_down(editor: &mut EditorSpace) {
-	/* Move down one page.
-	Subtract 2 from the upper bound of the height because there are 2 border lines. */
-	for _i in editor.height.0..(editor.height.1 - 2) {
+	// Move down one page.
+	for _i in 0..editor.height + 1 {
 		down_arrow(editor);
 	}
 }
@@ -901,7 +899,7 @@ fn copy_loop(
 	for line_num in start.1..end.1 + 1 {
 		let line;
 		// Ensure the blocks are valid
-		if line_num % (editor.height.1 - editor.height.0) == 0 {
+		if line_num % editor.height == 0 {
 			blocks.check_blocks(editor);
 		}
 		// Get the indices of the graphemes

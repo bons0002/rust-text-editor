@@ -97,6 +97,9 @@ pub fn run(filename: String) -> io::Result<()> {
 	// Struct to track the entire editing space
 	let mut editor_space = EditorSpace::new(filename, config);
 
+	// Flag to break the below loop (ending app execution)
+	let mut break_loop = false;
+
 	// Run the app
 	loop {
 		// Draw the frame in the terminal
@@ -105,9 +108,9 @@ pub fn run(filename: String) -> io::Result<()> {
 			ui(frame, &mut editor_space);
 		})?;
 		// Get input within the editor space
-		editor_space.handle_input();
+		editor_space.handle_input(&mut break_loop);
 		// Check if user wants to quit the app
-		if editor_space.break_loop {
+		if break_loop {
 			break;
 		}
 	}

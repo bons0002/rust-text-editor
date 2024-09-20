@@ -39,8 +39,6 @@ pub mod editor {
 	pub struct EditorSpace {
 		// Object containing multiple text blocks
 		blocks: Option<Blocks>,
-		// Flag for whether to break rendering loop in main app
-		pub break_loop: bool,
 		// The clipboard to copy from and paste to
 		clipboard: Option<ClipboardContext>,
 		// The config of the editor
@@ -53,8 +51,8 @@ pub mod editor {
 		filename: String,
 		// The number of lines in the entire file
 		file_length: usize,
-		// Vertical bounds of the editor widget
-		height: (usize, usize),
+		// The height of the widget
+		height: usize,
 		// Position used to access indices within graphemes vectors
 		index_position: usize,
 		// Used to scroll the text on screen (and calculate line number)
@@ -68,7 +66,9 @@ pub mod editor {
 		// Actual position on the current line of text
 		text_position: usize,
 		// Horizontal bounds of the editor block
-		width: (usize, usize),
+		widget_horz_bounds: (usize, usize),
+		// Vertical bounds of the editor widget
+		widget_vert_bounds: (usize, usize),
 	}
 
 	impl EditorSpace {
@@ -98,21 +98,21 @@ pub mod editor {
 			// Construct an EditorSpace
 			EditorSpace {
 				blocks: None,
-				break_loop: false,
 				clipboard,
 				config,
 				cursor_position: [0, 0],
 				file,
 				filename,
 				file_length: 0,
-				height: (0, 0),
+				height: 0,
 				index_position: 0,
 				scroll_offset: 0,
 				selection: Selection::new(),
 				stored_position: 0,
 				is_initialized: false,
 				text_position: 0,
-				width: (0, 0),
+				widget_horz_bounds: (0, 0),
+				widget_vert_bounds: (0, 0),
 			}
 		}
 
@@ -219,7 +219,7 @@ pub mod editor {
 			// Top line of the widget
 			let top_line = self.scroll_offset;
 			// The bottom line of the widget
-			let bottom_line = self.height.1 - self.height.0 - 3 + self.scroll_offset;
+			let bottom_line = self.height + self.scroll_offset;
 			// Start tab with a vertical line
 			let mut tab_char = String::from("\u{2502}");
 			// Iterator to create a string of tab_width - 1 number of	 spaces
@@ -310,8 +310,11 @@ pub mod editor {
 		// Set the starting Position of the editing space cursor
 		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
 			// Set the bounds of the block
-			self.width = (start.0, start.0 + width);
-			self.height = (start.1, start.1 + height);
+			self.widget_horz_bounds = (start.0, start.0 + width);
+			self.widget_vert_bounds = (start.1, start.1 + height);
+			/* Track the height of the widget (subtract three because there is a top and
+			bottom boundary plus an extra line that isn't included in the height) */
+			self.height = self.widget_vert_bounds.1 - self.widget_vert_bounds.0 - 3;
 
 			// Set the cursor to the beginning of the block
 			self.cursor_position = [0, 0];
@@ -429,8 +432,8 @@ pub mod editor {
 
 			// Set the cursor position on screen
 			frame.set_cursor(
-				(self.cursor_position[0] + self.width.0 + 1) as u16,
-				(self.cursor_position[1] + self.height.0 + 1) as u16,
+				(self.cursor_position[0] + self.widget_horz_bounds.0 + 1) as u16,
+				(self.cursor_position[1] + self.widget_vert_bounds.0 + 1) as u16,
 			);
 
 			// If the editor is empty, render an empty widget
@@ -543,7 +546,7 @@ pub mod editor {
 		}
 
 		// Get the key pressed
-		pub fn handle_input(&mut self) {
+		pub fn handle_input(&mut self, break_loop: &mut bool) {
 			// Non-blocking read
 			if event::poll(Duration::from_millis(300)).unwrap() {
 				// Read input
@@ -657,7 +660,7 @@ pub mod editor {
 							// Save the frame to the file
 							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
 							// Break the loop to end the program
-							KeyCode::Char('q') => self.break_loop = true,
+							KeyCode::Char('q') => *break_loop = true,
 							// Paste text into the editor (if there is a clipboard)
 							KeyCode::Char('v') => {
 								if self.clipboard.is_some() {
