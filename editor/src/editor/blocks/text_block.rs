@@ -179,3 +179,18 @@ impl TextBlock {
 		Ok(total_length)
 	}
 }
+
+impl PartialEq for TextBlock {
+	fn eq(&self, other: &Self) -> bool {
+		// If any of the fields of the TextBlocks don't align, return false
+		if (self.block_num != other.block_num)
+			|| (self.content != other.content)
+			|| (self.is_modified != other.is_modified)
+			|| (self.len != other.len)
+		{
+			return false;
+		}
+		// Otherwise, return true
+		true
+	}
+}

@@ -444,3 +444,20 @@ impl Blocks {
 		}
 	}
 }
+
+impl PartialEq for Blocks {
+	fn eq(&self, other: &Self) -> bool {
+		// If any of the Blocks fields don't align, return false
+		if (self.head_block != other.head_block)
+			|| (self.tail_block != other.tail_block)
+			|| (self.starting_line_num != other.starting_line_num)
+			|| (self.max_blocks != other.max_blocks)
+			|| (self.num_blocks != other.num_blocks)
+			|| (self.blocks_list != other.blocks_list)
+		{
+			return false;
+		}
+		// Otherwise, return true
+		true
+	}
+}
