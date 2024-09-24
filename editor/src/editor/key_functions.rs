@@ -17,12 +17,17 @@ use unicode_width::UnicodeWidthStr;
 // Contains logic for all highlighting keys
 pub mod highlight_selection;
 
+// The point at which a new undo state is added
+const UNDO_PERIOD: usize = 50;
+
 // Functionality of pressing a normal character key
 pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Delete the selection
 		editor.delete_selection();
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 
 	// Line number of current line in the text
@@ -41,6 +46,8 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	editor.cursor_position[0] += 1;
 	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
+	// Update the progress towards a new undo state
+	editor.undo_counter += 1;
 }
 
 // Functionality for the tab key
@@ -49,6 +56,8 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	if !editor.selection.is_empty {
 		// Delete the selection
 		editor.delete_selection();
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 
 	// Line number of current line in the text
@@ -67,6 +76,8 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	editor.cursor_position[0] += editor.config.tab_width;
 	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
+	// Update the progress towards a new undo state
+	editor.undo_counter += 1;
 }
 
 // Functionality of pressing the enter key
@@ -94,6 +105,8 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	// Reset cursor to beginning of line
 	down_arrow(editor);
 	home_key(editor, true);
+	// Add a new undo state
+	editor.undo_counter += UNDO_PERIOD;
 }
 
 // Backspace at the beginning of line, moving to the above line
@@ -115,6 +128,8 @@ fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 
 		// Reduce the file length
 		editor.file_length -= 1;
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
@@ -132,6 +147,8 @@ fn backspace_normally(editor: &mut EditorSpace) {
 		.unwrap()
 		.delete_char_in_line(line_num, editor.index_position)
 		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+	// Update the progress towards a new undo state
+	editor.undo_counter += 1;
 }
 
 // Functionality of the backspace key
@@ -153,6 +170,8 @@ pub fn backspace(editor: &mut EditorSpace) {
 	} else {
 		// Delete the selection
 		editor.delete_selection();
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
@@ -176,6 +195,9 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap()
 			.delete_char_in_line(line_num, editor.index_position)
 			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+		// Update the progress towards a new undo state
+		editor.undo_counter += 1;
+
 	// If not at end of last line
 	} else if line_num < editor.file_length - 1 {
 		// Delete the below line and append its text content to the current line
@@ -187,6 +209,8 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
 		// Reduce the overall file length
 		editor.file_length -= 1;
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
@@ -199,6 +223,8 @@ pub fn delete_key(editor: &mut EditorSpace) {
 	} else {
 		// Delete the selection
 		editor.delete_selection();
+		// Add a new undo state
+		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
@@ -952,4 +978,27 @@ pub fn copy_to_clipboard(editor: &mut EditorSpace) {
 		.unwrap()
 		.set_contents(lines.into_par_iter().collect::<String>())
 		.unwrap();
+}
+
+// Automatically add an undo state to the undo stack
+pub fn auto_add_to_undo(editor: &mut EditorSpace) {
+	// Add a new undo state to the stack
+	if editor.undo_counter >= UNDO_PERIOD || editor.undo_stack.is_empty() {
+		// Reset the counter
+		editor.undo_counter = 0;
+		/* If the undo stack is empty add its first undo state. If there is
+		already states in the stack, only add a new state if it is different from
+		the current top undo state. */
+		if editor.undo_stack.top().is_none()
+			|| editor.undo_stack.top().as_ref().unwrap().2
+				!= editor.blocks.as_ref().unwrap().clone()
+		{
+			// Add to the undo stack
+			editor.undo_stack.push((
+				editor.cursor_position[1],
+				editor.scroll_offset,
+				editor.blocks.as_ref().unwrap().clone(),
+			));
+		}
+	}
 }

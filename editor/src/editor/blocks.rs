@@ -7,7 +7,7 @@ mod text_block;
 pub use text_block::TextBlock;
 
 // Contains blocks of text from a file
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Blocks {
 	// The ID number of the first block
 	pub head_block: usize,

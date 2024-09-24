@@ -8,7 +8,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 // Number of bytes in a block of text (5 KiB)
 pub const BLOCK_SIZE: u64 = 5120;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextBlock {
 	// ID number of the current block
 	pub block_num: usize,

@@ -21,6 +21,7 @@ pub mod editor {
 		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
 		ParallelIterator,
 	};
+	use stack::Stack;
 	use unicode_segmentation::UnicodeSegmentation;
 
 	use config::config::Config;
@@ -35,6 +36,9 @@ pub mod editor {
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
 	mod tests;
+
+	// 300 millisecond pollrate for reading terminal events
+	const POLLRATE: u64 = 300;
 
 	pub struct EditorSpace {
 		// Object containing multiple text blocks
@@ -55,16 +59,20 @@ pub mod editor {
 		height: usize,
 		// Position used to access indices within graphemes vectors
 		index_position: usize,
+		// Track if the editor has been intialized
+		is_initialized: bool,
 		// Used to scroll the text on screen (and calculate line number)
 		scroll_offset: usize,
 		// Structure keeping track of the highlighted selection of text
 		selection: Selection,
 		// Used to store the horizontal position in the text
 		stored_position: usize,
-		// Track if the editor has been intialized
-		is_initialized: bool,
 		// Actual position on the current line of text
 		text_position: usize,
+		// A counter checking if a new undo state needs to be added to the stack
+		undo_counter: usize,
+		// Stack for storing undo states. Store (screen cursor line, scroll_offset, Blocks)
+		undo_stack: Stack<(usize, usize, Blocks)>,
 		// Horizontal bounds of the editor block
 		widget_horz_bounds: (usize, usize),
 		// Vertical bounds of the editor widget
@@ -106,11 +114,13 @@ pub mod editor {
 				file_length: 0,
 				height: 0,
 				index_position: 0,
+				is_initialized: false,
 				scroll_offset: 0,
 				selection: Selection::new(),
 				stored_position: 0,
-				is_initialized: false,
 				text_position: 0,
+				undo_counter: 0,
+				undo_stack: Stack::new(),
 				widget_horz_bounds: (0, 0),
 				widget_vert_bounds: (0, 0),
 			}
@@ -547,8 +557,10 @@ pub mod editor {
 
 		// Get the key pressed
 		pub fn handle_input(&mut self, break_loop: &mut bool) {
+			// Add an undo state if needed
+			key_functions::auto_add_to_undo(self);
 			// Non-blocking read
-			if event::poll(Duration::from_millis(300)).unwrap() {
+			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
 				// Read input
 				if let Event::Key(KeyEvent {
 					code,

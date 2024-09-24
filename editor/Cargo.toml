@@ -12,3 +12,4 @@ serial_test = {workspace = true}
 unicode-segmentation = {workspace = true}
 unicode-width = {workspace = true}
 config = { path = "../config" }
+stack = { path = "../stack" }

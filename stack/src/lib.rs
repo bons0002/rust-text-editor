@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 
 // Simple stack data structure using a doubly linked list
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Stack<T> {
 	// Doubly linked list containing all items on the stack
 	items: LinkedList<T>,
@@ -33,6 +33,21 @@ impl<T> Stack<T> {
 	pub fn clear(&mut self) {
 		// Set the items list to a new list (making the old one go out of scope)
 		self.items = LinkedList::new();
+	}
+
+	// Return a reference to the top item in the Stack
+	pub fn top(&self) -> Option<&T> {
+		self.items.front()
+	}
+
+	// Check if the stack is empty
+	pub fn is_empty(&self) -> bool {
+		self.items.is_empty()
+	}
+
+	// Only used for debugging
+	pub fn len(&self) -> usize {
+		self.items.len()
 	}
 }
 
