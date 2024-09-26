@@ -63,8 +63,6 @@ pub mod editor {
 		// The height of the widget
 		height: usize,
 		// Position used to access indices within graphemes vectors
-		index_position: usize,
-		// Track if the editor has been intialized
 		is_initialized: bool,
 		// Used to scroll the text on screen (and calculate line number)
 		scroll_offset: usize,
@@ -118,7 +116,6 @@ pub mod editor {
 				filename,
 				file_length: 0,
 				height: 0,
-				index_position: 0,
 				is_initialized: false,
 				scroll_offset: 0,
 				selection: Selection::new(),
@@ -216,10 +213,7 @@ pub mod editor {
 			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
 			// A vector of the graphemes as stylized spans
 			let graphemes: Vec<Span> = line
-				.graphemes(true)
-				.collect::<Vec<&str>>()
-				.into_par_iter()
-				.enumerate()
+				.grapheme_indices(true)
 				.map(|(loc, character)| {
 					// Highlight the grapheme
 					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
@@ -476,8 +470,7 @@ pub mod editor {
 			let before_selection = blocks
 				.get_line(start.1)
 				.unwrap()
-				.graphemes(true)
-				.enumerate()
+				.grapheme_indices(true)
 				.filter_map(|(idx, graph)| {
 					if idx < start.0 {
 						Some(String::from(graph))
@@ -491,8 +484,7 @@ pub mod editor {
 			let after_selection = blocks
 				.get_line(end.1)
 				.unwrap()
-				.graphemes(true)
-				.enumerate()
+				.grapheme_indices(true)
 				.filter_map(|(idx, graph)| {
 					if idx >= end.0 {
 						Some(String::from(graph))
@@ -509,7 +501,7 @@ pub mod editor {
 		Also, reset the scroll offset (if need be). */
 		fn reset_cursor(&mut self, end: (usize, usize)) {
 			// Only reset cursor and scroll offset if at the end of the selection
-			if self.get_line_num(self.cursor_position[1]) == end.1 && self.index_position == end.0 {
+			if self.get_line_num(self.cursor_position[1]) == end.1 && self.text_position == end.0 {
 				// Reset scroll offset
 				self.scroll_offset = self.selection.original_scroll_offset;
 				// Reset the cursor's line number
@@ -563,7 +555,6 @@ pub mod editor {
 		fn get_unredo_state(&self) -> UnRedoState {
 			(
 				self.stored_position,
-				self.index_position,
 				self.text_position,
 				self.cursor_position,
 				self.scroll_offset,

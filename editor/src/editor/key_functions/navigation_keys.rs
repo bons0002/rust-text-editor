@@ -8,7 +8,6 @@ pub fn home_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 	// Move to beginning of line
 	editor.text_position = 0;
 	editor.cursor_position[0] = 0;
-	editor.index_position = 0;
 	// Set the stored cursor to the beginning of the line if the flag is set
 	if will_store_cursor {
 		editor.stored_position = 0;
@@ -45,14 +44,19 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_stor
 		},
 		Err(_) => 0,
 	};
+
 	// Update editor text position
 	editor.text_position = loc;
 
+	// Get the current location on the line
+	let pos = editor.text_position;
 	// Get the previous grapheme
 	let character = line
-		.graphemes(true)
-		.nth(editor.index_position - 1)
-		.unwrap_or("");
+		.grapheme_indices(true)
+		.filter_map(|(loc, graph)| if loc == pos { Some(graph) } else { None })
+		.last()
+		.unwrap_or_default();
+
 	// Get the width of the current grapheme
 	let char_width = UnicodeWidthStr::width(character);
 	// Move the screen cursor
@@ -71,7 +75,7 @@ fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize, will_st
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
 	// If the previous char isn't a tab, move normally
-	if line.graphemes(true).nth(editor.index_position - 1) != Some("\t") {
+	if line.chars().nth(editor.text_position - 1) != Some('\t') {
 		left_not_tab(editor, line_num, &line, will_store_cursor);
 	// Otherwise, move by the number of tab spaces
 	} else {
@@ -82,8 +86,6 @@ fn left_not_beginning_of_line(editor: &mut EditorSpace, line_num: usize, will_st
 			editor.stored_position = editor.cursor_position[0];
 		}
 	}
-	// Update the index position
-	editor.index_position -= 1;
 }
 
 // Left arrow key functionality
@@ -154,14 +156,19 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_sto
 		},
 		Err(_) => line.len(),
 	};
+
+	// Get the position on the line
+	let pos = editor.text_position;
+	// Get the current grapheme
+	let character = line
+		.grapheme_indices(true)
+		.filter_map(|(loc, graph)| if loc == pos { Some(graph) } else { None })
+		.last()
+		.unwrap_or_default();
+
 	// Update editor text position
 	editor.text_position = loc;
 
-	// Get the current grapheme
-	let character = line
-		.graphemes(true)
-		.nth(editor.index_position)
-		.unwrap_or("");
 	// Get the width of the current grapheme
 	let char_width = UnicodeWidthStr::width(character);
 	// Move the screen cursor
@@ -180,7 +187,7 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_c
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
 	// If not a tab character, move normally
-	if line.graphemes(true).nth(editor.index_position) != Some("\t") {
+	if line.chars().nth(editor.text_position) != Some('\t') {
 		// Move right for non-tab chars
 		right_not_tab(editor, line_num, &line, will_store_cursor);
 	// Otherwise, move the number of tab spaces
@@ -192,8 +199,6 @@ fn right_not_end_of_line(editor: &mut EditorSpace, line_num: usize, will_store_c
 			editor.stored_position = editor.cursor_position[0];
 		}
 	}
-	// Update the index position
-	editor.index_position += 1;
 }
 
 // Logic for moving right in the text when at the end of the line (move to next line)

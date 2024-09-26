@@ -63,10 +63,9 @@ pub fn undo(editor: &mut EditorSpace) {
 	let state = editor.unredo_stack.undo(state);
 	// Set the new editor's state
 	editor.stored_position = state.0;
-	editor.index_position = state.1;
-	editor.text_position = state.2;
-	editor.cursor_position = state.3;
-	editor.scroll_offset = state.4;
-	editor.blocks = Some(state.5);
-	editor.selection = state.6;
+	editor.text_position = state.1;
+	editor.cursor_position = state.2;
+	editor.scroll_offset = state.3;
+	editor.blocks = Some(state.4);
+	editor.selection = state.5;
 }

@@ -7,9 +7,9 @@ use stack_choice::StackChoice;
 // The number of characters that need to be entered in order to add a new undo state
 const UNDO_PERIOD: usize = 20;
 
-/* Undo or Redo state. Formatted as (stored position, index position, text position,
+/* Undo or Redo state. Formatted as (stored position, text position,
 cursor position, scroll offset, Blocks, Selection) */
-pub type UnRedoState = (usize, usize, usize, [usize; 2], usize, Blocks, Selection);
+pub type UnRedoState = (usize, usize, [usize; 2], usize, Blocks, Selection);
 
 // Controls both the undo and redo stack simultaneously
 pub struct UnRedoStack {

@@ -296,17 +296,22 @@ impl Blocks {
 	pub fn delete_char_in_line(
 		&mut self,
 		line_num: usize,
-		index_position: usize,
+		text_position: usize,
 	) -> Result<bool, Error> {
 		// Get the (block num, line number) location
 		let location = self.get_location(line_num)?;
 
 		// Get the line as graphemes
-		let mut line: Vec<&str> = self.blocks_list[location.0].content[location.1]
-			.graphemes(true)
+		let line: Vec<&str> = self.blocks_list[location.0].content[location.1]
+			.grapheme_indices(true)
+			.filter_map(|(pos, text)| {
+				if pos != text_position {
+					Some(text)
+				} else {
+					None
+				}
+			})
 			.collect();
-		// Remove the grapheme at the index
-		line.remove(index_position);
 
 		// Recreate the line as a string
 		let mut line_str = String::new();

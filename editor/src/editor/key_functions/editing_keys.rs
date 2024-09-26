@@ -32,7 +32,6 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	editor.text_position += 1;
 	editor.cursor_position[0] += 1;
 	editor.stored_position = editor.cursor_position[0];
-	editor.index_position += 1;
 }
 
 // Functionality for the tab key
@@ -63,7 +62,6 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	editor.text_position += 1;
 	editor.cursor_position[0] += editor.config.tab_width;
 	editor.stored_position = editor.cursor_position[0];
-	editor.index_position += 1;
 }
 
 // Functionality of pressing the enter key
@@ -142,7 +140,7 @@ fn backspace_normally(editor: &mut EditorSpace) {
 		.blocks
 		.as_mut()
 		.unwrap()
-		.delete_char_in_line(line_num, editor.index_position)
+		.delete_char_in_line(line_num, editor.text_position)
 		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
 }
 
@@ -191,7 +189,7 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.blocks
 			.as_mut()
 			.unwrap()
-			.delete_char_in_line(line_num, editor.index_position)
+			.delete_char_in_line(line_num, editor.text_position)
 			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
 
 	// If not at end of last line
