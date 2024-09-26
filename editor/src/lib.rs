@@ -23,18 +23,21 @@ pub mod editor {
 	};
 	use unicode_segmentation::UnicodeSegmentation;
 
-	use config::config::Config;
-
-	mod blocks;
 	use blocks::Blocks;
-
-	// Module containing all the functionality of each key. Called in handle_input
-	mod key_functions;
-	use key_functions::highlight_selection::{self, Selection};
-
-	mod unredo_stack;
+	use config::config::Config;
+	use key_functions::{
+		copy_paste, editing_keys,
+		highlight_selection::{self, Selection},
+		navigation_keys, save_key,
+	};
 	use unredo_stack::{UnRedoStack, UnRedoState};
 
+	// Contains the Blocks struct
+	mod blocks;
+	// Module containing all the functionality of each key
+	mod key_functions;
+	// Contains the UnRedoStack struct
+	mod unredo_stack;
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
 	mod tests;
@@ -512,14 +515,14 @@ pub mod editor {
 				// Reset the cursor's line number
 				self.cursor_position[1] = self.selection.original_cursor_position.1;
 				// Move to the beginning of the line
-				key_functions::home_key(self, true);
+				navigation_keys::home_key(self, true);
 				// Move to the correct horizontal position on the line
 				while self.cursor_position[0] < self.selection.original_cursor_position.0
 					&& key_functions::check_cursor_end_line(
 						self,
 						self.get_line_num(self.cursor_position[1]),
 					) {
-					key_functions::right_arrow(self, true);
+					navigation_keys::right_arrow(self, true);
 				}
 			}
 		}
@@ -586,70 +589,70 @@ pub mod editor {
 						// Return the key
 						match code {
 							// If normal character, insert that character
-							KeyCode::Char(code) => key_functions::char_key(self, code),
+							KeyCode::Char(code) => editing_keys::char_key(self, code),
 							// If Enter was pressed, insert newline
-							KeyCode::Enter => key_functions::enter_key(self),
+							KeyCode::Enter => editing_keys::enter_key(self),
 							// If tab was pressed, insert tab character
-							KeyCode::Tab => key_functions::tab_key(self),
+							KeyCode::Tab => editing_keys::tab_key(self),
 							// If backspace was pressed, remove the previous character
-							KeyCode::Backspace => key_functions::backspace(self),
+							KeyCode::Backspace => editing_keys::backspace(self),
 							// If delete was pressed, remove the next character
-							KeyCode::Delete => key_functions::delete_key(self),
+							KeyCode::Delete => editing_keys::delete_key(self),
 							// Left arrow moves cursor left
 							KeyCode::Left => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Left arrow functionality
-								key_functions::left_arrow(self, true);
+								navigation_keys::left_arrow(self, true);
 							}
 							// Right arrow moves cursor right
 							KeyCode::Right => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Right arrow functionality
-								key_functions::right_arrow(self, true);
+								navigation_keys::right_arrow(self, true);
 							}
 							// Up arrow move cursor up one line
 							KeyCode::Up => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Up arrow functionality
-								key_functions::up_arrow(self);
+								navigation_keys::up_arrow(self);
 							}
 							// Down arrow move cursor down one line
 							KeyCode::Down => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Down arrow functionality
-								key_functions::down_arrow(self);
+								navigation_keys::down_arrow(self);
 							}
 							// Home button moves to beginning of line
 							KeyCode::Home => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Home key functionality
-								key_functions::home_key(self, true);
+								navigation_keys::home_key(self, true);
 							}
 							// End button move to end of line
 							KeyCode::End => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// End key functionality
-								key_functions::end_key(self, true);
+								navigation_keys::end_key(self, true);
 							}
 							// The Page Up key moves up one `height` of the editor widget
 							KeyCode::PageUp => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Move one page up
-								key_functions::page_up(self);
+								navigation_keys::page_up(self);
 							}
 							// The Page Down key moves down one `height` of the editor widget
 							KeyCode::PageDown => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Move one page down
-								key_functions::page_down(self);
+								navigation_keys::page_down(self);
 							}
 							_ => (),
 						}
@@ -658,7 +661,7 @@ pub mod editor {
 						match code {
 							// Uppercase characters
 							KeyCode::Char(code) => {
-								key_functions::char_key(self, code.to_ascii_uppercase())
+								editing_keys::char_key(self, code.to_ascii_uppercase())
 							}
 							// Right arrow highlight text to the right
 							KeyCode::Right => highlight_selection::highlight_right(self),
@@ -682,19 +685,19 @@ pub mod editor {
 					} else if modifiers == KeyModifiers::CONTROL {
 						match code {
 							// Save the frame to the file
-							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
+							KeyCode::Char('s') => save_key::save_key_combo(self, false, ""),
 							// Break the loop to end the program
 							KeyCode::Char('q') => *break_loop = true,
 							// Paste text into the editor (if there is a clipboard)
 							KeyCode::Char('v') => {
 								if self.clipboard.is_some() {
-									key_functions::paste_from_clipboard(self)
+									copy_paste::paste_from_clipboard(self)
 								}
 							}
 							// Copy text from the editor and write it to the clipboard
 							KeyCode::Char('c') => {
 								if self.clipboard.is_some() {
-									key_functions::copy_to_clipboard(self)
+									copy_paste::copy_to_clipboard(self)
 								}
 							}
 							// Undo a change
@@ -706,28 +709,28 @@ pub mod editor {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump to the next word
-								key_functions::jump_right(self, false);
+								navigation_keys::jump_right(self, false);
 							}
 							// Jump to the previous word
 							KeyCode::Left => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump to the previous word
-								key_functions::jump_left(self, false);
+								navigation_keys::jump_left(self, false);
 							}
 							// Jump up 10 lines
 							KeyCode::Up => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump up 10 lines
-								key_functions::jump_up(self, false);
+								navigation_keys::jump_up(self, false);
 							}
 							// Jump down 10 lines
 							KeyCode::Down => {
 								// Clear the highlighted selection of text
 								self.selection.is_empty = true;
 								// Jump down 10 lines
-								key_functions::jump_down(self, false);
+								navigation_keys::jump_down(self, false);
 							}
 							_ => (),
 						}
@@ -735,13 +738,13 @@ pub mod editor {
 					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
 						match code {
 							// Highlight the entire unicode word to the right
-							KeyCode::Right => key_functions::jump_right(self, true),
+							KeyCode::Right => navigation_keys::jump_right(self, true),
 							// Highlight the entire unicode word to the left
-							KeyCode::Left => key_functions::jump_left(self, true),
+							KeyCode::Left => navigation_keys::jump_left(self, true),
 							// Highlight upwards 10 lines
-							KeyCode::Up => key_functions::jump_up(self, true),
+							KeyCode::Up => navigation_keys::jump_up(self, true),
 							// Highlight down 10 lines
-							KeyCode::Down => key_functions::jump_down(self, true),
+							KeyCode::Down => navigation_keys::jump_down(self, true),
 							_ => (),
 						}
 					}

@@ -3,7 +3,10 @@
 
 use std::cmp::Ordering;
 
-use super::{down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow, EditorSpace};
+use super::{
+	navigation_keys::{down_arrow, end_key, home_key, left_arrow, right_arrow, up_arrow},
+	EditorSpace,
+};
 
 // Module containing direction keys to track movement
 mod movement;

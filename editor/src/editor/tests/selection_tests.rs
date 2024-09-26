@@ -4,14 +4,7 @@
 =================================================
 */
 
-use key_functions::{
-	backspace, delete_key, down_arrow, end_key,
-	highlight_selection::{
-		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_page_up,
-		highlight_right, highlight_up,
-	},
-	jump_down, jump_left, jump_right, jump_up, page_down, right_arrow,
-};
+use key_functions::{editing_keys::*, highlight_selection::*, navigation_keys::*};
 
 use super::*;
 
