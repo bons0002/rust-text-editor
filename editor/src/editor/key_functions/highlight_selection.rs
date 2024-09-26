@@ -10,6 +10,7 @@ mod movement;
 use movement::Movement;
 
 // Structure that keeps track of the highlighted selection of text
+#[derive(Clone, Debug)]
 pub struct Selection {
 	// The start point of the selection
 	pub start: [usize; 2],
@@ -36,6 +37,18 @@ impl Selection {
 			original_text_position: (0, 0),
 			original_scroll_offset: 0,
 		}
+	}
+}
+
+impl PartialEq for Selection {
+	// Check that two selections are equal
+	fn eq(&self, other: &Self) -> bool {
+		self.start == other.start
+			&& self.end == other.end
+			&& self.is_empty == other.is_empty
+			&& self.original_cursor_position == other.original_cursor_position
+			&& self.original_text_position == other.original_text_position
+			&& self.original_scroll_offset == other.original_scroll_offset
 	}
 }
 

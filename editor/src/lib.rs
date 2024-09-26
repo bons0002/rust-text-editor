@@ -12,7 +12,7 @@ pub mod editor {
 	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 	use ratatui::{
 		layout::Rect,
-		style::{Style, Stylize},
+		style::Style,
 		text::{Line, Span, Text},
 		widgets::{Block, BorderType, Borders, Paragraph},
 		Frame,
@@ -21,7 +21,6 @@ pub mod editor {
 		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
 		ParallelIterator,
 	};
-	use stack::Stack;
 	use unicode_segmentation::UnicodeSegmentation;
 
 	use config::config::Config;
@@ -32,6 +31,9 @@ pub mod editor {
 	// Module containing all the functionality of each key. Called in handle_input
 	mod key_functions;
 	use key_functions::highlight_selection::{self, Selection};
+
+	mod unredo_stack;
+	use unredo_stack::{UnRedoStack, UnRedoState};
 
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
@@ -69,14 +71,14 @@ pub mod editor {
 		stored_position: usize,
 		// Actual position on the current line of text
 		text_position: usize,
-		// A counter checking if a new undo state needs to be added to the stack
-		undo_counter: usize,
-		// Stack for storing undo states. Store (screen cursor line, scroll_offset, Blocks)
-		undo_stack: Stack<(usize, usize, Blocks)>,
+		// Stack for storing undo/redo states
+		unredo_stack: UnRedoStack,
 		// Horizontal bounds of the editor block
 		widget_horz_bounds: (usize, usize),
 		// Vertical bounds of the editor widget
 		widget_vert_bounds: (usize, usize),
+		// The width of the widget
+		width: usize,
 	}
 
 	impl EditorSpace {
@@ -119,10 +121,10 @@ pub mod editor {
 				selection: Selection::new(),
 				stored_position: 0,
 				text_position: 0,
-				undo_counter: 0,
-				undo_stack: Stack::new(),
+				unredo_stack: UnRedoStack::new(),
 				widget_horz_bounds: (0, 0),
 				widget_vert_bounds: (0, 0),
+				width: 0,
 			}
 		}
 
@@ -232,7 +234,7 @@ pub mod editor {
 			let bottom_line = self.height + self.scroll_offset;
 			// Start tab with a vertical line
 			let mut tab_char = String::from("\u{2502}");
-			// Iterator to create a string of tab_width - 1 number of	 spaces
+			// Iterator to create a string of tab_width - 1 number of spaces
 			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
 
 			// Only highlight if selection isn't empty (and its within the widget's bounds)
@@ -249,7 +251,8 @@ pub mod editor {
 			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
 		}
 
-		fn get_lines_from_blocks(&self, blocks: Blocks) -> Vec<Line> {
+		// Get the lines of text from the Blocks content
+		fn get_lines_from_blocks(&self, blocks: Blocks, line_num: usize) -> Vec<Line> {
 			// Convert the blocks into one text vector
 			let mut text: Vec<String> = Vec::new();
 			// Iterate through the blocks that are currently loaded in
@@ -264,7 +267,21 @@ pub mod editor {
 				.map(|(idx, line)| {
 					// If the line is empty, return a blank line
 					if line.is_empty() {
-						return Line::from(String::new());
+						// Blank space to add to put on the line (for line highlighting)
+						let blank_space = String::from(&" ".repeat(self.width));
+						// Return the blank line
+						return Line::from(blank_space);
+					// The line the cursor is on
+					} else if idx == line_num {
+						// Length of the text on the line
+						let len = line.graphemes(true).count();
+						// Only create blank space if there is room
+						let blank_space = match len < self.width {
+							true => &" ".repeat(self.width - len),
+							false => &String::new(),
+						};
+						// Return the line
+						return self.parse_line(idx, &(line + blank_space));
 					}
 					self.parse_line(idx, &line)
 				})
@@ -282,7 +299,7 @@ pub mod editor {
 			// The current line number in the blocks
 			let line_num = self.get_line_num(self.cursor_position[1]) - blocks.starting_line_num;
 			// Get the lines of the currently loaded blocks as a vector
-			let mut lines = self.get_lines_from_blocks(blocks);
+			let mut lines = self.get_lines_from_blocks(blocks, line_num);
 
 			// Highlight the line that the cursor is on
 			if let Some(line) = lines.get(line_num) {
@@ -325,6 +342,9 @@ pub mod editor {
 			/* Track the height of the widget (subtract three because there is a top and
 			bottom boundary plus an extra line that isn't included in the height) */
 			self.height = self.widget_vert_bounds.1 - self.widget_vert_bounds.0 - 3;
+			/* Track the width of the widget (subtract 2 for the side borders of the
+			widget) */
+			self.width = self.widget_horz_bounds.1 - self.widget_horz_bounds.0 - 2;
 
 			// Set the cursor to the beginning of the block
 			self.cursor_position = [0, 0];
@@ -381,34 +401,17 @@ pub mod editor {
 		// Render a blank ui if there are no TextBlocks in the editor Blocks
 		fn render_empty_ui(&self, layout: Rc<[Rect]>, frame: &mut Frame) {
 			// If the file is empty, render an empty line numbers widget
-			frame.render_widget(
-				Block::new()
-					.fg(self.config.theme.app_fg)
-					.bg(self.config.theme.app_bg)
-					.borders(Borders::ALL),
-				layout[0],
-			);
+			frame.render_widget(Block::new().borders(Borders::ALL), layout[0]);
 			// If the file is empty, render an empty EditorSpace widget
-			frame.render_widget(
-				Block::new()
-					.fg(self.config.theme.app_fg)
-					.bg(self.config.theme.app_bg)
-					.borders(Borders::ALL),
-				layout[1],
-			);
+			frame.render_widget(Block::new().borders(Borders::ALL), layout[1]);
 		}
 
 		// Render the ui for the editor
 		fn render_full_ui(&mut self, layout: Rc<[Rect]>, frame: &mut Frame) {
-			// Clone the config for the editor
-			let config = self.config.clone();
-
 			// Render line numbers widget
 			frame.render_widget(
 				self.get_line_numbers_paragraph().block(
 					Block::new()
-						.fg(self.config.theme.app_fg)
-						.bg(self.config.theme.app_bg)
 						.borders(Borders::LEFT | Borders::TOP | Borders::BOTTOM)
 						.border_type(BorderType::Thick),
 				),
@@ -419,8 +422,6 @@ pub mod editor {
 			frame.render_widget(
 				self.get_paragraph().block(
 					Block::new()
-						.fg(config.theme.app_fg)
-						.bg(config.theme.app_bg)
 						.borders(Borders::ALL)
 						.border_type(BorderType::Thick),
 				),
@@ -555,10 +556,21 @@ pub mod editor {
 			self.selection.is_empty = true;
 		}
 
+		// Get the current state of the editor (to be added to the unredo stack)
+		fn get_unredo_state(&self) -> UnRedoState {
+			(
+				self.stored_position,
+				self.index_position,
+				self.text_position,
+				self.cursor_position,
+				self.scroll_offset,
+				self.blocks.as_ref().unwrap().clone(),
+				self.selection.clone(),
+			)
+		}
+
 		// Get the key pressed
 		pub fn handle_input(&mut self, break_loop: &mut bool) {
-			// Add an undo state if needed
-			key_functions::auto_add_to_undo(self);
 			// Non-blocking read
 			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
 				// Read input
@@ -684,6 +696,10 @@ pub mod editor {
 								if self.clipboard.is_some() {
 									key_functions::copy_to_clipboard(self)
 								}
+							}
+							// Undo a change
+							KeyCode::Char('z') => {
+								key_functions::undo(self);
 							}
 							// Jump to the next word
 							KeyCode::Right => {

@@ -6,6 +6,7 @@
 
 use super::*;
 use key_functions::{highlight_selection::*, *};
+use unredo_stack::stack_choice::StackChoice;
 //use serial_test::serial;
 use std::fs::{self, read_to_string};
 
@@ -855,119 +856,60 @@ fn jump_down_test() {
 =======================================
 */
 
-// Test that undo states are correctly added to the undo statck automatically
+// Test the length of the undo stack is updated properly
 #[test]
-fn auto_update_undo_test() {
-	// Make an editor for the HIGHLIGHT_FILE
+fn undo_stack_length() {
+	// Create an editor over the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
 
-	// Add the first undo state
-	auto_add_to_undo(&mut editor);
-
-	for counter in 0..102 {
-		// Insert 50 '~'
-		if counter < 50 {
+	// Take enough actions to create three undo states
+	for i in 0..43 {
+		// Insert 20 '~'
+		if i < 20 {
 			char_key(&mut editor, '~');
-		// Delete 50 chars
-		} else if counter < 100 {
+		// Delete all 20 '~'
+		} else if i < 40 {
 			backspace(&mut editor);
-		// Insert a new line
-		} else if counter == 100 {
-			enter_key(&mut editor);
-		// Delete a full line
+		// Highlight down three lines
 		} else {
-			// Move to the beginning of the line
-			home_key(&mut editor, true);
-			// Delete the line
-			backspace(&mut editor);
+			highlight_down(&mut editor);
 		}
-		// Add undo state if need be
-		auto_add_to_undo(&mut editor);
 	}
-	// Check that all states have been added
-	assert_eq!(editor.undo_stack.len(), 5);
+	// Delete selection
+	backspace(&mut editor);
+	// Check that the expected number (3) of undo states were added
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 3);
 
-	// Counter to check which state was removed from the stack
-	let mut counter = 0;
-	// Check the content of each state is correct
-	while let Some(item) = editor.undo_stack.pop() {
-		// Check the scroll offset
-		assert_eq!(item.1, 0);
-		// Check the block content
-		let actual = get_content(item.2);
-		// The expected content of the block
-		let mut expected: Vec<String> = Vec::new();
-		// Read in the correct expected content and check the line number of the cursor
-		match counter {
-			0 | 2 | 4 => {
-				expected = AUTO_UNDO_STATE_0_2_4
-					.split('\n')
-					.map(String::from)
-					.collect::<Vec<String>>();
-				// Check the cursor line number
-				assert_eq!(item.0, 0);
-			}
-			1 => {
-				expected = AUTO_UNDO_STATE_3
-					.split('\n')
-					.map(String::from)
-					.collect::<Vec<String>>();
-				// Check the cursor line number
-				assert_eq!(item.0, 1);
-			}
-			3 => {
-				expected = AUTO_UNDO_STATE_1
-					.split('\n')
-					.map(String::from)
-					.collect::<Vec<String>>();
-				// Check the cursor line number
-				assert_eq!(item.0, 0);
-			}
-			_ => (),
-		}
-		// Check the content is correct
-		assert_eq!(actual, expected);
-		// Increment the counter
-		counter += 1;
-	}
+	// Perform an 'undo' and check that a state was removed from the stack
+	let state = editor.get_unredo_state();
+	let _ = editor.unredo_stack.undo(state);
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 2);
 }
 
-// Test that the scroll offset is added to the undo stack correctly
+// Test undoing after deleting a selection of text
 #[test]
-fn auto_undo_offset() {
-	// Make an editor for the GENOME_FILE
-	let mut editor = construct_editor(GENOME_FILE);
-	// Add the first state to the undo stack
-	auto_add_to_undo(&mut editor);
-	// Move down one page (so the scroll offset is 1)
-	page_down(&mut editor);
-	// Add a new line (so the stack gets a new state)
-	enter_key(&mut editor);
-	// Update the stack
-	auto_add_to_undo(&mut editor);
-	// Check length
-	assert_eq!(editor.undo_stack.len(), 2);
+fn undo_delete_selection() {
+	// Create an editor over the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
 
-	let mut counter = 0;
-	// Loop through the stack
-	while let Some(item) = editor.undo_stack.pop() {
-		match counter {
-			0 => {
-				// Cursor should be on last line of the widget
-				assert_eq!(item.0, editor.height);
-				// Should have scrolled once with the page down and again with enter
-				assert_eq!(item.1, 2);
-			}
-			1 => {
-				// Should start on first line
-				assert_eq!(item.0, 0);
-				// Should not have scrolled
-				assert_eq!(item.1, 0);
-			}
-			_ => (),
-		}
-		counter += 1;
+	// Highlight three lines down
+	for _i in 0..3 {
+		highlight_down(&mut editor);
 	}
+
+	// Selection before deletion
+	let selection_before = editor.selection.clone();
+	// Delete the selection
+	backspace(&mut editor);
+	// Selection after deletion
+	let selection_after = editor.selection.clone();
+
+	// Undo
+	undo(&mut editor);
+	// Check that the selections are different
+	assert_ne!(selection_after, editor.selection);
+	// Check that it reverted to the original selection
+	assert_eq!(selection_before, editor.selection);
 }
 
 /*

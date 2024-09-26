@@ -107,7 +107,7 @@ impl TextBlock {
 		// Trim the newlines
 		let content = content
 			.into_par_iter()
-			.map(|line| String::from(line.trim_end()))
+			.map(|line| String::from(line.trim_end_matches('\n')))
 			.collect();
 		// Create and return the block
 		let mut block = TextBlock {

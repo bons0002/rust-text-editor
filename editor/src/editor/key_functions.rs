@@ -1,8 +1,7 @@
 // Implementation of the module `key_functions` defined in `src/lib.rs` module `editor`
 // Contains the logic for all the keys pressed
 
-use super::blocks::Blocks;
-use super::EditorSpace;
+use super::{blocks::Blocks, EditorSpace};
 use cli_clipboard::ClipboardProvider;
 use rayon::iter::{
 	IndexedParallelIterator, IntoParallelIterator, ParallelExtend, ParallelIterator,
@@ -17,17 +16,28 @@ use unicode_width::UnicodeWidthStr;
 // Contains logic for all highlighting keys
 pub mod highlight_selection;
 
-// The point at which a new undo state is added
-const UNDO_PERIOD: usize = 50;
+// Check if there is a selection that needs to be deleted
+fn selection_delete(editor: &mut EditorSpace) {
+	// Get the current editor state
+	let state = editor.get_unredo_state();
+	// Add a new undo state
+	editor.unredo_stack.auto_update(state, true);
+	// Delete the selection
+	editor.delete_selection();
+}
 
 // Functionality of pressing a normal character key
 pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
-		// Delete the selection
-		editor.delete_selection();
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
+		// Add an undo state and delete the selection
+		selection_delete(editor);
+	// Update progress toward a new undo state if the current code is a space
+	} else {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new unredo state if necessary
+		editor.unredo_stack.auto_update(state, false);
 	}
 
 	// Line number of current line in the text
@@ -46,18 +56,19 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	editor.cursor_position[0] += 1;
 	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
-	// Update the progress towards a new undo state
-	editor.undo_counter += 1;
 }
 
 // Functionality for the tab key
 pub fn tab_key(editor: &mut EditorSpace) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
-		// Delete the selection
-		editor.delete_selection();
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
+		// Add an undo state and delete the selection
+		selection_delete(editor);
+	} else {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new unredo state if necessary
+		editor.unredo_stack.auto_update(state, false);
 	}
 
 	// Line number of current line in the text
@@ -76,15 +87,18 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	editor.cursor_position[0] += editor.config.tab_width;
 	editor.stored_position = editor.cursor_position[0];
 	editor.index_position += 1;
-	// Update the progress towards a new undo state
-	editor.undo_counter += 1;
 }
 
 // Functionality of pressing the enter key
 pub fn enter_key(editor: &mut EditorSpace) {
+	// Get the current editor state
+	let state = editor.get_unredo_state();
+	// Add a new undo state
+	editor.unredo_stack.auto_update(state, true);
+
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
-		// Delete the selection
+		// Delete selection
 		editor.delete_selection();
 	}
 
@@ -105,13 +119,16 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	// Reset cursor to beginning of line
 	down_arrow(editor);
 	home_key(editor, true);
-	// Add a new undo state
-	editor.undo_counter += UNDO_PERIOD;
 }
 
 // Backspace at the beginning of line, moving to the above line
 fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 	if editor.file_length > 0 {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new undo state
+		editor.unredo_stack.auto_update(state, true);
+
 		// Move up one line
 		up_arrow(editor);
 		end_key(editor, true);
@@ -128,13 +145,16 @@ fn backspace_beginning_of_line(editor: &mut EditorSpace) {
 
 		// Reduce the file length
 		editor.file_length -= 1;
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
 // Backspace after the beginning of the line deletes a char normally
 fn backspace_normally(editor: &mut EditorSpace) {
+	// Get the current editor state
+	let state = editor.get_unredo_state();
+	// Add a new unredo state if necessary
+	editor.unredo_stack.auto_update(state, false);
+
 	// Move left
 	left_arrow(editor, true);
 	// Line number of current line in the text
@@ -147,8 +167,6 @@ fn backspace_normally(editor: &mut EditorSpace) {
 		.unwrap()
 		.delete_char_in_line(line_num, editor.index_position)
 		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
-	// Update the progress towards a new undo state
-	editor.undo_counter += 1;
 }
 
 // Functionality of the backspace key
@@ -168,10 +186,8 @@ pub fn backspace(editor: &mut EditorSpace) {
 			backspace_normally(editor);
 		}
 	} else {
-		// Delete the selection
-		editor.delete_selection();
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
+		// Add a new undo state and delete the selection
+		selection_delete(editor);
 	}
 }
 
@@ -188,6 +204,11 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 
 	// If not at the end of the current line
 	if editor.text_position < length {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new unredo state if necessary
+		editor.unredo_stack.auto_update(state, false);
+
 		// Delete next char
 		editor
 			.blocks
@@ -195,11 +216,14 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap()
 			.delete_char_in_line(line_num, editor.index_position)
 			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
-		// Update the progress towards a new undo state
-		editor.undo_counter += 1;
 
 	// If not at end of last line
 	} else if line_num < editor.file_length - 1 {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new undo state
+		editor.unredo_stack.auto_update(state, true);
+
 		// Delete the below line and append its text content to the current line
 		editor
 			.blocks
@@ -209,8 +233,6 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
 		// Reduce the overall file length
 		editor.file_length -= 1;
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
 	}
 }
 
@@ -221,10 +243,7 @@ pub fn delete_key(editor: &mut EditorSpace) {
 		// Delete character
 		no_selection_delete(editor);
 	} else {
-		// Delete the selection
-		editor.delete_selection();
-		// Add a new undo state
-		editor.undo_counter += UNDO_PERIOD;
+		selection_delete(editor);
 	}
 }
 
@@ -249,6 +268,8 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_stor
 		},
 		Err(_) => 0,
 	};
+	// Update editor text position
+	editor.text_position = loc;
 
 	// Get the previous grapheme
 	let character = line
@@ -263,11 +284,6 @@ fn left_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_stor
 	if will_store_cursor {
 		editor.stored_position = editor.cursor_position[0];
 	}
-
-	// Get the difference in the positions
-	let diff = editor.text_position - loc;
-	// Update editor text position
-	editor.text_position -= diff;
 }
 
 // Logic for moving left if not at the beginning of the line
@@ -386,6 +402,8 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_sto
 		},
 		Err(_) => line.len(),
 	};
+	// Update editor text position
+	editor.text_position = loc;
 
 	// Get the current grapheme
 	let character = line
@@ -400,11 +418,6 @@ fn right_not_tab(editor: &mut EditorSpace, line_num: usize, line: &str, will_sto
 	if will_store_cursor {
 		editor.stored_position = editor.cursor_position[0];
 	}
-
-	// Get the difference in the positions
-	let diff = loc - editor.text_position;
-	// Update editor text position
-	editor.text_position += diff;
 }
 
 // Logic for moving right in the text before reaching the end of the line
@@ -980,25 +993,18 @@ pub fn copy_to_clipboard(editor: &mut EditorSpace) {
 		.unwrap();
 }
 
-// Automatically add an undo state to the undo stack
-pub fn auto_add_to_undo(editor: &mut EditorSpace) {
-	// Add a new undo state to the stack
-	if editor.undo_counter >= UNDO_PERIOD || editor.undo_stack.is_empty() {
-		// Reset the counter
-		editor.undo_counter = 0;
-		/* If the undo stack is empty add its first undo state. If there is
-		already states in the stack, only add a new state if it is different from
-		the current top undo state. */
-		if editor.undo_stack.top().is_none()
-			|| editor.undo_stack.top().as_ref().unwrap().2
-				!= editor.blocks.as_ref().unwrap().clone()
-		{
-			// Add to the undo stack
-			editor.undo_stack.push((
-				editor.cursor_position[1],
-				editor.scroll_offset,
-				editor.blocks.as_ref().unwrap().clone(),
-			));
-		}
-	}
+// Calls the UnRedoStack undo and sets the editor's state
+pub fn undo(editor: &mut EditorSpace) {
+	// Get the current editor state
+	let state = editor.get_unredo_state();
+	// Take the undo action and return the new editor state
+	let state = editor.unredo_stack.undo(state);
+	// Set the new editor's state
+	editor.stored_position = state.0;
+	editor.index_position = state.1;
+	editor.text_position = state.2;
+	editor.cursor_position = state.3;
+	editor.scroll_offset = state.4;
+	editor.blocks = Some(state.5);
+	editor.selection = state.6;
 }

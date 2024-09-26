@@ -511,26 +511,6 @@ const MULTIPLE_MODIFICATIONS_SAVE: &str = ">NM_000014.6 Homo sapiens alpha-2-mac
     GAGGCTATCAAAAGGATCGCCTATGAGTTTGTAGAGATGAAGGCCAAAGAGGGCGTGGTGTATGTGGAGGTGCGGTACAG\n\
     TCCGCACCTGCTGGCCA";
 
-const AUTO_UNDO_STATE_0_2_4: &str = "123456789🥹\n\
-    abcdefghi\n\
-    !@#$%🥹^&*(\n\
-    jklmnopqr\n\
-    987654321\n\
-    +_)=-\\🥹,./";
-const AUTO_UNDO_STATE_1: &str = "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~123456789🥹\n\
-    abcdefghi\n\
-    !@#$%🥹^&*(\n\
-    jklmnopqr\n\
-    987654321\n\
-    +_)=-\\🥹,./";
-const AUTO_UNDO_STATE_3: &str = "\n\
-    123456789🥹\n\
-    abcdefghi\n\
-    !@#$%🥹^&*(\n\
-    jklmnopqr\n\
-    987654321\n\
-    +_)=-\\🥹,./";
-
 /* Commented out because tests commented out
 
 const COPY_AND_PASTE_ONELINE: &str = "#include<stdio.h>\n\
