@@ -4,7 +4,7 @@
 =================================================
 */
 
-use key_functions::{editing_keys::*, highlight_selection::*, navigation_keys::*};
+use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*};
 
 use super::*;
 

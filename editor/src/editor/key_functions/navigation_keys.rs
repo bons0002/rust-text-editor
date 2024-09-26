@@ -1,6 +1,6 @@
 use super::{
-	check_cursor_begin_line, check_cursor_end_line, highlight_selection, EditorSpace,
-	GraphemeCursor, UnicodeSegmentation, UnicodeWidthStr,
+	check_cursor_begin_line, check_cursor_end_line, highlight_keys, EditorSpace, GraphemeCursor,
+	UnicodeSegmentation, UnicodeWidthStr,
 };
 
 // Home key functionality
@@ -127,7 +127,7 @@ pub fn jump_left(editor: &mut EditorSpace, will_highlight: bool) {
 	while editor.text_position > index {
 		// If set to highlight
 		if will_highlight {
-			highlight_selection::highlight_left(editor);
+			highlight_keys::highlight_left(editor);
 		// If set to not highlight
 		} else {
 			left_arrow(editor, true);
@@ -249,7 +249,7 @@ pub fn jump_right(editor: &mut EditorSpace, will_highlight: bool) {
 	while editor.text_position < index {
 		// If set to highlight
 		if will_highlight {
-			highlight_selection::highlight_right(editor);
+			highlight_keys::highlight_right(editor);
 		// If set to not highlight
 		} else {
 			right_arrow(editor, true);
@@ -330,7 +330,7 @@ pub fn jump_up(editor: &mut EditorSpace, will_highlight: bool) {
 	for _i in 0..10 {
 		// If set to highlight
 		if will_highlight {
-			highlight_selection::highlight_up(editor);
+			highlight_keys::highlight_up(editor);
 		// If set to not highlight
 		} else {
 			up_arrow(editor);
@@ -425,7 +425,7 @@ pub fn jump_down(editor: &mut EditorSpace, will_highlight: bool) {
 	for _i in 0..10 {
 		// If set to highlight
 		if will_highlight {
-			highlight_selection::highlight_down(editor);
+			highlight_keys::highlight_down(editor);
 		// If set to not highlight
 		} else {
 			down_arrow(editor);

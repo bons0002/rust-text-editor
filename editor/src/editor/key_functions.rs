@@ -10,7 +10,7 @@ use unicode_segmentation::GraphemeCursor;
 use unicode_width::UnicodeWidthStr;
 
 // Contains logic for all highlighting keys
-pub mod highlight_selection;
+pub mod highlight_keys;
 // Contains keys for inserting and deleting
 pub mod editing_keys;
 // Contains the arrow keys, home, end, etc.

@@ -27,7 +27,7 @@ pub mod editor {
 	use config::config::Config;
 	use key_functions::{
 		copy_paste, editing_keys,
-		highlight_selection::{self, Selection},
+		highlight_keys::{self, selection::Selection},
 		navigation_keys, save_key,
 	};
 	use unredo_stack::{UnRedoStack, UnRedoState};
@@ -655,21 +655,21 @@ pub mod editor {
 								editing_keys::char_key(self, code.to_ascii_uppercase())
 							}
 							// Right arrow highlight text to the right
-							KeyCode::Right => highlight_selection::highlight_right(self),
+							KeyCode::Right => highlight_keys::highlight_right(self),
 							// Left arrow highlight text to the left
-							KeyCode::Left => highlight_selection::highlight_left(self),
+							KeyCode::Left => highlight_keys::highlight_left(self),
 							// Up arrow highlights text upwards
-							KeyCode::Up => highlight_selection::highlight_up(self),
+							KeyCode::Up => highlight_keys::highlight_up(self),
 							// Down arrow highlights text downwards
-							KeyCode::Down => highlight_selection::highlight_down(self),
+							KeyCode::Down => highlight_keys::highlight_down(self),
 							// End key highlights to end of line
-							KeyCode::End => highlight_selection::highlight_end(self),
+							KeyCode::End => highlight_keys::highlight_end(self),
 							// Home key highlights to beginning of line
-							KeyCode::Home => highlight_selection::highlight_home(self),
+							KeyCode::Home => highlight_keys::highlight_home(self),
 							// Highlight one page up
-							KeyCode::PageUp => highlight_selection::highlight_page_up(self),
+							KeyCode::PageUp => highlight_keys::highlight_page_up(self),
 							// Highlight one page down
-							KeyCode::PageDown => highlight_selection::highlight_page_down(self),
+							KeyCode::PageDown => highlight_keys::highlight_page_down(self),
 							_ => (),
 						}
 					// If the Control modifier is pressed

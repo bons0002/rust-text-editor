@@ -5,7 +5,7 @@
 */
 
 use super::*;
-use key_functions::{editing_keys::*, highlight_selection::*, navigation_keys::*, save_key::*, *};
+use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
 use unredo_stack::stack_choice::StackChoice;
 //use serial_test::serial;
 use std::fs::{self, read_to_string};

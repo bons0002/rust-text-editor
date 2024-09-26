@@ -1,4 +1,4 @@
-use super::{key_functions::highlight_selection::Selection, Blocks};
+use super::{key_functions::highlight_keys::selection::Selection, Blocks};
 use stack::Stack;
 
 pub mod stack_choice;
