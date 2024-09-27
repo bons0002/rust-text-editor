@@ -372,11 +372,6 @@ impl Blocks {
 		Ok(self.blocks_list[location.0].content[location.1].clone())
 	}
 
-	// Return the length of the specified line
-	pub fn get_line_length(&self, line_num: usize) -> Result<usize, Error> {
-		Ok(self.get_line(line_num)?.graphemes(true).count())
-	}
-
 	// The number of lines in the entire Blocks
 	pub fn len(&self) -> usize {
 		/* Map reduce to sum the length of all the blocks' lengths.

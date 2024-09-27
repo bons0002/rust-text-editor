@@ -172,13 +172,13 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// The length of the current line
-	let length = match editor.blocks.as_ref().unwrap().get_line_length(line_num) {
+	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
 		Ok(len) => len,
 		Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
 	};
 
 	// If not at the end of the current line
-	if editor.text_position < length {
+	if editor.text_position < line.len() {
 		// Get the current editor state
 		let state = editor.get_unredo_state();
 		// Add a new unredo state if necessary
