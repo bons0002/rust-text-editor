@@ -257,12 +257,8 @@ pub fn jump_right(editor: &mut EditorSpace, will_highlight: bool) {
 	}
 }
 
-// Logic for moving up without scrolling
-fn up_no_scroll(editor: &mut EditorSpace) {
-	// Move the cursor to the prev line
-	editor.cursor_position[1] -= 1;
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
+// Realign the cursor to the stored cursor position
+fn realign_cursor(editor: &mut EditorSpace, line_num: usize) {
 	// Save current position
 	let position = editor.stored_position;
 	// Move cursor to beginning of line
@@ -274,21 +270,24 @@ fn up_no_scroll(editor: &mut EditorSpace) {
 	}
 }
 
+// Logic for moving up without scrolling
+fn up_no_scroll(editor: &mut EditorSpace) {
+	// Move the cursor to the prev line
+	editor.cursor_position[1] -= 1;
+	// Line number of current line in the text
+	let line_num = editor.get_line_num(editor.cursor_position[1]);
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor, line_num);
+}
+
 // Logic for moving up while scrolling
 fn up_with_scroll(editor: &mut EditorSpace) {
 	// Scroll up
 	editor.scroll_offset -= 1;
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
-	// Save current position
-	let position = editor.stored_position;
-	// Move cursor to beginning of line
-	home_key(editor, false);
-	// Loop until in correct position
-	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-		// Move right
-		right_arrow(editor, false);
-	}
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor, line_num);
 }
 
 // Logic for loading new blocks while moving up
@@ -344,15 +343,8 @@ fn down_no_scroll(editor: &mut EditorSpace) {
 	editor.cursor_position[1] += 1;
 	// Line number of current line in the text
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
-	// Save current position
-	let position = editor.stored_position;
-	// Move cursor to beginning of line
-	home_key(editor, false);
-	// Loop until in correct position
-	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-		// Move right
-		right_arrow(editor, false);
-	}
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor, line_num);
 }
 
 // Logic for loading blocks when moving down
@@ -379,15 +371,8 @@ fn down_with_scroll(editor: &mut EditorSpace) {
 		// Move down and load new blocks
 		down_load_blocks(editor);
 	}
-	// Save current position
-	let position = editor.stored_position;
-	// Move cursor to beginning of line
-	home_key(editor, false);
-	// Loop until in correct position
-	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
-		// Move right
-		right_arrow(editor, false);
-	}
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor, line_num);
 }
 
 // The main control flow of the down arrow key
