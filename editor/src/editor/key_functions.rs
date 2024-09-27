@@ -33,10 +33,7 @@ fn selection_delete(editor: &mut EditorSpace) {
 // Check the beginning of line cursor condition
 fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 	// If the x position is before the start of the line, return false
-	if editor.text_position == 0 {
-		return false;
-	}
-	true
+	editor.text_position != 0
 }
 
 // Check the end of line cursor condition
@@ -46,13 +43,11 @@ pub fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool 
 		Ok(line) => line,
 		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
 	};
-	// If the x position is beyond the end of the line, return false
-	if editor.text_position >= line.len()
-		|| editor.text_position >= editor.widget_horz_bounds.1 - editor.widget_horz_bounds.0 - 2
-	{
-		return false;
-	}
-	true
+	let num_tabs = line.matches('\t').count();
+	// If the cursor is beyond the end of the line, return false
+	editor.cursor_position[0]
+		< UnicodeWidthStr::width(line.as_str()) + num_tabs * (editor.config.tab_width - 1)
+		&& editor.cursor_position[0] < editor.width
 }
 
 // Calls the UnRedoStack undo and sets the editor's state
