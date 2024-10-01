@@ -6,9 +6,9 @@
 
 use super::*;
 use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
-use unredo_stack::stack_choice::StackChoice;
-//use serial_test::serial;
+use serial_test::serial;
 use std::fs::{self, read_to_string};
+use unredo_stack::stack_choice::StackChoice;
 
 /*
 ==================================
@@ -920,7 +920,7 @@ Serial because the clipboard is a shared resource
 */
 
 /* I put these tests back in (but commented out) because they are
-useful on my local machine: even if not on GitHub
+useful on my local machine: even if not on GitHub */
 
 // Test copying and pasting one line of text
 #[test]
@@ -932,7 +932,7 @@ fn copy_paste_oneline() {
 	// Highlight the first line
 	highlight_end(&mut editor);
 	// Copy this line
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 
 	home_key(&mut editor, true);
 	// Clear the selection
@@ -946,7 +946,7 @@ fn copy_paste_oneline() {
 		right_arrow(&mut editor, true);
 	}
 	// Paste the first line
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
@@ -966,12 +966,12 @@ fn copy_and_paste_file() {
 	// Highlight entire file
 	highlight_page_down(&mut editor);
 	// Copy
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 
 	// Clear selection
 	editor.selection.is_empty = true;
 	// Paste this to the file
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
@@ -999,7 +999,7 @@ fn copy_and_paste_multiblock() {
 	highlight_end(&mut editor);
 
 	// Copy
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 	// Clear selection
 	editor.selection.is_empty = true;
 	// Create a blank line before pasting
@@ -1007,7 +1007,7 @@ fn copy_and_paste_multiblock() {
 	enter_key(&mut editor);
 
 	// Paste this to the file
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
@@ -1028,4 +1028,4 @@ fn copy_and_paste_multiblock() {
 	assert_eq!(actual_content, expected_content);
 }
 
-*/
+//*/

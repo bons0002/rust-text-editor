@@ -1,6 +1,6 @@
 use super::{
 	navigation_keys::{down_arrow, end_key, home_key, left_arrow, up_arrow},
-	selection_delete, EditorSpace,
+	EditorSpace,
 };
 
 // Functionality of pressing a normal character key
@@ -8,7 +8,7 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Add an undo state and delete the selection
-		selection_delete(editor);
+		delete_subroutines::selection_delete(editor);
 	// Update progress toward a new undo state if the current code is a space
 	} else {
 		// Get the current editor state
@@ -39,7 +39,7 @@ pub fn tab_key(editor: &mut EditorSpace) {
 	// If there is a highlighted selection
 	if !editor.selection.is_empty {
 		// Add an undo state and delete the selection
-		selection_delete(editor);
+		delete_subroutines::selection_delete(editor);
 	} else {
 		// Get the current editor state
 		let state = editor.get_unredo_state();
@@ -96,54 +96,6 @@ pub fn enter_key(editor: &mut EditorSpace) {
 	home_key(editor, true);
 }
 
-// Backspace at the beginning of line, moving to the above line
-fn backspace_beginning_of_line(editor: &mut EditorSpace) {
-	if editor.file_length > 0 {
-		// Get the current editor state
-		let state = editor.get_unredo_state();
-		// Add a new undo state
-		editor.unredo_stack.auto_update(state, true);
-
-		// Move up one line
-		up_arrow(editor);
-		end_key(editor, true);
-		// Line number of current line in the text
-		let line_num = editor.get_line_num(editor.cursor_position[1]);
-
-		// Delete the previous line and append its text content to the current line
-		editor
-			.blocks
-			.as_mut()
-			.unwrap()
-			.delete_and_append_line(line_num)
-			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
-
-		// Reduce the file length
-		editor.file_length -= 1;
-	}
-}
-
-// Backspace after the beginning of the line deletes a char normally
-fn backspace_normally(editor: &mut EditorSpace) {
-	// Get the current editor state
-	let state = editor.get_unredo_state();
-	// Add a new unredo state if necessary
-	editor.unredo_stack.auto_update(state, false);
-
-	// Move left
-	left_arrow(editor, true);
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-
-	// Remove one character
-	editor
-		.blocks
-		.as_mut()
-		.unwrap()
-		.delete_char_in_line(line_num, editor.text_position)
-		.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
-}
-
 // Functionality of the backspace key
 pub fn backspace(editor: &mut EditorSpace) {
 	// If there is no highlighted selection, backspace normally
@@ -154,31 +106,120 @@ pub fn backspace(editor: &mut EditorSpace) {
 		// If cursor at beginning of line, move to above line
 		if editor.text_position == 0 && line_num != 0 {
 			// Backspace at beginning of the line
-			backspace_beginning_of_line(editor);
+			delete_subroutines::backspace_beginning_of_line(editor);
 		// Otherwise, just move cursor left
 		} else if editor.text_position != 0 {
 			// Backspace normally, deleting one char
-			backspace_normally(editor);
+			delete_subroutines::backspace_normally(editor);
 		}
 	} else {
 		// Add a new undo state and delete the selection
-		selection_delete(editor);
+		delete_subroutines::selection_delete(editor);
 	}
 }
 
-// Delete a character normally if there is no selection
-fn no_selection_delete(editor: &mut EditorSpace) {
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
+// Functionality of the delete key
+pub fn delete_key(editor: &mut EditorSpace) {
+	// If there is no highlighted selection, delete normally
+	if editor.selection.is_empty {
+		// Delete character
+		delete_subroutines::no_selection_delete(editor);
+	} else {
+		delete_subroutines::selection_delete(editor);
+	}
+}
 
-	// The length of the current line
-	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-		Ok(len) => len,
-		Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
-	};
+/*
+==============================================
+			Delete Key Subroutines
+==============================================
+*/
 
-	// If not at the end of the current line
-	if editor.text_position < line.len() {
+// Subroutines for the different subroutine keys
+mod delete_subroutines {
+	use super::{end_key, left_arrow, up_arrow, EditorSpace};
+
+	// Backspace at the beginning of line, moving to the above line
+	pub fn backspace_beginning_of_line(editor: &mut EditorSpace) {
+		if editor.file_length > 0 {
+			// Get the current editor state
+			let state = editor.get_unredo_state();
+			// Add a new undo state
+			editor.unredo_stack.auto_update(state, true);
+
+			// Move up one line
+			up_arrow(editor);
+			end_key(editor, true);
+			// Line number of current line in the text
+			let line_num = editor.get_line_num(editor.cursor_position[1]);
+
+			// Delete the previous line and append its text content to the current line
+			editor
+				.blocks
+				.as_mut()
+				.unwrap()
+				.delete_and_append_line(line_num)
+				.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
+
+			// Reduce the file length
+			editor.file_length -= 1;
+		}
+	}
+
+	// Backspace after the beginning of the line deletes a char normally
+	pub fn backspace_normally(editor: &mut EditorSpace) {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new unredo state if necessary
+		editor.unredo_stack.auto_update(state, false);
+
+		// Move left
+		left_arrow(editor, true);
+		// Line number of current line in the text
+		let line_num = editor.get_line_num(editor.cursor_position[1]);
+
+		// Remove one character
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.delete_char_in_line(line_num, editor.text_position)
+			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+	}
+
+	// Check if there is a selection that needs to be deleted
+	pub fn selection_delete(editor: &mut EditorSpace) {
+		// Get the current editor state
+		let state = editor.get_unredo_state();
+		// Add a new undo state
+		editor.unredo_stack.auto_update(state, true);
+		// Delete the selection
+		editor.delete_selection();
+	}
+
+	// Delete when there is no selection
+	pub fn no_selection_delete(editor: &mut EditorSpace) {
+		// Line number of current line in the text
+		let line_num = editor.get_line_num(editor.cursor_position[1]);
+
+		// The length of the current line
+		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
+			Ok(len) => len,
+			Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
+		};
+
+		// If not at the end of the current line
+		if editor.text_position < line.len() {
+			// Delete a character normally
+			delete_normally(editor, line_num);
+		// If not at end of last line of the file
+		} else if line_num < editor.file_length - 1 {
+			delete_end(editor, line_num);
+		}
+	}
+
+	// Delete a single character normally
+	fn delete_normally(editor: &mut EditorSpace, line_num: usize) {
 		// Get the current editor state
 		let state = editor.get_unredo_state();
 		// Add a new unredo state if necessary
@@ -191,9 +232,10 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap()
 			.delete_char_in_line(line_num, editor.text_position)
 			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+	}
 
-	// If not at end of last line
-	} else if line_num < editor.file_length - 1 {
+	// Delete at the end of a line
+	fn delete_end(editor: &mut EditorSpace, line_num: usize) {
 		// Get the current editor state
 		let state = editor.get_unredo_state();
 		// Add a new undo state
@@ -208,16 +250,5 @@ fn no_selection_delete(editor: &mut EditorSpace) {
 			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
 		// Reduce the overall file length
 		editor.file_length -= 1;
-	}
-}
-
-// Functionality of the delete key
-pub fn delete_key(editor: &mut EditorSpace) {
-	// If there is no highlighted selection, delete normally
-	if editor.selection.is_empty {
-		// Delete character
-		no_selection_delete(editor);
-	} else {
-		selection_delete(editor);
 	}
 }

@@ -21,6 +21,59 @@ pub struct TextBlock {
 }
 
 impl TextBlock {
+	/* Create a new block.
+	This function is disgustingly long. */
+	pub fn new(
+		editor: &mut EditorSpace,
+		block_num: usize,
+		max_blocks: usize,
+	) -> Result<Self, Error> {
+		// Buffer that the bytes of the file are read into
+		let mut buffer = [0; BLOCK_SIZE as usize];
+		// Get the lines of text from the file
+		let mut content = Self::parse_content(editor, block_num, &mut buffer)?;
+
+		// For any block after the first one
+		if block_num > 0 {
+			// Fix the first line of the block if necessary
+			Self::fix_first_line(editor, &mut buffer, block_num, &mut content)?;
+		}
+		// Check if the last line ends with a newline
+		let ends_with_newline = match content.last() {
+			Some(line) => line.ends_with('\n'),
+			None => true,
+		};
+
+		// Create an unfinished block
+		let block = Self::construct_block(ends_with_newline, block_num, max_blocks, &mut content);
+
+		// Return the block
+		Ok(block)
+	}
+
+	// Calculate the starting line number of a block of text
+	pub fn calc_line_num(
+		editor: &mut EditorSpace,
+		block_num: usize,
+		max_blocks: usize,
+	) -> Result<usize, Error> {
+		let mut current_block = 0;
+		// Total length of all blocks before the current one
+		let mut total_length = 0;
+		// Loop until the given block number is reached
+		while current_block < block_num {
+			// Construct a block
+			let block = TextBlock::new(editor, current_block, max_blocks)?;
+			// Update the total length of blocks
+			total_length += block.len;
+			// Update the current block to be counted
+			current_block += 1;
+		}
+
+		// Return the line number
+		Ok(total_length)
+	}
+
 	/* Parse a buffer of bytes from the text file to
 	a vector of lines of text (as Strings). */
 	fn parse_content(
@@ -122,61 +175,6 @@ impl TextBlock {
 
 		// Return the block
 		block
-	}
-
-	/* Create a new block.
-	This function is disgustingly long. */
-	pub fn new(
-		editor: &mut EditorSpace,
-		block_num: usize,
-		max_blocks: usize,
-	) -> Result<Self, Error> {
-		// Buffer that the bytes of the file are read into
-		let mut buffer = [0; BLOCK_SIZE as usize];
-
-		// Get the lines of text from the file
-		let mut content = Self::parse_content(editor, block_num, &mut buffer)?;
-
-		// For any block after the first one
-		if block_num > 0 {
-			// Fix the first line of the block if necessary
-			Self::fix_first_line(editor, &mut buffer, block_num, &mut content)?;
-		}
-
-		// Check if the last line ends with a newline
-		let ends_with_newline = match content.last() {
-			Some(line) => line.ends_with('\n'),
-			None => true,
-		};
-
-		// Create an unfinished block
-		let block = Self::construct_block(ends_with_newline, block_num, max_blocks, &mut content);
-
-		// Return the block
-		Ok(block)
-	}
-
-	// Calculate the starting line number of a block of text
-	pub fn calc_line_num(
-		editor: &mut EditorSpace,
-		block_num: usize,
-		max_blocks: usize,
-	) -> Result<usize, Error> {
-		let mut current_block = 0;
-		// Total length of all blocks before the current one
-		let mut total_length = 0;
-		// Loop until the given block number is reached
-		while current_block < block_num {
-			// Construct a block
-			let block = TextBlock::new(editor, current_block, max_blocks)?;
-			// Update the total length of blocks
-			total_length += block.len;
-			// Update the current block to be counted
-			current_block += 1;
-		}
-
-		// Return the line number
-		Ok(total_length)
 	}
 }
 

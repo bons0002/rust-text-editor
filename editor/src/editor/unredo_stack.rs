@@ -1,7 +1,6 @@
 use super::{key_functions::highlight_keys::selection::Selection, Blocks};
 use stack::Stack;
 
-pub mod stack_choice;
 use stack_choice::StackChoice;
 
 // The number of characters that need to be entered in order to add a new undo state
@@ -75,6 +74,26 @@ impl UnRedoStack {
 		match stack {
 			StackChoice::Undo => self.undo_stack.len(),
 			StackChoice::Redo => self.redo_stack.len(),
+		}
+	}
+}
+
+// Used for choosing one of the two stacks in the UnRedoStack
+pub mod stack_choice {
+	// Choice of which stack within the UnRedoStack to use
+	#[allow(unused)]
+	pub enum StackChoice {
+		Undo,
+		Redo,
+	}
+
+	impl PartialEq for StackChoice {
+		// Check that two choice values are the same
+		fn eq(&self, other: &Self) -> bool {
+			matches!(
+				(self, other),
+				(Self::Undo, Self::Undo) | (Self::Redo, Self::Redo)
+			)
 		}
 	}
 }

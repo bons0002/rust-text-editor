@@ -34,6 +34,8 @@ pub mod editor {
 
 	// Contains the Blocks struct
 	mod blocks;
+	// Subroutines for the handle_input function
+	mod input_handlers;
 	// Module containing all the functionality of each key
 	mod key_functions;
 	// Contains the UnRedoStack struct
@@ -83,20 +85,6 @@ pub mod editor {
 	}
 
 	impl EditorSpace {
-		// Open (and create if necessary) the given file
-		fn open_file(filename: &str) -> File {
-			// Check if a file exists, if not create it
-			if !Path::new(filename).exists() {
-				File::create(filename).unwrap();
-			}
-			// Open the file in read-write mode
-			let file = match OpenOptions::new().read(true).write(true).open(filename) {
-				Ok(file) => file,
-				Err(err) => panic!("{}", err),
-			};
-			file
-		}
-
 		// Create a new EditorSpace
 		pub fn new(filename: String, config: Config) -> Self {
 			// Open (and create if necessary) the given file
@@ -128,161 +116,98 @@ pub mod editor {
 			}
 		}
 
-		// Calculate the start and end indices for highlighting characters in the paragraph
-		fn calc_highlight_indices(&self) -> (usize, usize) {
-			if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
-				// The starting line number of the
-				let line = self.blocks.as_ref().unwrap().starting_line_num;
-				(0, self.selection.end[1] - line)
+		// Initialize the editor
+		fn init_editor(
+			&mut self,
+			start: (usize, usize),
+			width: usize,
+			height: usize,
+		) -> Result<&str, Error> {
+			// Initialize the starting position of the screen cursor
+			self.init_starting_position(start, width, height);
+			// Initialize the length of the file
+			self.init_file_length();
+			// Create the first block of text in Blocks
+			self.init_first_block()?;
+			// Return the string "Success" (arbitrary)
+			Ok("Success")
+		}
+
+		// Get the key pressed
+		pub fn handle_input(&mut self, break_loop: &mut bool) {
+			// Non-blocking read
+			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
+				// Read input
+				if let Event::Key(KeyEvent {
+					code,
+					modifiers,
+					kind: KeyEventKind::Press,
+					..
+				}) = event::read().unwrap()
+				{
+					// If no modifier key is pressed
+					if modifiers.is_empty() {
+						input_handlers::no_modifiers(self, code);
+					// If the Shift modifier is pressed
+					} else if modifiers == KeyModifiers::SHIFT {
+						input_handlers::shift_modifier(self, code);
+					// If the Control modifier is pressed
+					} else if modifiers == KeyModifiers::CONTROL {
+						input_handlers::control_modifier(self, code, break_loop);
+					// If Control and Shift modifiers are both pressed
+					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
+						input_handlers::control_and_shift_modifiers(self, code);
+					}
+				}
+			}
+		}
+
+		// Render the widgets for the EditorSpace and its line numbers
+		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
+			// Only initialize this if it hasn't been already
+			if !self.is_initialized {
+				// Initialize the editor's cursor, file length, and first text block
+				let _ = self.init_editor(
+					(layout[1].x as usize, layout[1].y as usize),
+					layout[1].width as usize,
+					layout[1].height as usize,
+				);
+			}
+
+			// Set the cursor position on screen
+			frame.set_cursor(
+				(self.cursor_position[0] + self.widget_horz_bounds.0 + 1) as u16,
+				(self.cursor_position[1] + self.widget_vert_bounds.0 + 1) as u16,
+			);
+
+			// If the editor is empty, render an empty widget
+			if self.is_empty() {
+				// Render an empty
+				self.render_empty_ui(layout, frame);
+			// Otherwise, render the text blocks in a widget
 			} else {
-				let line = self.blocks.as_ref().unwrap().starting_line_num;
-				(self.selection.start[1] - line, self.selection.end[1] - line)
+				// Render the editor widget
+				self.render_full_ui(layout, frame);
 			}
 		}
 
-		// Highlight character on one line and return them as a Span
-		fn highlight_one_line(&self, loc: usize, character: String) -> Span {
-			// If within selection, highlight character
-			if loc >= self.selection.start[0] && loc < self.selection.end[0] {
-				Span::from(character)
-					.style(Style::default().bg(self.config.theme.selection_highlight))
-			} else {
-				Span::from(character)
+		// Open (and create if necessary) the given file
+		fn open_file(filename: &str) -> File {
+			// Check if a file exists, if not create it
+			if !Path::new(filename).exists() {
+				File::create(filename).unwrap();
 			}
-		}
-
-		// Highlight character if on the first line of a multiline selection
-		fn highlight_first_line(&self, loc: usize, character: String) -> Span {
-			// Highlight all characters on the line after the cursor
-			if loc >= self.selection.start[0] {
-				Span::from(character)
-					.style(Style::default().bg(self.config.theme.selection_highlight))
-			} else {
-				Span::from(character)
-			}
-		}
-
-		// Highlight character if on the last line of a multiline selection
-		fn highlight_last_line(&self, loc: usize, character: String) -> Span {
-			// Highlight all characters on the line before the cursor
-			if loc < self.selection.end[0] {
-				Span::from(character)
-					.style(Style::default().bg(self.config.theme.selection_highlight))
-			} else {
-				Span::from(character)
-			}
-		}
-
-		// Highlight an individual grapheme
-		fn highlight_grapheme(
-			&self,
-			idx: usize,
-			loc: usize,
-			character: &str,
-			tab_char: &str,
-			start_line: usize,
-			end_line: usize,
-		) -> Span {
-			if idx == start_line && start_line == end_line {
-				self.highlight_one_line(loc, String::from(character).replace('\t', tab_char))
-			// If on first line (and there are multiple lines in selection)
-			} else if idx == start_line {
-				// Highlight character
-				self.highlight_first_line(loc, String::from(character).replace('\t', tab_char))
-			// If on last line (and there are multiple lines in selection)
-			} else if idx == end_line {
-				// Highlight character
-				self.highlight_last_line(loc, String::from(character).replace('\t', tab_char))
-			// If between first and last line in multine selection
-			} else if idx > start_line && idx < end_line {
-				Span::from(String::from(character).replace('\t', tab_char))
-					.style(Style::default().bg(self.config.theme.selection_highlight))
-			// If not in selection
-			} else {
-				Span::from(String::from(character).replace('\t', tab_char))
-			}
-		}
-
-		// Highlight a line of text
-		fn highlight_line(&self, idx: usize, line: &str) -> Line {
-			// Indices for highlighting within the paragraph
-			let (start_line, end_line) = self.calc_highlight_indices();
-			// Start tab with a vertical line
-			let mut tab_char = String::from("\u{2502}");
-			// Iterator to create a string of tab_width - 1 number of spaces
-			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
-			// A vector of the graphemes as stylized spans
-			let graphemes: Vec<Span> = line
-				.grapheme_indices(true)
-				.map(|(loc, character)| {
-					// Highlight the grapheme
-					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
-				})
-				.collect();
-
-			Line::from(graphemes)
-		}
-
-		// Create a Line struct from the given String line
-		fn parse_line(&self, idx: usize, line: &str) -> Line {
-			// Top line of the widget
-			let top_line = self.scroll_offset;
-			// The bottom line of the widget
-			let bottom_line = self.height + self.scroll_offset;
-			// Start tab with a vertical line
-			let mut tab_char = String::from("\u{2502}");
-			// Iterator to create a string of tab_width - 1 number of spaces
-			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
-
-			// Only highlight if selection isn't empty (and its within the widget's bounds)
-			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
-				// Highlight characters
-				return self.highlight_line(idx, line);
-			}
-
-			Line::from(String::from(line).replace('\t', &tab_char))
+			// Open the file in read-write mode
+			let file = match OpenOptions::new().read(true).write(true).open(filename) {
+				Ok(file) => file,
+				Err(err) => panic!("{}", err),
+			};
+			file
 		}
 
 		// Get the current line number for the given position
 		fn get_line_num(&self, position: usize) -> usize {
 			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
-		}
-
-		// Get the lines of text from the Blocks content
-		fn get_lines_from_blocks(&self, blocks: Blocks, line_num: usize) -> Vec<Line> {
-			// Convert the blocks into one text vector
-			let mut text: Vec<String> = Vec::new();
-			// Iterate through the blocks that are currently loaded in
-			for block in blocks.blocks_list {
-				// Add all of the lines in these blocks into the `text` vector
-				text.par_extend(block.content);
-			}
-
-			// Create a vector of Lines from the text
-			text.into_par_iter()
-				.enumerate()
-				.map(|(idx, line)| {
-					// If the line is empty, return a blank line
-					if line.is_empty() {
-						// Blank space to add to put on the line (for line highlighting)
-						let blank_space = String::from(&" ".repeat(self.width));
-						// Return the blank line
-						return Line::from(blank_space);
-					// The line the cursor is on
-					} else if idx == line_num {
-						// Length of the text on the line
-						let len = line.graphemes(true).count();
-						// Only create blank space if there is room
-						let blank_space = match len < self.width {
-							true => &" ".repeat(self.width - len),
-							false => &String::new(),
-						};
-						// Return the line
-						return self.parse_line(idx, &(line + blank_space));
-					}
-					self.parse_line(idx, &line)
-				})
-				.collect()
 		}
 
 		// Return the vector as a paragraph
@@ -311,16 +236,8 @@ pub mod editor {
 			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
 		}
 
-		// Return a Vector of the line numbers that are displayed
-		fn get_line_numbers(&self) -> Vec<usize> {
-			let blocks = self.blocks.as_ref().unwrap();
-			(blocks.starting_line_num + self.scroll_offset + 1
-				..blocks.len() + blocks.starting_line_num + self.scroll_offset + 1)
-				.collect()
-		}
-
 		// Return a Paragraph of the line numbers that are displayed
-		pub fn get_line_numbers_paragraph(&self) -> Paragraph {
+		fn get_line_numbers_paragraph(&self) -> Paragraph {
 			// Construct a vector of line numbers
 			let line_nums: Vec<Line> = self
 				.get_line_numbers()
@@ -329,6 +246,38 @@ pub mod editor {
 				.collect();
 
 			Paragraph::new(Text::from(line_nums))
+		}
+
+		// Delete a highlighted selection of text
+		fn delete_selection(&mut self) {
+			// Start point of the selection (as an immutable tuple)
+			let start = (self.selection.start[0], self.selection.start[1]);
+			// End point of the selection (as an immutable tuple)
+			let end = (self.selection.end[0], self.selection.end[1]);
+
+			// Clone the blocks
+			let mut blocks = self.blocks.as_ref().unwrap().clone();
+			// Create the remaining line after deleting the selection
+			let remaining_line = Self::construct_remaining_line(&mut blocks, start, end);
+			// Update the first line of the selection
+			blocks.update_line(remaining_line, start.1).unwrap();
+
+			// Loop to delete the selection
+			for _i in start.1..end.1 {
+				// Ensure that the blocks are valid
+				blocks.check_blocks(self);
+				// Delete the next line
+				blocks.delete_line(start.1 + 1).unwrap();
+				// Reduce the file length
+				self.file_length -= 1;
+			}
+			// Set the editor blocks
+			self.blocks = Some(blocks);
+
+			// Reset the position of the cursor (and the scroll offset)
+			self.reset_cursor(end);
+			// Clear the selection
+			self.selection.is_empty = true;
 		}
 
 		// Set the starting Position of the editing space cursor
@@ -378,23 +327,6 @@ pub mod editor {
 			Ok(0)
 		}
 
-		// Initialize the editor
-		fn init_editor(
-			&mut self,
-			start: (usize, usize),
-			width: usize,
-			height: usize,
-		) -> Result<&str, Error> {
-			// Initialize the starting position of the screen cursor
-			self.init_starting_position(start, width, height);
-			// Initialize the length of the file
-			self.init_file_length();
-			// Create the first block of text in Blocks
-			self.init_first_block()?;
-			// Return the string "Success" (arbitrary)
-			Ok("Success")
-		}
-
 		// Render a blank ui if there are no TextBlocks in the editor Blocks
 		fn render_empty_ui(&self, layout: Rc<[Rect]>, frame: &mut Frame) {
 			// If the file is empty, render an empty line numbers widget
@@ -426,37 +358,168 @@ pub mod editor {
 			);
 		}
 
-		// Render the widgets for the EditorSpace and its line numbers
-		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
-			// Only initialize this if it hasn't been already
-			if !self.is_initialized {
-				// Initialize the editor's cursor, file length, and first text block
-				let _ = self.init_editor(
-					(layout[1].x as usize, layout[1].y as usize),
-					layout[1].width as usize,
-					layout[1].height as usize,
-				);
+		// Get the lines of text from the Blocks content
+		fn get_lines_from_blocks(&self, blocks: Blocks, line_num: usize) -> Vec<Line> {
+			// Convert the blocks into one text vector
+			let mut text: Vec<String> = Vec::new();
+			// Iterate through the blocks that are currently loaded in
+			for block in blocks.blocks_list {
+				// Add all of the lines in these blocks into the `text` vector
+				text.par_extend(block.content);
 			}
 
-			// Set the cursor position on screen
-			frame.set_cursor(
-				(self.cursor_position[0] + self.widget_horz_bounds.0 + 1) as u16,
-				(self.cursor_position[1] + self.widget_vert_bounds.0 + 1) as u16,
-			);
+			// Create a vector of Lines from the text
+			text.into_par_iter()
+				.enumerate()
+				.map(|(idx, line)| {
+					// If the line is empty, return a blank line
+					if line.is_empty() {
+						// Blank space to add to put on the line (for line highlighting)
+						let blank_space = String::from(&" ".repeat(self.width));
+						// Return the blank line
+						return Line::from(blank_space);
+					// The line the cursor is on
+					} else if idx == line_num {
+						// Length of the text on the line
+						let len = line.graphemes(true).count();
+						// Only create blank space if there is room
+						let blank_space = match len < self.width {
+							true => &" ".repeat(self.width - len),
+							false => &String::new(),
+						};
+						// Return the line
+						return self.parse_line(idx, &(line + blank_space));
+					}
+					self.parse_line(idx, &line)
+				})
+				.collect()
+		}
 
-			// If the editor is empty, render an empty widget
-			if self.is_empty() {
-				// Render an empty
-				self.render_empty_ui(layout, frame);
-			// Otherwise, render the text blocks in a widget
+		// Create a Line struct from the given String line
+		fn parse_line(&self, idx: usize, line: &str) -> Line {
+			// Top line of the widget
+			let top_line = self.scroll_offset;
+			// The bottom line of the widget
+			let bottom_line = self.height + self.scroll_offset;
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
+
+			// Only highlight if selection isn't empty (and its within the widget's bounds)
+			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
+				// Highlight characters
+				return self.highlight_line(idx, line);
+			}
+
+			Line::from(String::from(line).replace('\t', &tab_char))
+		}
+
+		// Highlight a line of text
+		fn highlight_line(&self, idx: usize, line: &str) -> Line {
+			// Indices for highlighting within the paragraph
+			let (start_line, end_line) = self.calc_highlight_indices();
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
+			// A vector of the graphemes as stylized spans
+			let graphemes: Vec<Span> = line
+				.grapheme_indices(true)
+				.map(|(loc, character)| {
+					// Highlight the grapheme
+					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
+				})
+				.collect();
+
+			Line::from(graphemes)
+		}
+
+		// Highlight an individual grapheme
+		fn highlight_grapheme(
+			&self,
+			idx: usize,
+			loc: usize,
+			character: &str,
+			tab_char: &str,
+			start_line: usize,
+			end_line: usize,
+		) -> Span {
+			if idx == start_line && start_line == end_line {
+				self.highlight_one_line(loc, String::from(character).replace('\t', tab_char))
+			// If on first line (and there are multiple lines in selection)
+			} else if idx == start_line {
+				// Highlight character
+				self.highlight_first_line(loc, String::from(character).replace('\t', tab_char))
+			// If on last line (and there are multiple lines in selection)
+			} else if idx == end_line {
+				// Highlight character
+				self.highlight_last_line(loc, String::from(character).replace('\t', tab_char))
+			// If between first and last line in multine selection
+			} else if idx > start_line && idx < end_line {
+				Span::from(String::from(character).replace('\t', tab_char))
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			// If not in selection
 			} else {
-				// Render the editor widget
-				self.render_full_ui(layout, frame);
+				Span::from(String::from(character).replace('\t', tab_char))
 			}
 		}
 
+		// Highlight character on one line and return them as a Span
+		fn highlight_one_line(&self, loc: usize, character: String) -> Span {
+			// If within selection, highlight character
+			if loc >= self.selection.start[0] && loc < self.selection.end[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
+		// Highlight character if on the first line of a multiline selection
+		fn highlight_first_line(&self, loc: usize, character: String) -> Span {
+			// Highlight all characters on the line after the cursor
+			if loc >= self.selection.start[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
+		// Highlight character if on the last line of a multiline selection
+		fn highlight_last_line(&self, loc: usize, character: String) -> Span {
+			// Highlight all characters on the line before the cursor
+			if loc < self.selection.end[0] {
+				Span::from(character)
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			} else {
+				Span::from(character)
+			}
+		}
+
+		// Calculate the start and end indices for highlighting characters in the paragraph
+		fn calc_highlight_indices(&self) -> (usize, usize) {
+			if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
+				// The starting line number of the
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(0, self.selection.end[1] - line)
+			} else {
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(self.selection.start[1] - line, self.selection.end[1] - line)
+			}
+		}
+
+		// Return a Vector of the line numbers that are displayed
+		fn get_line_numbers(&self) -> Vec<usize> {
+			let blocks = self.blocks.as_ref().unwrap();
+			(blocks.starting_line_num + self.scroll_offset + 1
+				..blocks.len() + blocks.starting_line_num + self.scroll_offset + 1)
+				.collect()
+		}
+
 		// Check if the editor is empty (no blocks loaded in)
-		pub fn is_empty(&self) -> bool {
+		fn is_empty(&self) -> bool {
 			self.blocks.as_ref().unwrap().blocks_list.is_empty()
 		}
 
@@ -519,38 +582,6 @@ pub mod editor {
 			}
 		}
 
-		// Delete a highlighted selection of text
-		fn delete_selection(&mut self) {
-			// Start point of the selection (as an immutable tuple)
-			let start = (self.selection.start[0], self.selection.start[1]);
-			// End point of the selection (as an immutable tuple)
-			let end = (self.selection.end[0], self.selection.end[1]);
-
-			// Clone the blocks
-			let mut blocks = self.blocks.as_ref().unwrap().clone();
-			// Create the remaining line after deleting the selection
-			let remaining_line = Self::construct_remaining_line(&mut blocks, start, end);
-			// Update the first line of the selection
-			blocks.update_line(remaining_line, start.1).unwrap();
-
-			// Loop to delete the selection
-			for _i in start.1..end.1 {
-				// Ensure that the blocks are valid
-				blocks.check_blocks(self);
-				// Delete the next line
-				blocks.delete_line(start.1 + 1).unwrap();
-				// Reduce the file length
-				self.file_length -= 1;
-			}
-			// Set the editor blocks
-			self.blocks = Some(blocks);
-
-			// Reset the position of the cursor (and the scroll offset)
-			self.reset_cursor(end);
-			// Clear the selection
-			self.selection.is_empty = true;
-		}
-
 		// Get the current state of the editor (to be added to the unredo stack)
 		fn get_unredo_state(&self) -> UnRedoState {
 			(
@@ -561,186 +592,6 @@ pub mod editor {
 				self.blocks.as_ref().unwrap().clone(),
 				self.selection.clone(),
 			)
-		}
-
-		// Get the key pressed
-		pub fn handle_input(&mut self, break_loop: &mut bool) {
-			// Non-blocking read
-			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
-				// Read input
-				if let Event::Key(KeyEvent {
-					code,
-					modifiers,
-					kind: KeyEventKind::Press,
-					..
-				}) = event::read().unwrap()
-				{
-					// If no modifier key is pressed
-					if modifiers.is_empty() {
-						// Return the key
-						match code {
-							// If normal character, insert that character
-							KeyCode::Char(code) => editing_keys::char_key(self, code),
-							// If Enter was pressed, insert newline
-							KeyCode::Enter => editing_keys::enter_key(self),
-							// If tab was pressed, insert tab character
-							KeyCode::Tab => editing_keys::tab_key(self),
-							// If backspace was pressed, remove the previous character
-							KeyCode::Backspace => editing_keys::backspace(self),
-							// If delete was pressed, remove the next character
-							KeyCode::Delete => editing_keys::delete_key(self),
-							// Left arrow moves cursor left
-							KeyCode::Left => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Left arrow functionality
-								navigation_keys::left_arrow(self, true);
-							}
-							// Right arrow moves cursor right
-							KeyCode::Right => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Right arrow functionality
-								navigation_keys::right_arrow(self, true);
-							}
-							// Up arrow move cursor up one line
-							KeyCode::Up => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Up arrow functionality
-								navigation_keys::up_arrow(self);
-							}
-							// Down arrow move cursor down one line
-							KeyCode::Down => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Down arrow functionality
-								navigation_keys::down_arrow(self);
-							}
-							// Home button moves to beginning of line
-							KeyCode::Home => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Home key functionality
-								navigation_keys::home_key(self, true);
-							}
-							// End button move to end of line
-							KeyCode::End => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// End key functionality
-								navigation_keys::end_key(self, true);
-							}
-							// The Page Up key moves up one `height` of the editor widget
-							KeyCode::PageUp => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Move one page up
-								navigation_keys::page_up(self);
-							}
-							// The Page Down key moves down one `height` of the editor widget
-							KeyCode::PageDown => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Move one page down
-								navigation_keys::page_down(self);
-							}
-							_ => (),
-						}
-					// If the Shift modifier is pressed
-					} else if modifiers == KeyModifiers::SHIFT {
-						match code {
-							// Uppercase characters
-							KeyCode::Char(code) => {
-								editing_keys::char_key(self, code.to_ascii_uppercase())
-							}
-							// Right arrow highlight text to the right
-							KeyCode::Right => highlight_keys::highlight_right(self),
-							// Left arrow highlight text to the left
-							KeyCode::Left => highlight_keys::highlight_left(self),
-							// Up arrow highlights text upwards
-							KeyCode::Up => highlight_keys::highlight_up(self),
-							// Down arrow highlights text downwards
-							KeyCode::Down => highlight_keys::highlight_down(self),
-							// End key highlights to end of line
-							KeyCode::End => highlight_keys::highlight_end(self),
-							// Home key highlights to beginning of line
-							KeyCode::Home => highlight_keys::highlight_home(self),
-							// Highlight one page up
-							KeyCode::PageUp => highlight_keys::highlight_page_up(self),
-							// Highlight one page down
-							KeyCode::PageDown => highlight_keys::highlight_page_down(self),
-							_ => (),
-						}
-					// If the Control modifier is pressed
-					} else if modifiers == KeyModifiers::CONTROL {
-						match code {
-							// Save the frame to the file
-							KeyCode::Char('s') => save_key::save_key_combo(self, false, ""),
-							// Break the loop to end the program
-							KeyCode::Char('q') => *break_loop = true,
-							// Paste text into the editor (if there is a clipboard)
-							KeyCode::Char('v') => {
-								if self.clipboard.is_some() {
-									copy_paste::paste_from_clipboard(self)
-								}
-							}
-							// Copy text from the editor and write it to the clipboard
-							KeyCode::Char('c') => {
-								if self.clipboard.is_some() {
-									copy_paste::copy_to_clipboard(self)
-								}
-							}
-							// Undo a change
-							KeyCode::Char('z') => {
-								key_functions::undo(self);
-							}
-							// Jump to the next word
-							KeyCode::Right => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Jump to the next word
-								navigation_keys::jump_right(self, false);
-							}
-							// Jump to the previous word
-							KeyCode::Left => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Jump to the previous word
-								navigation_keys::jump_left(self, false);
-							}
-							// Jump up 10 lines
-							KeyCode::Up => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Jump up 10 lines
-								navigation_keys::jump_up(self, false);
-							}
-							// Jump down 10 lines
-							KeyCode::Down => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Jump down 10 lines
-								navigation_keys::jump_down(self, false);
-							}
-							_ => (),
-						}
-					// If Control and Shift modifiers are both pressed
-					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
-						match code {
-							// Highlight the entire unicode word to the right
-							KeyCode::Right => navigation_keys::jump_right(self, true),
-							// Highlight the entire unicode word to the left
-							KeyCode::Left => navigation_keys::jump_left(self, true),
-							// Highlight upwards 10 lines
-							KeyCode::Up => navigation_keys::jump_up(self, true),
-							// Highlight down 10 lines
-							KeyCode::Down => navigation_keys::jump_down(self, true),
-							_ => (),
-						}
-					}
-				}
-			}
 		}
 	}
 }

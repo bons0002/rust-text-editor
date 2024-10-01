@@ -49,36 +49,6 @@ impl Blocks {
 		})
 	}
 
-	// Load in all TextBlocks of a file into one Blocks
-	pub fn load_all_blocks(&mut self, editor: &mut EditorSpace) {
-		// The block number of the head and tail blocks respectively
-		let (head_block, tail_block) = (self.head_block, self.tail_block);
-
-		// Load in all blocks in the file that aren't currently in the Blocks
-		for i in 0..self.max_blocks {
-			// Don't bother with blocks that are already loaded in
-			if i >= head_block && i <= tail_block {
-				continue;
-			// Load in blocks before the head block
-			} else if i < head_block {
-				match self.push_head(editor, false) {
-					Ok(_) => (),
-					Err(err) => {
-						panic!("{}", err);
-					}
-				}
-			// Load in blocks after the tail block
-			} else if i > tail_block {
-				match self.push_tail(editor, false) {
-					Ok(_) => (),
-					Err(err) => {
-						panic!("{}", err);
-					}
-				}
-			}
-		}
-	}
-
 	// Create a new Blocks from a line number rather than a block number
 	pub fn from_line(editor: &mut EditorSpace, line_num: usize) -> Result<Self, Error> {
 		// Create a Blocks from the first block
@@ -102,16 +72,6 @@ impl Blocks {
 	// Return the tail block
 	fn get_tail(&self) -> TextBlock {
 		self.blocks_list.iter().last().unwrap().clone()
-	}
-
-	// Remove the tail block
-	fn pop_tail(&mut self) {
-		// Reduce the number of blocks
-		self.num_blocks -= 1;
-		// Move the tail
-		self.tail_block -= 1;
-		// Remove the tail
-		self.blocks_list.pop();
 	}
 
 	// Insert the previous block at the head of the Blocks (blocks are contiguous here)
@@ -147,24 +107,6 @@ impl Blocks {
 
 		// Return the block number
 		Ok(self.head_block)
-	}
-
-	// Remove the head Block
-	fn pop_head(&mut self) -> usize {
-		// Get the length of the first block
-		let length = self.get_head().len;
-		// Remove the first block
-		self.blocks_list.remove(0);
-
-		// There is now one less block
-		self.num_blocks -= 1;
-		// Move the head to the next block
-		self.head_block += 1;
-		// Update the starting line number to the beginning of the new head
-		self.starting_line_num += length;
-
-		// Return the length of the original head block
-		length
 	}
 
 	// Insert the next block at the tail of the Blocks (blocks are contiguous here)
@@ -204,45 +146,7 @@ impl Blocks {
 		Ok(-1)
 	}
 
-	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
-		// Track the total lines over the blocks
-		let mut lines = self.starting_line_num;
-		// The starting line
-		let mut start = lines;
-		let mut block_num: Option<usize> = None;
-		// Loop until within the correct block
-		for block in &self.blocks_list {
-			// Skip over empty blocks
-			if block.len == 0 {
-				continue;
-			}
-			// Starting line of this block
-			start = lines;
-			// Starting line of next block
-			lines += block.len;
-			// If the line number is in this block, break loop
-			if line_num >= start && line_num < lines {
-				block_num = Some(block.block_num);
-				break;
-			}
-		}
-		// Return (block number, line number within block)
-		match block_num.map(|num| (num - self.head_block, line_num - start)) {
-			Some(location) => Ok(location),
-			None => Err(Error::other(format!(
-				/* Return the source file name, line number error occurred in this source file,
-				and line_num argument that was passed to this function. */
-				"{}::get_location: line {}. Couldn't get location for `line_num = {}`",
-				file!(),
-				line!(),
-				line_num
-			))),
-		}
-	}
-
 	// Insert a character into the correct line in the correct block
-	// Returns true if successful
 	pub fn insert_char_in_line(
 		&mut self,
 		line_num: usize,
@@ -290,6 +194,16 @@ impl Blocks {
 
 		// Return true if no error
 		Ok(true)
+	}
+
+	// Insert a new line with a full line of text
+	pub fn insert_full_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+		// Add a blank line at the location
+		self.insert_blank_line(line_num)?;
+		// Update this blank line with the text
+		self.update_line(text, line_num)?;
+
+		Ok(())
 	}
 
 	// Delete a character from the given line at the given position
@@ -394,6 +308,114 @@ impl Blocks {
 		Ok(())
 	}
 
+	// Return a tuple containing (block number, line number) for accessing the block content
+	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
+		// Track the total lines over the blocks
+		let mut lines = self.starting_line_num;
+		// The starting line
+		let mut start = lines;
+		let mut block_num: Option<usize> = None;
+		// Loop until within the correct block
+		for block in &self.blocks_list {
+			// Skip over empty blocks
+			if block.len == 0 {
+				continue;
+			}
+			// Starting line of this block
+			start = lines;
+			// Starting line of next block
+			lines += block.len;
+			// If the line number is in this block, break loop
+			if line_num >= start && line_num < lines {
+				block_num = Some(block.block_num);
+				break;
+			}
+		}
+		// Return (block number, line number within block)
+		match block_num.map(|num| (num - self.head_block, line_num - start)) {
+			Some(location) => Ok(location),
+			None => Err(Error::other(format!(
+				/* Return the source file name, line number error occurred in this source file,
+				and line_num argument that was passed to this function. */
+				"{}::get_location: line {}. Couldn't get location for `line_num = {}`",
+				file!(),
+				line!(),
+				line_num
+			))),
+		}
+	}
+
+	// Check that the Blocks is valid for the current widget
+	pub fn check_blocks(&mut self, editor: &mut EditorSpace) {
+		/* If the Blocks is too short, but there is more text to be shown,
+		add a new TextBlock to the tail. */
+		if self.len() < editor.height + editor.scroll_offset
+			&& editor.file_length > editor.height
+			&& self.tail_block < self.max_blocks - 1
+		{
+			// Add new tail block
+			self.push_tail(editor, true).unwrap();
+		}
+	}
+
+	// Load in all TextBlocks of a file into one Blocks
+	pub fn load_all_blocks(&mut self, editor: &mut EditorSpace) {
+		// The block number of the head and tail blocks respectively
+		let (head_block, tail_block) = (self.head_block, self.tail_block);
+
+		// Load in all blocks in the file that aren't currently in the Blocks
+		for i in 0..self.max_blocks {
+			// Don't bother with blocks that are already loaded in
+			if i >= head_block && i <= tail_block {
+				continue;
+			// Load in blocks before the head block
+			} else if i < head_block {
+				match self.push_head(editor, false) {
+					Ok(_) => (),
+					Err(err) => {
+						panic!("{}", err);
+					}
+				}
+			// Load in blocks after the tail block
+			} else if i > tail_block {
+				match self.push_tail(editor, false) {
+					Ok(_) => (),
+					Err(err) => {
+						panic!("{}", err);
+					}
+				}
+			}
+		}
+	}
+
+	// Remove the tail block
+	fn pop_tail(&mut self) {
+		// Reduce the number of blocks
+		self.num_blocks -= 1;
+		// Move the tail
+		self.tail_block -= 1;
+		// Remove the tail
+		self.blocks_list.pop();
+	}
+
+	// Remove the head Block
+	fn pop_head(&mut self) -> usize {
+		// Get the length of the first block
+		let length = self.get_head().len;
+		// Remove the first block
+		self.blocks_list.remove(0);
+
+		// There is now one less block
+		self.num_blocks -= 1;
+		// Move the head to the next block
+		self.head_block += 1;
+		// Update the starting line number to the beginning of the new head
+		self.starting_line_num += length;
+
+		// Return the length of the original head block
+		length
+	}
+
 	// Add a blank line to the Blocks
 	fn insert_blank_line(&mut self, line_num: usize) -> Result<(), Error> {
 		// Get the location of where this line needs to be inserted
@@ -419,29 +441,6 @@ impl Blocks {
 		}
 
 		Ok(())
-	}
-
-	// Insert a new line with a full line of text
-	pub fn insert_full_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
-		// Add a blank line at the location
-		self.insert_blank_line(line_num)?;
-		// Update this blank line with the text
-		self.update_line(text, line_num)?;
-
-		Ok(())
-	}
-
-	// Check that the Blocks is valid for the current widget
-	pub fn check_blocks(&mut self, editor: &mut EditorSpace) {
-		/* If the Blocks is too short, but there is more text to be shown,
-		add a new TextBlock to the tail. */
-		if self.len() < editor.height + editor.scroll_offset
-			&& editor.file_length > editor.height
-			&& self.tail_block < self.max_blocks - 1
-		{
-			// Add new tail block
-			self.push_tail(editor, true).unwrap();
-		}
 	}
 }
 

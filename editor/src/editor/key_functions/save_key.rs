@@ -1,17 +1,31 @@
 use super::{Blocks, EditorSpace, File, OpenOptions, ParallelExtend};
 use std::io::Write;
 
-// Recreate an existing file (for saving)
-fn recreate_file(filename: &str) -> File {
-	// Create a new blank version of the file
-	File::create(filename).unwrap();
-	// Open the file in read-write mode
-	let file = match OpenOptions::new().read(true).write(true).open(filename) {
-		Ok(file) => file,
-		Err(err) => panic!("{}", err),
-	};
-	file
+// Save key combo functionality
+pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filename: &str) {
+	// Load in all the blocks in the file
+	let mut blocks = editor.blocks.as_ref().unwrap().clone();
+	blocks.load_all_blocks(editor);
+
+	// Get all the lines of the Blocks in one vector
+	let mut contents: Vec<String> = Vec::new();
+	for block in blocks.blocks_list {
+		contents.par_extend(block.content)
+	}
+
+	// Write to different files based on if this function is in debug mode
+	match in_debug_mode {
+		// If in debug mode, write to debug_filename
+		true => _ = save_file(debug_filename, contents),
+		// If not in debug mode, write to the regular file
+		false => editor.file = save_file(&editor.filename, contents),
+	}
+
+	// Update the editor's scroll offset and Blocks
+	post_save_editor_update(editor);
 }
+
+/* Subroutines */
 
 // Save the contents of the contents vector to the given file
 fn save_file(filename: &str, contents: Vec<String>) -> File {
@@ -61,26 +75,14 @@ fn post_save_editor_update(editor: &mut EditorSpace) {
 	editor.blocks = Some(blocks.clone());
 }
 
-// Save key combo functionality
-pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filename: &str) {
-	// Load in all the blocks in the file
-	let mut blocks = editor.blocks.as_ref().unwrap().clone();
-	blocks.load_all_blocks(editor);
-
-	// Get all the lines of the Blocks in one vector
-	let mut contents: Vec<String> = Vec::new();
-	for block in blocks.blocks_list {
-		contents.par_extend(block.content)
-	}
-
-	// Write to different files based on if this function is in debug mode
-	match in_debug_mode {
-		// If in debug mode, write to debug_filename
-		true => _ = save_file(debug_filename, contents),
-		// If not in debug mode, write to the regular file
-		false => editor.file = save_file(&editor.filename, contents),
-	}
-
-	// Update the editor's scroll offset and Blocks
-	post_save_editor_update(editor);
+// Recreate an existing file (for saving)
+fn recreate_file(filename: &str) -> File {
+	// Create a new blank version of the file
+	File::create(filename).unwrap();
+	// Open the file in read-write mode
+	let file = match OpenOptions::new().read(true).write(true).open(filename) {
+		Ok(file) => file,
+		Err(err) => panic!("{}", err),
+	};
+	file
 }

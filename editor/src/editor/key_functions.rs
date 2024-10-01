@@ -20,16 +20,6 @@ pub mod save_key;
 // Contains the copy/paste logic
 pub mod copy_paste;
 
-// Check if there is a selection that needs to be deleted
-fn selection_delete(editor: &mut EditorSpace) {
-	// Get the current editor state
-	let state = editor.get_unredo_state();
-	// Add a new undo state
-	editor.unredo_stack.auto_update(state, true);
-	// Delete the selection
-	editor.delete_selection();
-}
-
 // Check the beginning of line cursor condition
 fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 	// If the x position is before the start of the line, return false
