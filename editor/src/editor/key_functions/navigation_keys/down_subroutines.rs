@@ -37,3 +37,17 @@ pub fn down_with_scroll(editor: &mut EditorSpace) {
 	// Realign the cursor with the stored cursor position
 	realign_cursor(editor, line_num);
 }
+
+// Update the Blocks location tracker when moving down
+pub fn update_block_location(editor: &mut EditorSpace) {
+	// Get the current block number
+	let block_num = editor.blocks.as_ref().unwrap().curr_position[0];
+	// If the current line number is beyond the current block
+	if editor.blocks.as_ref().unwrap().curr_position[1]
+		>= editor.blocks.as_ref().unwrap().blocks_list[block_num].len
+	//&& block_num < editor.blocks.as_ref().unwrap().max_blocks - 1
+	{
+		// Increment the current block number and reset the current line number
+		editor.blocks.as_mut().unwrap().curr_position = [block_num + 1, 0];
+	}
+}

@@ -66,6 +66,8 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 		// Move up and load blocks
 		up_subroutines::up_load_blocks(editor);
 	}
+	// Update the Blocks location tracker
+	up_subroutines::update_block_location(editor);
 }
 
 // Down arrow key functionality
@@ -88,6 +90,8 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 			// Move down and scroll
 			down_subroutines::down_with_scroll(editor);
 		}
+		// Update the location tracker for the Blocks
+		down_subroutines::update_block_location(editor);
 	}
 }
 

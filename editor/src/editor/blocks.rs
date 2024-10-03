@@ -9,23 +9,25 @@ pub use text_block::TextBlock;
 // Contains blocks of text from a file
 #[derive(Clone, Debug)]
 pub struct Blocks {
+	// The list of blocks
+	pub blocks_list: Vec<TextBlock>,
+	// The current [block_num, line_num (within block)]
+	pub curr_position: [usize; 2],
 	// The ID number of the first block
 	pub head_block: usize,
-	// The ID number of the last block
-	pub tail_block: usize,
-	// The line number of the first line in the first block
-	pub starting_line_num: usize,
 	// The maximum number of blocks for the file
 	pub max_blocks: usize,
 	// The number of blocks
 	num_blocks: usize,
-	// The list of blocks
-	pub blocks_list: Vec<TextBlock>,
+	// The line number of the first line in the first block
+	pub starting_line_num: usize,
+	// The ID number of the last block
+	pub tail_block: usize,
 }
 
 impl Blocks {
 	// Create a new Blocks struct with all blocks between starting and ending blocks (inclusive)
-	pub fn new(editor: &mut EditorSpace, block_num: usize) -> Result<Self, Error> {
+	pub fn new(editor: &mut EditorSpace, block_num: usize, line_num: usize) -> Result<Self, Error> {
 		// Ensure that the metadata of the file is up to date
 		editor.file.sync_all()?;
 		// Get the number of bytes in the file
@@ -37,31 +39,38 @@ impl Blocks {
 			max_blocks += 1;
 		}
 		// Construct the block
-		Ok(Blocks {
-			head_block: block_num,
-			tail_block: block_num,
-			// Calculate the line number of the first line
-			starting_line_num: TextBlock::calc_line_num(editor, block_num, max_blocks)?,
-			num_blocks: 1,
-			max_blocks,
+		let mut blocks = Blocks {
 			// Add the current block to the vector of blocks
 			blocks_list: vec![TextBlock::new(editor, block_num, max_blocks)?],
-		})
+			curr_position: [0, 0],
+			head_block: block_num,
+			num_blocks: 1,
+			max_blocks,
+			// Calculate the line number of the first line
+			starting_line_num: TextBlock::calc_line_num(editor, block_num, max_blocks)?,
+			tail_block: block_num,
+		};
+		// The current location in the block
+		let location = blocks.get_location(line_num)?;
+		// Update the tracked current location
+		blocks.curr_position = [location.0, location.1];
+
+		Ok(blocks)
 	}
 
 	// Create a new Blocks from a line number rather than a block number
 	pub fn from_line(editor: &mut EditorSpace, line_num: usize) -> Result<Self, Error> {
 		// Create a Blocks from the first block
-		let mut blocks = Self::new(editor, 0)?;
+		let mut blocks = Self::new(editor, 0, 0)?;
 
 		// Create a Blocks for the given line number
 
 		// Load in all blocks to find the block for the line number
 		blocks.load_all_blocks(editor);
 		// Get the block number for the given line number
-		let (block_num, _) = blocks.get_location(line_num)?;
+		let (block_num, line_num) = blocks.get_location(line_num)?;
 		// Return the Blocks
-		Blocks::new(editor, block_num)
+		Blocks::new(editor, block_num, line_num)
 	}
 
 	// Return the head block

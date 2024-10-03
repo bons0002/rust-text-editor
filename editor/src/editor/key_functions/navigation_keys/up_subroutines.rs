@@ -32,3 +32,20 @@ pub fn up_load_blocks(editor: &mut EditorSpace) {
 	// Update scroll offset
 	editor.scroll_offset += editor.blocks.as_ref().unwrap().get_head().len - 1;
 }
+
+// Update the Blocks location tracker when moving up
+pub fn update_block_location(editor: &mut EditorSpace) {
+	// Current block number
+	let block_num = editor.blocks.as_ref().unwrap().curr_position[0];
+	// If not on the first line of the block
+	if editor.blocks.as_ref().unwrap().curr_position[1] > 0 {
+		// Update the Blocks current location tracker
+		editor.blocks.as_mut().unwrap().curr_position[1] -= 1;
+	// If not on the first block
+	} else if block_num > 0 {
+		// Get the length of the previous block
+		let block_len = editor.blocks.as_ref().unwrap().blocks_list[block_num - 1].len;
+		// Update the Blocks tracker to the end of the previous block
+		editor.blocks.as_mut().unwrap().curr_position = [block_num - 1, block_len - 1];
+	}
+}

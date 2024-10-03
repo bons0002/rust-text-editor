@@ -320,7 +320,7 @@ pub mod editor {
 		// Create the first block when the editor is opened
 		fn init_first_block(&mut self) -> Result<usize, Error> {
 			// Create a block at block number 0
-			let blocks = Blocks::new(self, 0)?;
+			let blocks = Blocks::new(self, 0, 0)?;
 			// Wrap this Blocks in an Option
 			self.blocks = Some(blocks);
 			// Return 0 to indicate success
