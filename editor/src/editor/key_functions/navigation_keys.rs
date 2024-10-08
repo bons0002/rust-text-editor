@@ -10,7 +10,7 @@ mod right_subroutines;
 // Subroutines for the up arrow functions
 mod up_subroutines;
 // Subroutines for the down arrow functions
-mod down_subroutines;
+pub mod down_subroutines;
 
 /*
 =============================================
@@ -39,7 +39,7 @@ pub fn right_arrow(editor: &mut EditorSpace, will_store_cursor: bool) {
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 	// If the cursor doesn't go beyond the end of the line
-	if check_cursor_end_line(editor, line_num) {
+	if check_cursor_end_line(editor) {
 		// Move right normally
 		right_subroutines::right_normally(editor, line_num, will_store_cursor);
 	// If the cursor goes beyond the end of the line
@@ -56,11 +56,11 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 	// Ensure that the cursor doesn't move above the editor block
 	if editor.cursor_position[1] > 0 {
 		// Move up without scrolling
-		up_subroutines::up_no_scroll(editor);
+		editor.cursor_position[1] -= 1;
 	// If the cursor moves beyond the bound
 	} else if editor.scroll_offset > 0 {
 		// Move up and scroll
-		up_subroutines::up_with_scroll(editor);
+		editor.scroll_offset -= 1;
 	// If moving before the start of the block, insert a new head
 	} else if line_num < editor.blocks.as_ref().unwrap().starting_line_num + 1 && line_num > 0 {
 		// Move up and load blocks
@@ -68,6 +68,8 @@ pub fn up_arrow(editor: &mut EditorSpace) {
 	}
 	// Update the Blocks location tracker
 	up_subroutines::update_block_location(editor);
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor);
 }
 
 // Down arrow key functionality
@@ -90,9 +92,12 @@ pub fn down_arrow(editor: &mut EditorSpace) {
 			// Move down and scroll
 			down_subroutines::down_with_scroll(editor);
 		}
+
 		// Update the location tracker for the Blocks
 		down_subroutines::update_block_location(editor);
 	}
+	// Realign the cursor with the stored cursor position
+	realign_cursor(editor);
 }
 
 // Home key functionality
@@ -108,10 +113,8 @@ pub fn home_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 
 // End key functionality
 pub fn end_key(editor: &mut EditorSpace, will_store_cursor: bool) {
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Move right until the end of the line
-	while check_cursor_end_line(editor, line_num) {
+	while check_cursor_end_line(editor) {
 		right_arrow(editor, will_store_cursor);
 	}
 }
@@ -125,9 +128,7 @@ pub fn end_key(editor: &mut EditorSpace, will_store_cursor: bool) {
 // Jump one unicode word to the left
 pub fn jump_left(editor: &mut EditorSpace, will_highlight: bool) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-	// Line number of current line in the text
-	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+	let line = editor.blocks.as_ref().unwrap().get_current_line();
 
 	// Get the index of the previous word
 	let index = line
@@ -152,9 +153,7 @@ pub fn jump_left(editor: &mut EditorSpace, will_highlight: bool) {
 // Jump one unicode word to the right
 pub fn jump_right(editor: &mut EditorSpace, will_highlight: bool) {
 	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-	// Line number of current line in the text
-	let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
+	let line = editor.blocks.as_ref().unwrap().get_current_line();
 
 	// Get the index of the next word
 	let index = line
@@ -226,13 +225,13 @@ pub fn page_down(editor: &mut EditorSpace) {
 */
 
 // Realign the cursor to the stored cursor position
-fn realign_cursor(editor: &mut EditorSpace, line_num: usize) {
+fn realign_cursor(editor: &mut EditorSpace) {
 	// Save current position
 	let position = editor.stored_position;
 	// Move cursor to beginning of line
 	home_key(editor, false);
 	// Loop until in correct position
-	while editor.cursor_position[0] < position && check_cursor_end_line(editor, line_num) {
+	while editor.cursor_position[0] < position && check_cursor_end_line(editor) {
 		// Move right
 		right_arrow(editor, false);
 	}

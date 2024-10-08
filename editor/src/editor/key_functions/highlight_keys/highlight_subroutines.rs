@@ -222,6 +222,8 @@ mod init_subroutines {
 		);
 		// Store the original scroll offset of the text
 		editor.selection.original_scroll_offset = editor.scroll_offset;
+		// Store the original Blocks tracked location
+		editor.selection.original_tracked_location = editor.blocks.as_ref().unwrap().curr_position;
 	}
 
 	// Initialize highlighting Right, Down, or End

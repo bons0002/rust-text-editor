@@ -17,16 +17,12 @@ pub fn char_key(editor: &mut EditorSpace, code: char) {
 		editor.unredo_stack.auto_update(state, false);
 	}
 
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-
 	// Insert the character into the correct line in the correct block
 	editor
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_char_in_line(line_num, editor.text_position, code)
-		.unwrap_or_else(|err| panic!("Couldn't insert char on line {} | {}", line_num, err));
+		.insert_char_in_line(editor.text_position, code);
 
 	// Move cursor
 	editor.text_position += 1;
@@ -47,16 +43,12 @@ pub fn tab_key(editor: &mut EditorSpace) {
 		editor.unredo_stack.auto_update(state, false);
 	}
 
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-
 	// Insert tab character into the line
 	editor
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_char_in_line(line_num, editor.text_position, '\t')
-		.unwrap_or_else(|err| panic!("Couldn't insert char on line {} | {}", line_num, err));
+		.insert_char_in_line(editor.text_position, '\t');
 
 	// Move cursor
 	editor.text_position += 1;
@@ -77,16 +69,12 @@ pub fn enter_key(editor: &mut EditorSpace) {
 		editor.delete_selection();
 	}
 
-	// Line number of current line in the text
-	let line_num = editor.get_line_num(editor.cursor_position[1]);
-
 	// Insert a new line and truncate the current one (after the cursor)
 	editor
 		.blocks
 		.as_mut()
 		.unwrap()
-		.insert_new_line(line_num, editor.text_position)
-		.unwrap_or_else(|err| panic!("Couldn't insert new line {} | {}", line_num, err));
+		.insert_new_line(editor.text_position);
 
 	// Add a line to the overall file length
 	editor.file_length += 1;
@@ -137,7 +125,9 @@ pub fn delete_key(editor: &mut EditorSpace) {
 
 // Subroutines for the different subroutine keys
 mod delete_subroutines {
-	use super::{end_key, left_arrow, up_arrow, EditorSpace};
+	use super::{
+		super::navigation_keys::down_subroutines, end_key, left_arrow, up_arrow, EditorSpace,
+	};
 
 	// Backspace at the beginning of line, moving to the above line
 	pub fn backspace_beginning_of_line(editor: &mut EditorSpace) {
@@ -175,16 +165,13 @@ mod delete_subroutines {
 
 		// Move left
 		left_arrow(editor, true);
-		// Line number of current line in the text
-		let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 		// Remove one character
 		editor
 			.blocks
 			.as_mut()
 			.unwrap()
-			.delete_char_in_line(line_num, editor.text_position)
-			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+			.delete_char_in_line(editor.text_position);
 	}
 
 	// Check if there is a selection that needs to be deleted
@@ -203,15 +190,12 @@ mod delete_subroutines {
 		let line_num = editor.get_line_num(editor.cursor_position[1]);
 
 		// The length of the current line
-		let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-			Ok(len) => len,
-			Err(err) => panic!("Couldn't get length of line {} | {}", line_num, err),
-		};
+		let line = editor.blocks.as_ref().unwrap().get_current_line();
 
 		// If not at the end of the current line
 		if editor.text_position < line.len() {
 			// Delete a character normally
-			delete_normally(editor, line_num);
+			delete_normally(editor);
 		// If not at end of last line of the file
 		} else if line_num < editor.file_length - 1 {
 			delete_end(editor, line_num);
@@ -219,7 +203,7 @@ mod delete_subroutines {
 	}
 
 	// Delete a single character normally
-	fn delete_normally(editor: &mut EditorSpace, line_num: usize) {
+	fn delete_normally(editor: &mut EditorSpace) {
 		// Get the current editor state
 		let state = editor.get_unredo_state();
 		// Add a new unredo state if necessary
@@ -230,8 +214,7 @@ mod delete_subroutines {
 			.blocks
 			.as_mut()
 			.unwrap()
-			.delete_char_in_line(line_num, editor.text_position)
-			.unwrap_or_else(|err| panic!("Couldn't delete char on line {} | {}", line_num, err));
+			.delete_char_in_line(editor.text_position);
 	}
 
 	// Delete at the end of a line
@@ -248,6 +231,10 @@ mod delete_subroutines {
 			.unwrap()
 			.delete_and_append_line(line_num)
 			.unwrap_or_else(|err| panic!("Couldn't delete line {} | {}", line_num + 1, err));
+
+		// Check if the tracked Blocks location needs to be updated
+		down_subroutines::check_tracked_location(editor);
+
 		// Reduce the overall file length
 		editor.file_length -= 1;
 	}

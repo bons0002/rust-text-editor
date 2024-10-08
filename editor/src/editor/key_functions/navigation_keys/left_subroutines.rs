@@ -7,10 +7,7 @@ use super::{
 // Logic for moving left if not at the beginning of the line
 pub fn left_normally(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// The line of text
-	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-		Ok(line) => line,
-		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
-	};
+	let line = editor.blocks.as_ref().unwrap().get_current_line();
 	// If the previous char isn't a tab, move normally
 	if line.chars().nth(editor.text_position - 1) != Some('\t') {
 		left_not_tab(editor, line_num, &line, will_store_cursor);

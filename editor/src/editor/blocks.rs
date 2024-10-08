@@ -101,6 +101,8 @@ impl Blocks {
 			self.starting_line_num -= self.get_head().len;
 			// Update the number of blocks
 			self.num_blocks += 1;
+			// Increment the block number tracker
+			self.curr_position[0] += 1;
 
 			/* If there are more than (15KiB / BLOCK_SIZE) blocks loaded in and the tail
 			block has not been modified, then remove the tail.
@@ -147,6 +149,8 @@ impl Blocks {
 				let head_length = self.pop_head();
 				// Subtract length of original head from scroll offset
 				editor.scroll_offset -= head_length;
+				// Reduce the tracked block number
+				self.curr_position[0] -= 1;
 			}
 			// No error
 			return Ok(self.tail_block as isize);
@@ -156,53 +160,38 @@ impl Blocks {
 	}
 
 	// Insert a character into the correct line in the correct block
-	pub fn insert_char_in_line(
-		&mut self,
-		line_num: usize,
-		text_position: usize,
-		character: char,
-	) -> Result<bool, Error> {
+	pub fn insert_char_in_line(&mut self, text_position: usize, character: char) {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num)?;
+		let [block_num, line_num] = self.curr_position;
 		// Insert the character into the correct block on the correct line
-		self.blocks_list[location.0].content[location.1].insert(text_position, character);
+		self.blocks_list[block_num].content[line_num].insert(text_position, character);
 
 		// Set this block as modified
-		self.blocks_list[location.0].is_modified = true;
-
-		// Return true to denote success
-		Ok(true)
+		self.blocks_list[block_num].is_modified = true;
 	}
 
 	// Insert a newline and truncate the current line (returns true if successful)
-	pub fn insert_new_line(
-		&mut self,
-		line_num: usize,
-		text_position: usize,
-	) -> Result<bool, Error> {
+	pub fn insert_new_line(&mut self, text_position: usize) {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num)?;
+		let [block_num, line_num] = self.curr_position;
 
 		// The text of the current line
-		let text = self.blocks_list[location.0].content[location.1].clone();
+		let text = self.blocks_list[block_num].content[line_num].clone();
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[text_position..];
 
 		// Insert new row
-		self.blocks_list[location.0]
+		self.blocks_list[block_num]
 			.content
-			.insert(location.1 + 1, String::from(after_cursor));
+			.insert(line_num + 1, String::from(after_cursor));
 		// Remove the rest of the old row after the enter
-		self.blocks_list[location.0].content[location.1].truncate(text_position);
+		self.blocks_list[block_num].content[line_num].truncate(text_position);
 
 		// Set this block as modified
-		self.blocks_list[location.0].is_modified = true;
+		self.blocks_list[block_num].is_modified = true;
 
 		// Increase the length of the Block
-		self.blocks_list[location.0].len += 1;
-
-		// Return true if no error
-		Ok(true)
+		self.blocks_list[block_num].len += 1;
 	}
 
 	// Insert a new line with a full line of text
@@ -210,22 +199,18 @@ impl Blocks {
 		// Add a blank line at the location
 		self.insert_blank_line(line_num)?;
 		// Update this blank line with the text
-		self.update_line(text, line_num)?;
+		self.update_some_line(text, line_num)?;
 
 		Ok(())
 	}
 
 	// Delete a character from the given line at the given position
-	pub fn delete_char_in_line(
-		&mut self,
-		line_num: usize,
-		text_position: usize,
-	) -> Result<bool, Error> {
+	pub fn delete_char_in_line(&mut self, text_position: usize) {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num)?;
+		let [block_num, line_num] = self.curr_position;
 
 		// Get the line as graphemes
-		let line: Vec<&str> = self.blocks_list[location.0].content[location.1]
+		let line: Vec<&str> = self.blocks_list[block_num].content[line_num]
 			.grapheme_indices(true)
 			.filter_map(|(pos, text)| {
 				if pos != text_position {
@@ -240,59 +225,62 @@ impl Blocks {
 		let mut line_str = String::new();
 		line_str.extend(line.iter().copied());
 		// Set the line in the block to this new line
-		self.blocks_list[location.0].content[location.1] = line_str;
+		self.blocks_list[block_num].content[line_num] = line_str;
 
 		// Set this block as modified
-		self.blocks_list[location.0].is_modified = true;
-
-		// Return true to denote no error
-		Ok(true)
+		self.blocks_list[block_num].is_modified = true;
 	}
 
-	// Fully delete the given line
+	// Delete the given line
 	pub fn delete_line(&mut self, line_num: usize) -> Result<String, Error> {
 		// Get the (block num, line num) location of the below line
-		let location = self.get_location(line_num)?;
+		let (block_num, line_num) = self.get_location(line_num)?;
 
 		// Set block as modified
-		self.blocks_list[location.0].is_modified = true;
+		self.blocks_list[block_num].is_modified = true;
 
 		// Reduce the length of this block
-		self.blocks_list[location.0].len -= 1;
+		self.blocks_list[block_num].len -= 1;
 
 		// Remove (and return) the below line
-		Ok(self.blocks_list[location.0].content.remove(location.1))
+		Ok(self.blocks_list[block_num].content.remove(line_num))
 	}
 
 	// Delete the below line and append its text content to the end of the current line
 	// Returns true if successful
-	pub fn delete_and_append_line(&mut self, line_num: usize) -> Result<bool, Error> {
-		// Delete the below line
+	pub fn delete_and_append_line(&mut self, line_num: usize) -> Result<(), Error> {
+		// Delete this lower line
 		let text = self.delete_line(line_num + 1)?;
-
 		// Get the rest of the line after the cursor
 		let after_cursor = &text[0..];
 
 		// Get the (block num, line number) location
-		let curr_location = self.get_location(line_num)?;
-
+		let [block_num, line_num] = self.curr_position;
 		// Append the rest of the below line to the current line (where the cursor is moving to)
-		self.blocks_list[curr_location.0].content[curr_location.1].push_str(after_cursor);
+		self.blocks_list[block_num].content[line_num].push_str(after_cursor);
 
 		// Set the current block as modified
-		self.blocks_list[curr_location.0].is_modified = true;
+		self.blocks_list[block_num].is_modified = true;
 
-		// Return true to denote no error
-		Ok(true)
+		Ok(())
 	}
 
-	// Return the line at the given line number
-	pub fn get_line(&self, line_num: usize) -> Result<String, Error> {
+	// Return the current line
+	pub fn get_current_line(&self) -> String {
 		// Get the (block num, line number) location
-		let location = self.get_location(line_num)?;
+		let [block_num, line_num] = self.curr_position;
 
 		// Return a copy of the line
-		Ok(self.blocks_list[location.0].content[location.1].clone())
+		self.blocks_list[block_num].content[line_num].clone()
+	}
+
+	// Return the line for the given line number (Slower than get_current_line)
+	pub fn get_some_line(&self, line_num: usize) -> Result<String, Error> {
+		// Get the (block num, line number) location
+		let (block_num, line_num) = self.get_location(line_num)?;
+
+		// Return a copy of the line
+		Ok(self.blocks_list[block_num].content[line_num].clone())
 	}
 
 	// The number of lines in the entire Blocks
@@ -307,8 +295,17 @@ impl Blocks {
 			.reduce(|| 0, |a, b| a + b)
 	}
 
-	// Update a line of text in the Blocks
-	pub fn update_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
+	// Update the line the cursor is on in the Blocks
+	#[allow(unused)]
+	pub fn update_current_line(&mut self, text: String) {
+		// Get the location of the line that needs to be updated
+		let [block_num, line_num] = self.curr_position;
+		// Update the line
+		self.blocks_list[block_num].content[line_num] = text;
+	}
+
+	// Update the given line (slower than current line)
+	pub fn update_some_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
 		// Get the location of the line that needs to be updated
 		let (block_num, line_num) = self.get_location(line_num)?;
 		// Update the line

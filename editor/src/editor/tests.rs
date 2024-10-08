@@ -511,7 +511,7 @@ const MULTIPLE_MODIFICATIONS_SAVE: &str = ">NM_000014.6 Homo sapiens alpha-2-mac
     GAGGCTATCAAAAGGATCGCCTATGAGTTTGTAGAGATGAAGGCCAAAGAGGGCGTGGTGTATGTGGAGGTGCGGTACAG\n\
     TCCGCACCTGCTGGCCA";
 
-/* Commented out because tests commented out */
+/* Commented out because tests commented out
 
 const COPY_AND_PASTE_ONELINE: &str = "#include<stdio.h>\n\
 	\n\
@@ -553,4 +553,4 @@ const COPY_AND_PASTE_FILE: &str = "#include<stdio.h>\n\
 	}\n\
 	";
 
-//*/
+*/

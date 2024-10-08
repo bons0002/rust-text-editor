@@ -6,7 +6,7 @@
 
 use super::*;
 use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
-use serial_test::serial;
+//use serial_test::serial;
 use std::fs::{self, read_to_string};
 use unredo_stack::stack_choice::StackChoice;
 
@@ -920,7 +920,7 @@ Serial because the clipboard is a shared resource
 */
 
 /* I put these tests back in (but commented out) because they are
-useful on my local machine: even if not on GitHub */
+useful on my local machine: even if not on GitHub
 
 // Test copying and pasting one line of text
 #[test]
@@ -1028,4 +1028,4 @@ fn copy_and_paste_multiblock() {
 	assert_eq!(actual_content, expected_content);
 }
 
-//*/
+*/

@@ -13,6 +13,8 @@ pub struct Selection {
 	pub original_text_position: (usize, usize),
 	// Store the original scroll offset of the text
 	pub original_scroll_offset: usize,
+	// Store the blocks tracked location
+	pub original_tracked_location: [usize; 2],
 }
 
 impl Selection {
@@ -25,6 +27,7 @@ impl Selection {
 			original_cursor_position: (0, 0),
 			original_text_position: (0, 0),
 			original_scroll_offset: 0,
+			original_tracked_location: [0, 0],
 		}
 	}
 }
@@ -38,5 +41,6 @@ impl PartialEq for Selection {
 			&& self.original_cursor_position == other.original_cursor_position
 			&& self.original_text_position == other.original_text_position
 			&& self.original_scroll_offset == other.original_scroll_offset
+			&& self.original_tracked_location == other.original_tracked_location
 	}
 }

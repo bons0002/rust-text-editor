@@ -8,10 +8,7 @@ use super::{
 // Logic for moving right in the text before reaching the end of the line
 pub fn right_normally(editor: &mut EditorSpace, line_num: usize, will_store_cursor: bool) {
 	// The line of text
-	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-		Ok(line) => line,
-		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
-	};
+	let line = editor.blocks.as_ref().unwrap().get_current_line();
 	// If not a tab character, move normally
 	if line.chars().nth(editor.text_position) != Some('\t') {
 		// Move right for non-tab chars

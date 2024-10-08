@@ -27,12 +27,10 @@ fn check_cursor_begin_line(editor: &mut EditorSpace) -> bool {
 }
 
 // Check the end of line cursor condition
-pub fn check_cursor_end_line(editor: &mut EditorSpace, line_num: usize) -> bool {
+pub fn check_cursor_end_line(editor: &mut EditorSpace) -> bool {
 	// The line of text
-	let line = match editor.blocks.as_ref().unwrap().get_line(line_num) {
-		Ok(line) => line,
-		Err(err) => panic!("Couldn't get line {} | {}", line_num, err),
-	};
+	let line = editor.blocks.as_ref().unwrap().get_current_line();
+	// Get the number of tabs on the line
 	let num_tabs = line.matches('\t').count();
 	// If the cursor is beyond the end of the line, return false
 	editor.cursor_position[0]

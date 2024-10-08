@@ -260,14 +260,14 @@ pub mod editor {
 			// Create the remaining line after deleting the selection
 			let remaining_line = Self::construct_remaining_line(&mut blocks, start, end);
 			// Update the first line of the selection
-			blocks.update_line(remaining_line, start.1).unwrap();
+			blocks.update_some_line(remaining_line, start.1).unwrap();
 
 			// Loop to delete the selection
 			for _i in start.1..end.1 {
 				// Ensure that the blocks are valid
 				blocks.check_blocks(self);
 				// Delete the next line
-				blocks.delete_line(start.1 + 1).unwrap();
+				let _ = blocks.delete_line(start.1 + 1);
 				// Reduce the file length
 				self.file_length -= 1;
 			}
@@ -531,7 +531,7 @@ pub mod editor {
 		) -> String {
 			// Get the text on the first line of the selection before the cursor
 			let before_selection = blocks
-				.get_line(start.1)
+				.get_some_line(start.1)
 				.unwrap()
 				.grapheme_indices(true)
 				.filter_map(|(idx, graph)| {
@@ -545,7 +545,7 @@ pub mod editor {
 
 			// Get the text on the last line of the selection after the cursor
 			let after_selection = blocks
-				.get_line(end.1)
+				.get_some_line(end.1)
 				.unwrap()
 				.grapheme_indices(true)
 				.filter_map(|(idx, graph)| {
@@ -567,16 +567,17 @@ pub mod editor {
 			if self.get_line_num(self.cursor_position[1]) == end.1 && self.text_position == end.0 {
 				// Reset scroll offset
 				self.scroll_offset = self.selection.original_scroll_offset;
+				// Reset the Blocks tracked location
+				self.blocks.as_mut().unwrap().curr_position =
+					self.selection.original_tracked_location;
 				// Reset the cursor's line number
 				self.cursor_position[1] = self.selection.original_cursor_position.1;
 				// Move to the beginning of the line
 				navigation_keys::home_key(self, true);
 				// Move to the correct horizontal position on the line
 				while self.cursor_position[0] < self.selection.original_cursor_position.0
-					&& key_functions::check_cursor_end_line(
-						self,
-						self.get_line_num(self.cursor_position[1]),
-					) {
+					&& key_functions::check_cursor_end_line(self)
+				{
 					navigation_keys::right_arrow(self, true);
 				}
 			}

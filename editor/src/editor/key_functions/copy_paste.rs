@@ -13,7 +13,15 @@ pub fn copy_to_clipboard(editor: &mut EditorSpace) {
 	let mut blocks = editor.blocks.as_ref().unwrap().clone();
 
 	// Copy the lines of text in the selection into a vector
-	let lines = copy_subroutines::copy_lines(editor, start, end, &mut blocks);
+	let lines = match copy_subroutines::copy_lines(editor, start, end, &mut blocks) {
+		Ok(lines) => lines,
+		Err(err) => panic!(
+			"{}:{}::copy_to_clipboard | Couldn't copy selection | {}",
+			file!(),
+			line!(),
+			err
+		),
+	};
 
 	// Write to the clipboard
 	editor
@@ -32,10 +40,21 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 	}
 	// The text content of the clipboard (and the length of the text)
 	let (text, text_length) = paste_subroutines::get_clipboard_content(editor);
-	// The line number to start pasting to
+	// Get the current line number
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Get the text on the current line before and after the cursor
-	let (before_cursor, after_cursor) = paste_subroutines::split_line(editor, line_num);
+	let (before_cursor, after_cursor) = match paste_subroutines::split_line(editor, line_num) {
+		Ok(line) => line,
+		Err(err) => {
+			panic!(
+				"{}:{}::paste_from_clipboard | Couldn't split line {} | {}",
+				file!(),
+				line!(),
+				line_num,
+				err
+			)
+		}
+	};
 	// The number of lines in the clipboard text vector
 	let num_lines = text.len();
 
@@ -70,13 +89,14 @@ mod copy_subroutines {
 		Blocks, EditorSpace, IndexedParallelIterator, IntoParallelIterator, ParallelIterator,
 		UnicodeSegmentation,
 	};
+	use std::io::Error;
 
 	pub fn copy_lines(
 		editor: &mut EditorSpace,
 		start: (usize, usize),
 		end: (usize, usize),
 		blocks: &mut Blocks,
-	) -> Vec<String> {
+	) -> Result<Vec<String>, Error> {
 		// Get the lines of text
 		let mut lines = Vec::new();
 		// Iterate through the lines of the selection
@@ -87,14 +107,22 @@ mod copy_subroutines {
 			}
 			// Get the indices of the graphemes
 			let indices = &blocks
-				.get_line(line_num)
-				.unwrap()
+				.get_some_line(line_num)?
 				.graphemes(true)
 				.map(String::from)
 				.collect::<Vec<String>>();
 
 			// Get the line of the selection
-			let line = copy_line(start, end, line_num, blocks, indices);
+			let line = match copy_line(start, end, line_num, blocks, indices) {
+				Ok(line) => line,
+				Err(err) => panic!(
+					"{}:{}::copy_lines | Couldn't copy line {} | {}",
+					file!(),
+					line!(),
+					line_num,
+					err
+				),
+			};
 
 			// Add a newline on all but the last line
 			if line_num != end.1 {
@@ -104,7 +132,7 @@ mod copy_subroutines {
 			}
 		}
 
-		lines
+		Ok(lines)
 	}
 
 	// Retrieve a line from the selection to add to the list of lines to be copies
@@ -114,19 +142,19 @@ mod copy_subroutines {
 		line_num: usize,
 		blocks: &mut Blocks,
 		indices: &Vec<String>,
-	) -> String {
+	) -> Result<String, Error> {
 		// If only one line
 		if start.1 == end.1 {
-			one_line_selection(indices, start.0, end.0)
+			Ok(one_line_selection(indices, start.0, end.0))
 		// If first line
 		} else if line_num == start.1 {
-			first_line_selection(indices, start.0)
+			Ok(first_line_selection(indices, start.0))
 		// If last line
 		} else if line_num == end.1 {
-			last_line_selection(indices, end.0)
+			Ok(last_line_selection(indices, end.0))
 		// If middle line
 		} else {
-			String::from(&blocks.get_line(line_num).unwrap())
+			Ok(String::from(&blocks.get_some_line(line_num)?))
 		}
 	}
 
@@ -188,6 +216,7 @@ mod copy_subroutines {
 // Subroutines for pasting from clipboard
 mod paste_subroutines {
 	use super::{ClipboardProvider, EditorSpace, UnicodeSegmentation};
+	use std::io::Error;
 
 	// The content of the loop in the paste function
 	pub fn paste_loop(
@@ -201,7 +230,7 @@ mod paste_subroutines {
 	) {
 		// First line
 		if idx == 0 {
-			paste_first_line(
+			let _ = paste_first_line(
 				editor,
 				before_cursor,
 				after_cursor,
@@ -216,15 +245,18 @@ mod paste_subroutines {
 	}
 
 	// Get the text on the line before and after the cursor
-	pub fn split_line(editor: &mut EditorSpace, line_num: usize) -> (String, String) {
+	pub fn split_line(
+		editor: &mut EditorSpace,
+		line_num: usize,
+	) -> Result<(String, String), Error> {
 		// The current line of text
-		let line = editor.blocks.as_ref().unwrap().get_line(line_num).unwrap();
-		// The current line of text before the text position
+		let line = editor.blocks.as_ref().unwrap().get_some_line(line_num)?;
+		// The current line of text before the text positio, line_numn
 		let before_cursor = String::from(&line[..editor.text_position]);
 		// The current line of text after the text position
 		let after_cursor = String::from(&line[editor.text_position..]);
 
-		(before_cursor, after_cursor)
+		Ok((before_cursor, after_cursor))
 	}
 
 	// Get the text content of the clipboard (and the length of the text)
@@ -248,7 +280,7 @@ mod paste_subroutines {
 		line: &str,
 		line_num: usize,
 		num_lines: usize,
-	) {
+	) -> Result<(), Error> {
 		// Concat the current line before the cursor with the first line of the clipboard content
 		let mut new_line = before_cursor.to_owned() + line;
 		// If only one line in the clipboard, append the after_cursor string
@@ -260,8 +292,9 @@ mod paste_subroutines {
 			.blocks
 			.as_mut()
 			.unwrap()
-			.update_line(new_line, line_num)
-			.unwrap();
+			.update_some_line(new_line, line_num)?;
+
+		Ok(())
 	}
 
 	// Paste the rest of the lines after the first one
