@@ -858,7 +858,7 @@ fn jump_down_test() {
 
 // Test the length of the undo stack is updated properly
 #[test]
-fn undo_stack_length() {
+fn unredo_stack_length() {
 	// Create an editor over the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
 
@@ -884,11 +884,12 @@ fn undo_stack_length() {
 	let state = editor.get_unredo_state();
 	let _ = editor.unredo_stack.undo(state);
 	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 2);
+	assert_eq!(editor.unredo_stack.len(StackChoice::Redo), 1);
 }
 
 // Test undoing after deleting a selection of text
 #[test]
-fn undo_delete_selection() {
+fn unredo_delete_selection() {
 	// Create an editor over the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
 
@@ -905,11 +906,17 @@ fn undo_delete_selection() {
 	let selection_after = editor.selection.clone();
 
 	// Undo
-	undo(&mut editor);
+	undo_redo(&mut editor, StackChoice::Undo);
 	// Check that the selections are different
 	assert_ne!(selection_after, editor.selection);
 	// Check that it reverted to the original selection
 	assert_eq!(selection_before, editor.selection);
+
+	// Redo
+	undo_redo(&mut editor, StackChoice::Redo);
+	// Check that the states have returned to normal
+	assert_ne!(selection_before, editor.selection);
+	assert_eq!(selection_after, editor.selection);
 }
 
 /*
