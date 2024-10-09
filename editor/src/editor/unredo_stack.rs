@@ -67,6 +67,24 @@ impl UnRedoStack {
 		}
 	}
 
+	// Pop the top redo state and return it. Push to the undo stack as well
+	pub fn redo(&mut self, editor_state: UnRedoState) -> UnRedoState {
+		match self.redo_stack.pop() {
+			// If the redo stack wasn't empty
+			Some(state) => {
+				// Push the passed editor_state (current state) to the undo stack
+				self.undo_stack.push(editor_state);
+				// Return the popped
+				state.clone()
+			}
+			// If the redo stack is empty
+			None => {
+				// Return the current state so nothing changes
+				editor_state
+			}
+		}
+	}
+
 	// Used for debugging
 	#[allow(unused)]
 	pub fn len(&self, stack: StackChoice) -> usize {

@@ -1,6 +1,6 @@
 use super::{
 	copy_paste, editing_keys, highlight_keys, key_functions, navigation_keys, save_key,
-	EditorSpace, KeyCode,
+	EditorSpace, KeyCode, StackChoice,
 };
 
 pub fn no_modifiers(editor: &mut EditorSpace, code: KeyCode) {
@@ -120,7 +120,11 @@ pub fn control_modifier(editor: &mut EditorSpace, code: KeyCode, break_loop: &mu
 		}
 		// Undo a change
 		KeyCode::Char('z') => {
-			key_functions::undo(editor);
+			key_functions::undo_redo(editor, StackChoice::Undo);
+		}
+		// Redo a change
+		KeyCode::Char('r') => {
+			key_functions::undo_redo(editor, StackChoice::Redo);
 		}
 		// Jump to the next word
 		KeyCode::Right => {

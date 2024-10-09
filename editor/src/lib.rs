@@ -30,7 +30,7 @@ pub mod editor {
 		highlight_keys::{self, selection::Selection},
 		navigation_keys, save_key,
 	};
-	use unredo_stack::{UnRedoStack, UnRedoState};
+	use unredo_stack::{stack_choice::StackChoice, UnRedoStack, UnRedoState};
 
 	// Contains the Blocks struct
 	mod blocks;
