@@ -9,6 +9,9 @@ mod selection_tests;
 /* Tests for the key_functions module. */
 mod key_functions_tests;
 
+/* Benchmark the runtime of the app */
+mod benchmark;
+
 /*
 ========================================
 			USEFUL FUNCTIONS
@@ -53,6 +56,9 @@ const SMALL_FILE: &str = "../editor/test_files/small_text.txt";
 
 // Text file used to test basic highlighting functionality
 const HIGHLIGHT_FILE: &str = "../editor/test_files/highlight.txt";
+
+// Test file used to benchmark the runtime of the app
+const BENCHMARK_FILE: &str = "../editor/test_files/bench_file.txt";
 
 /*
 =============================================

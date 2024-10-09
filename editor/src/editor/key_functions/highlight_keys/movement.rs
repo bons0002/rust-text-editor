@@ -1,4 +1,4 @@
-use crate::editor::key_functions::{page_down, page_up};
+use crate::editor::key_functions::navigation_keys::{page_down, page_up};
 
 use super::*;
 

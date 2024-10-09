@@ -4,7 +4,7 @@
 ==========================================================
 */
 
-use key_functions::{backspace, delete_key, down_arrow, end_key, enter_key, home_key, up_arrow};
+use key_functions::{editing_keys::*, navigation_keys::*};
 
 use super::*;
 

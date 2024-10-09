@@ -20,6 +20,37 @@ use ratatui::{
 use config::config::Config;
 use editor::editor::EditorSpace;
 
+// Main driver function
+pub fn run(filename: String) -> io::Result<()> {
+	// Initialize the config and terminal
+	let (config, mut terminal) = init()?;
+	// Struct to track the entire editing space
+	let mut editor_space = EditorSpace::new(filename, config);
+
+	// Flag to break the below loop (ending app execution)
+	let mut break_loop = false;
+
+	// Run the app
+	loop {
+		// Draw the frame in the terminal
+		terminal.draw(|frame| {
+			// Draw the ui
+			ui(frame, &mut editor_space);
+		})?;
+		// Get input within the editor space
+		editor_space.handle_input(&mut break_loop);
+		// Check if user wants to quit the app
+		if break_loop {
+			break;
+		}
+	}
+
+	// Reset variables when leaving the app
+	end()?;
+
+	Ok(())
+}
+
 // Initialize the terminal and the config
 fn init() -> Result<(Config, Terminal<CrosstermBackend<io::Stdout>>), Error> {
 	// Create a default config
@@ -86,34 +117,6 @@ fn end() -> io::Result<()> {
 	if consts::OS != "windows" {
 		execute!(stdout(), PopKeyboardEnhancementFlags)?;
 	}
-
-	Ok(())
-}
-
-// Main driver function
-pub fn run(filename: String) -> io::Result<()> {
-	// Initialize the config and terminal
-	let (config, mut terminal) = init()?;
-	// Struct to track the entire editing space
-	let mut editor_space = EditorSpace::new(filename, config);
-
-	// Run the app
-	loop {
-		// Draw the frame in the terminal
-		terminal.draw(|frame| {
-			// Draw the ui
-			ui(frame, &mut editor_space);
-		})?;
-		// Get input within the editor space
-		editor_space.handle_input();
-		// Check if user wants to quit the app
-		if editor_space.break_loop {
-			break;
-		}
-	}
-
-	// Reset variables when leaving the app
-	end()?;
 
 	Ok(())
 }

@@ -5,9 +5,10 @@
 */
 
 use super::*;
-use key_functions::{highlight_selection::*, *};
+use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
 //use serial_test::serial;
 use std::fs::{self, read_to_string};
+use unredo_stack::stack_choice::StackChoice;
 
 /*
 ==================================
@@ -712,6 +713,12 @@ fn end_of_file_delete_and_enter() {
 	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12);
 }
 
+/*
+=======================================
+			JUMP WORD TESTS
+=======================================
+*/
+
 // Test the jump_right function
 #[test]
 fn jump_right_tests() {
@@ -844,6 +851,68 @@ fn jump_down_test() {
 }
 
 /*
+=======================================
+			UNDO/REDO TESTS
+=======================================
+*/
+
+// Test the length of the undo stack is updated properly
+#[test]
+fn undo_stack_length() {
+	// Create an editor over the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	// Take enough actions to create three undo states
+	for i in 0..43 {
+		// Insert 20 '~'
+		if i < 20 {
+			char_key(&mut editor, '~');
+		// Delete all 20 '~'
+		} else if i < 40 {
+			backspace(&mut editor);
+		// Highlight down three lines
+		} else {
+			highlight_down(&mut editor);
+		}
+	}
+	// Delete selection
+	backspace(&mut editor);
+	// Check that the expected number (3) of undo states were added
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 3);
+
+	// Perform an 'undo' and check that a state was removed from the stack
+	let state = editor.get_unredo_state();
+	let _ = editor.unredo_stack.undo(state);
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 2);
+}
+
+// Test undoing after deleting a selection of text
+#[test]
+fn undo_delete_selection() {
+	// Create an editor over the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	// Highlight three lines down
+	for _i in 0..3 {
+		highlight_down(&mut editor);
+	}
+
+	// Selection before deletion
+	let selection_before = editor.selection.clone();
+	// Delete the selection
+	backspace(&mut editor);
+	// Selection after deletion
+	let selection_after = editor.selection.clone();
+
+	// Undo
+	undo(&mut editor);
+	// Check that the selections are different
+	assert_ne!(selection_after, editor.selection);
+	// Check that it reverted to the original selection
+	assert_eq!(selection_before, editor.selection);
+}
+
+/*
 ========================================
 			COPY-PASTE TESTS
 ========================================
@@ -863,7 +932,7 @@ fn copy_paste_oneline() {
 	// Highlight the first line
 	highlight_end(&mut editor);
 	// Copy this line
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 
 	home_key(&mut editor, true);
 	// Clear the selection
@@ -877,7 +946,7 @@ fn copy_paste_oneline() {
 		right_arrow(&mut editor, true);
 	}
 	// Paste the first line
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
@@ -897,12 +966,12 @@ fn copy_and_paste_file() {
 	// Highlight entire file
 	highlight_page_down(&mut editor);
 	// Copy
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 
 	// Clear selection
 	editor.selection.is_empty = true;
 	// Paste this to the file
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
@@ -930,7 +999,7 @@ fn copy_and_paste_multiblock() {
 	highlight_end(&mut editor);
 
 	// Copy
-	copy_to_clipboard(&mut editor);
+	copy_paste::copy_to_clipboard(&mut editor);
 	// Clear selection
 	editor.selection.is_empty = true;
 	// Create a blank line before pasting
@@ -938,7 +1007,7 @@ fn copy_and_paste_multiblock() {
 	enter_key(&mut editor);
 
 	// Paste this to the file
-	paste_from_clipboard(&mut editor);
+	copy_paste::paste_from_clipboard(&mut editor);
 
 	// The experimental contents of the Blocks
 	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
