@@ -1,5 +1,2 @@
 target/*
 *.lock
-
-# Extensions commonly used when testing
-*.c
