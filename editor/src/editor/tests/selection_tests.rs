@@ -69,7 +69,6 @@ fn mutli_line_selection_deletion() {
 
 // Test deleting a selection over mutliple Blocks (from front to back)
 #[test]
-#[ignore]
 fn multi_block_selection_deletion_front_to_back() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -98,7 +97,6 @@ fn multi_block_selection_deletion_front_to_back() {
 
 // Test deleting a selection over mutliple Blocks (from back to front)
 #[test]
-#[ignore]
 fn multi_block_selection_deletion_back_to_front() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -137,7 +135,6 @@ fn multi_block_selection_deletion_back_to_front() {
 
 // Test repeatedly deleting selections from the file
 #[test]
-#[ignore]
 fn repeated_selection_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -171,7 +168,6 @@ fn repeated_selection_deletion() {
 
 // Test highlighting with the page down key
 #[test]
-#[ignore]
 fn page_down_selection() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -217,7 +213,6 @@ fn page_down_undo_selection() {
 
 // Test highlighting with the page up key
 #[test]
-#[ignore]
 fn page_up_selection() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);

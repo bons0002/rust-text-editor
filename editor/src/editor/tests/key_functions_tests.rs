@@ -6,7 +6,7 @@
 
 use super::*;
 use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
-//use serial_test::serial;
+use serial_test::serial;
 use std::fs::{self, read_to_string};
 use unredo_stack::stack_choice::StackChoice;
 
@@ -20,7 +20,6 @@ use unredo_stack::stack_choice::StackChoice;
 The small file ends in an empty line,
 so this checks that that line gets saved. */
 #[test]
-#[ignore]
 fn save_key_combo_small_file() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -72,7 +71,6 @@ fn save_key_combo_small_file() {
 This tests whether mutliple block length
 files will be saved properly. */
 #[test]
-#[ignore]
 fn save_key_combo_genome_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -125,7 +123,6 @@ This file includes unicode characters.
 Also, I just felt like having a test for each of the existing files.
 Also tests repeated saves. */
 #[test]
-#[ignore]
 fn save_key_combo_highlight_file() {
 	// Make and editor for the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
@@ -179,7 +176,6 @@ fn save_key_combo_highlight_file() {
 
 // Test saving a modified small file
 #[test]
-#[ignore]
 fn modified_small_file_save() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -225,7 +221,6 @@ fn modified_small_file_save() {
 
 // Test saving a modified large file
 #[test]
-#[ignore]
 fn modified_large_file_save() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -278,7 +273,6 @@ fn modified_large_file_save() {
 
 // Test saving GENOME_FILE multiple times, each time editing the file
 #[test]
-#[ignore]
 fn multiple_modifications_save() {
 	// Make and editor for the GENOME_FILE
 	let mut genome_editor = construct_editor(GENOME_FILE);
@@ -367,7 +361,6 @@ fn multiple_modifications_save() {
 
 // Use the right arrow key to move to the end of the file
 #[test]
-#[ignore]
 fn move_right_through_entire_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -384,7 +377,6 @@ fn move_right_through_entire_file() {
 }
 
 #[test]
-#[ignore]
 fn move_left_through_entire_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -923,15 +915,16 @@ fn unredo_delete_selection() {
 ========================================
 			COPY-PASTE TESTS
 ========================================
-Serial because the clipboard is a shared resource
-*/
 
-/* I put these tests back in (but commented out) because they are
-useful on my local machine: even if not on GitHub
+Serial because the clipboard is a shared resource.
+Ignored because they worked on local machine but not on
+GitHub.
+*/
 
 // Test copying and pasting one line of text
 #[test]
 #[serial]
+#[ignore]
 fn copy_paste_oneline() {
 	// Make an editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -966,6 +959,7 @@ fn copy_paste_oneline() {
 // Test copy and pasting an entire file to its end
 #[test]
 #[serial]
+#[ignore]
 fn copy_and_paste_file() {
 	// Make an editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -991,6 +985,7 @@ fn copy_and_paste_file() {
 // Test copying an entire large, multiblock file and pasting it again
 #[test]
 #[serial]
+#[ignore]
 fn copy_and_paste_multiblock() {
 	// Make an editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -1034,5 +1029,3 @@ fn copy_and_paste_multiblock() {
 
 	assert_eq!(actual_content, expected_content);
 }
-
-*/

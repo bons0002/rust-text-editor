@@ -209,7 +209,6 @@ fn modified_blocks_length() {
 
 // Test deleting all lines of a file starting from the end
 #[test]
-#[ignore]
 fn end_of_file_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -242,7 +241,6 @@ fn end_of_file_deletion() {
 
 // Test deleting all lines of a file starting from the beginning
 #[test]
-#[ignore]
 fn beginning_of_file_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
