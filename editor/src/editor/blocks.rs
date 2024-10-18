@@ -271,7 +271,10 @@ impl Blocks {
 		let [block_num, line_num] = self.curr_position;
 
 		// Return a copy of the line
-		self.blocks_list[block_num].content[line_num].clone()
+		match self.blocks_list[block_num].content.get(line_num) {
+			Some(line) => line.clone(),
+			None => String::new(),
+		}
 	}
 
 	// Return the line for the given line number (Slower than get_current_line)
@@ -280,7 +283,10 @@ impl Blocks {
 		let (block_num, line_num) = self.get_location(line_num)?;
 
 		// Return a copy of the line
-		Ok(self.blocks_list[block_num].content[line_num].clone())
+		Ok(match self.blocks_list[block_num].content.get(line_num) {
+			Some(line) => line.clone(),
+			None => String::new(),
+		})
 	}
 
 	// The number of lines in the entire Blocks
