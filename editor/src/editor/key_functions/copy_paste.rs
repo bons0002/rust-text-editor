@@ -77,6 +77,19 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 	}
 }
 
+// Call the copy function and delete the selection
+pub fn cut(editor: &mut EditorSpace) {
+	// Get the current editor state
+	let state = editor.get_unredo_state();
+	// Add a new undo state
+	editor.unredo_stack.auto_update(state, true);
+
+	// Copy the selection to the clipboard
+	copy_to_clipboard(editor);
+	// Delete the selection
+	editor.delete_selection();
+}
+
 /*
 =================================================
 			Copy Function Subroutines

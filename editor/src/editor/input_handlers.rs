@@ -106,16 +106,25 @@ pub fn control_modifier(editor: &mut EditorSpace, code: KeyCode, break_loop: &mu
 		KeyCode::Char('s') => save_key::save_key_combo(editor, false, ""),
 		// Break the loop to end the program
 		KeyCode::Char('q') => *break_loop = true,
-		// Paste text into the editor (if there is a clipboard)
+		// Paste text into the editor
 		KeyCode::Char('v') => {
+			// If a clipboard exists
 			if editor.clipboard.is_some() {
-				copy_paste::paste_from_clipboard(editor)
+				copy_paste::paste_from_clipboard(editor);
 			}
 		}
 		// Copy text from the editor and write it to the clipboard
 		KeyCode::Char('c') => {
+			// If a clipboard exists
 			if editor.clipboard.is_some() {
-				copy_paste::copy_to_clipboard(editor)
+				copy_paste::copy_to_clipboard(editor);
+			}
+		}
+		// Cut text (copy and delete a selection)
+		KeyCode::Char('x') => {
+			// If a clipboard exists
+			if editor.clipboard.is_some() {
+				copy_paste::cut(editor);
 			}
 		}
 		// Undo a change
