@@ -1029,3 +1029,50 @@ fn copy_and_paste_multiblock() {
 
 	assert_eq!(actual_content, expected_content);
 }
+
+// Cut entire file and re-paste it
+#[test]
+#[serial]
+#[ignore]
+fn cut_file_test() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Ensure that the EditorSpace is empty
+	assert_eq!(editor.cursor_position, [0, 0]);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![String::from("")]);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Check that the contents of the file have been re-pasted properly
+	assert_eq!(editor.cursor_position[1], editor.height);
+	assert_eq!(editor.cursor_position[0], 17);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}

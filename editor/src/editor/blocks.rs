@@ -194,16 +194,6 @@ impl Blocks {
 		self.blocks_list[block_num].len += 1;
 	}
 
-	// Insert a new line with a full line of text
-	pub fn insert_full_line(&mut self, text: String, line_num: usize) -> Result<(), Error> {
-		// Add a blank line at the location
-		self.insert_blank_line(line_num)?;
-		// Update this blank line with the text
-		self.update_some_line(text, line_num)?;
-
-		Ok(())
-	}
-
 	// Delete a character from the given line at the given position
 	pub fn delete_char_in_line(&mut self, text_position: usize) {
 		// Get the (block num, line number) location
@@ -426,33 +416,6 @@ impl Blocks {
 
 		// Return the length of the original head block
 		length
-	}
-
-	// Add a blank line to the Blocks
-	fn insert_blank_line(&mut self, line_num: usize) -> Result<(), Error> {
-		// Get the location of where this line needs to be inserted
-		match self.get_location(line_num) {
-			// If the location is valid, INSERT a line into the block
-			Ok((block_num, line_num)) => {
-				// Insert the blank line
-				self.blocks_list[block_num]
-					.content
-					.insert(line_num, String::new());
-				// Update the length of the block
-				self.blocks_list[block_num].len += 1;
-			}
-			// If the location is invalid, PUSH a new line to the last block
-			Err(_) => {
-				// Last block
-				let idx = self.blocks_list.len() - 1;
-				// Add new line
-				self.blocks_list[idx].content.push(String::new());
-				// Update the length of the block
-				self.blocks_list[idx].len += 1;
-			}
-		}
-
-		Ok(())
 	}
 }
 
