@@ -45,76 +45,10 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 
 	// For a multiline selection to be pasted
 	if text.len() > 1 {
-		// Append the first line of the clipboard to the text before the cursor
-		before_cursor += text[0].as_str();
-		// Prepend the last line of the clipboard to the text after the cursor
-		let after_cursor = text.last().unwrap().to_owned() + &after_cursor;
-
-		// Length of the text before the cursor
-		let before_len = before_cursor.graphemes(true).count();
-		// Length of the text after the cursor
-		let after_len = text.last().unwrap().graphemes(true).count();
-
-		// Update the current line of text with the part before the cursor
-		editor
-			.blocks
-			.as_mut()
-			.unwrap()
-			.update_current_line(before_cursor);
-		// Move to the beginning of the line
-		navigation_keys::home_key(editor, true);
-		// Move to the new location on the line after the update
-		for _i in 0..before_len {
-			navigation_keys::right_arrow(editor, true);
-		}
-
-		// Loop through the lines of the clipboard content
-		for (idx, line) in text.clone().into_iter().enumerate() {
-			// Skip the first line (already done)
-			if idx == 0 {
-				continue;
-			// For the last line of the clipboard
-			} else if idx == text.len() - 1 {
-				// Add a newline
-				editing_keys::enter_key(editor);
-				// Update the text of the newline
-				editor
-					.blocks
-					.as_mut()
-					.unwrap()
-					.update_current_line(after_cursor.clone());
-				// Move to the beginning of the line
-				navigation_keys::home_key(editor, true);
-				// Move to the new location after updating the line
-				for _i in 0..after_len {
-					navigation_keys::right_arrow(editor, true);
-				}
-			// All lines in the middle
-			} else {
-				// Add a new line
-				editing_keys::enter_key(editor);
-				// Update this new line
-				editor.blocks.as_mut().unwrap().update_current_line(line);
-				// Move to the end of this new line
-				navigation_keys::end_key(editor, true);
-			}
-		}
+		paste_subroutines::multiline_paste(editor, &mut before_cursor, after_cursor, text);
 	// Single line clipboard content
 	} else {
-		// Append the clipboard content to the text before the cursor
-		before_cursor += text[0].as_str();
-		// Get the length of the text before the cursor
-		let before_len = before_cursor.graphemes(true).count();
-		// Create the full line of text (after paste)
-		let text = before_cursor + &after_cursor;
-		// Update the current line with this new text
-		editor.blocks.as_mut().unwrap().update_current_line(text);
-		// Move to the beginning of the line
-		navigation_keys::home_key(editor, true);
-		// Move to the new location for the cursor
-		for _i in 0..before_len {
-			navigation_keys::right_arrow(editor, true);
-		}
+		paste_subroutines::singleline_paste(editor, &mut before_cursor, after_cursor, text);
 	}
 }
 
@@ -269,7 +203,9 @@ mod copy_subroutines {
 
 // Subroutines for pasting from clipboard
 mod paste_subroutines {
-	use super::{ClipboardProvider, EditorSpace, UnicodeSegmentation};
+	use super::{
+		editing_keys, navigation_keys, ClipboardProvider, EditorSpace, UnicodeSegmentation,
+	};
 
 	// Get the text on the line before and after the cursor
 	pub fn split_line(editor: &mut EditorSpace) -> (String, String) {
@@ -294,5 +230,109 @@ mod paste_subroutines {
 			// The length of the text in the clipboard
 			text.graphemes(true).count(),
 		)
+	}
+
+	// Paste a single line from the clipboard
+	pub fn singleline_paste(
+		editor: &mut EditorSpace,
+		before_cursor: &mut String,
+		after_cursor: String,
+		text: Vec<String>,
+	) {
+		// Append the clipboard content to the text before the cursor
+		*before_cursor += text[0].as_str();
+		// Get the length of the text before the cursor
+		let before_len = before_cursor.graphemes(true).count();
+		// Create the full line of text (after paste)
+		let text = before_cursor.to_owned() + &after_cursor;
+		// Update the current line with this new text
+		editor.blocks.as_mut().unwrap().update_current_line(text);
+		// Move to the beginning of the line
+		navigation_keys::home_key(editor, true);
+		// Move to the new location for the cursor
+		for _i in 0..before_len {
+			navigation_keys::right_arrow(editor, true);
+		}
+	}
+
+	// Paste multiple lines from the clipboard
+	pub fn multiline_paste(
+		editor: &mut EditorSpace,
+		before_cursor: &mut String,
+		after_cursor: String,
+		text: Vec<String>,
+	) {
+		// Append the first line of the clipboard to the text before the cursor
+		*before_cursor += text[0].as_str();
+		// Prepend the last line of the clipboard to the text after the cursor
+		let after_cursor = text.last().unwrap().to_owned() + &after_cursor;
+
+		// Update the current line of text with the part before the cursor
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.update_current_line(before_cursor.to_string());
+		// Move cursor to new location
+		realign_cursor(editor, before_cursor.to_string());
+
+		// Paste the multiline clipboard content
+		paste_loop(editor, text, after_cursor);
+	}
+
+	// Move to the new location after updating the first line of the mutliline paste
+	fn realign_cursor(editor: &mut EditorSpace, before_cursor: String) {
+		// Length of the text before the cursor
+		let before_len = before_cursor.graphemes(true).count();
+
+		// Move to the beginning of the line
+		navigation_keys::home_key(editor, true);
+		// Move to the new location on the line after the update
+		for _i in 0..before_len {
+			navigation_keys::right_arrow(editor, true);
+		}
+	}
+
+	// Loop through the multiline clipboard content and paste to the editor
+	fn paste_loop(editor: &mut EditorSpace, text: Vec<String>, after_cursor: String) {
+		// Loop through the lines of the clipboard content
+		for (idx, line) in text.clone().into_iter().enumerate() {
+			// Skip the first line (already done)
+			if idx == 0 {
+				continue;
+			// For the last line of the clipboard
+			} else if idx == text.len() - 1 {
+				last_line_paste(editor, &text, &after_cursor);
+			// All lines in the middle
+			} else {
+				// Add a new line
+				editing_keys::enter_key(editor);
+				// Update this new line
+				editor.blocks.as_mut().unwrap().update_current_line(line);
+				// Move to the end of this new line
+				navigation_keys::end_key(editor, true);
+			}
+		}
+	}
+
+	// Paste the last line of the clipboard content
+	fn last_line_paste(editor: &mut EditorSpace, text: &[String], after_cursor: &str) {
+		// Length of the text after the cursor
+		let after_len = text.last().unwrap().graphemes(true).count();
+
+		// Add a newline
+		editing_keys::enter_key(editor);
+		// Update the text of the newline
+		editor
+			.blocks
+			.as_mut()
+			.unwrap()
+			.update_current_line(after_cursor.to_string());
+		// Move to the beginning of the line
+		navigation_keys::home_key(editor, true);
+		// Move to the new location after updating the line
+		for _i in 0..after_len {
+			navigation_keys::right_arrow(editor, true);
+		}
 	}
 }
