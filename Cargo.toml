@@ -3,7 +3,7 @@ members = ["editor", "app", "config", "stack"]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.28"
+version = "0.4.0"
 repository = "https://github.com/bons0002/rust-text-editor"
 license = "MIT"
 

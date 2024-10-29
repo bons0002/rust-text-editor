@@ -53,7 +53,7 @@ pub mod editor {
 		// The clipboard to copy from and paste to
 		clipboard: Option<ClipboardContext>,
 		// The config of the editor
-		config: Config,
+		pub config: Config,
 		// Position of cursor on the screen
 		cursor_position: [usize; 2],
 		// The file that is open
