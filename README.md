@@ -8,11 +8,11 @@ A crossplatform, nano-like, terminal-based text editor written in Rust. Tested a
 
 Full funtionality is dependent on the terminal emulator:
 
-    - `Alacritty` has full functionality
-    - `Terminator` works, but doesn't implement the `Kitty Keyboard Protocol` so keybinds requiring multiple modifier keys don't work (i.e. highlighting while jumping using `Shift + Ctrl`)
-    - `Powershell` on Windows has odd interactions with unicode characters but works for the most part. Specifically, pasting text with unicode characters will omit the unicode characters.
-    - `Konsole` has weird kerning problems
-    - `tty` work with limited functionality
+* `Alacritty` has full functionality
+* `Terminator` works, but doesn't implement the `Kitty Keyboard Protocol` so keybinds requiring multiple modifier keys don't work (i.e. highlighting while jumping using `Shift + Ctrl`)
+* `Powershell` on Windows has odd interactions with unicode characters but works for the most part. Specifically, pasting text with unicode characters will omit the unicode characters.
+* `Konsole` has weird kerning problems
+* `tty` work with limited functionality
 
 ## Installation
 
