@@ -353,6 +353,58 @@ fn multiple_modifications_save() {
 	fs::remove_file(debug_filename).unwrap();
 }
 
+/* Cut entire file and re-paste it, then save it.
+This is ran serially because the clipboard is a shared resource. */
+#[test]
+#[serial]
+#[ignore]
+fn cut_file_save() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+	// The filename of the debug file
+	let debug_filename = &(String::from(GENOME_FILE) + "-cut-save-test");
+
+	// Write the file to a different debug file
+	save_key_combo(&mut editor, true, debug_filename);
+	// Create a new editor for this debug file
+	let mut editor = construct_editor(debug_filename);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Write the file in-place
+	save_key_combo(&mut editor, false, debug_filename);
+
+	// Get a vector of the lines saved to the debug file
+	let saved_text = read_to_string(debug_filename).unwrap();
+	let saved_content: Vec<String> = saved_text.split('\n').map(String::from).collect();
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(saved_content, expected_content);
+	// Delete the debug file
+	fs::remove_file(debug_filename).unwrap();
+}
+
 /*
 ===================================
 			ARROW TESTS
@@ -1037,6 +1089,55 @@ fn copy_and_paste_multiblock() {
 fn cut_file_test() {
 	// Make an editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Ensure that the EditorSpace is empty
+	assert_eq!(editor.cursor_position, [0, 0]);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![String::from("")]);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Check that the contents of the file have been re-pasted properly
+	assert_eq!(editor.cursor_position[1], editor.height);
+	assert_eq!(editor.cursor_position[0], 17);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Cut entire file and re-paste it when the width of the editor is small
+#[test]
+#[serial]
+#[ignore]
+fn cut_narrow_file() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+	// Set small width for editor
+	editor.width = 20;
 
 	// Highlight down entire file
 	for i in 0..8 {
