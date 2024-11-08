@@ -1,5 +1,5 @@
 use super::{Blocks, EditorSpace, File, OpenOptions, ParallelExtend};
-use std::io::Write;
+use std::io::{Error, Write};
 
 // Save key combo functionality
 pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filename: &str) {
@@ -22,7 +22,8 @@ pub fn save_key_combo(editor: &mut EditorSpace, in_debug_mode: bool, debug_filen
 	}
 
 	// Update the editor's scroll offset and Blocks
-	post_save_editor_update(editor);
+	post_save_editor_update(editor)
+		.unwrap_or_else(|err| panic!("{}::save_key_combo: line {} | {}", file!(), line!(), err))
 }
 
 /* Subroutines */
@@ -57,22 +58,24 @@ fn save_file(filename: &str, contents: Vec<String>) -> File {
 }
 
 // Update the editor's scroll offset and blocks after saving
-fn post_save_editor_update(editor: &mut EditorSpace) {
+fn post_save_editor_update(editor: &mut EditorSpace) -> Result<(), Error> {
 	// Get the current line number
 	let line_num = editor.get_line_num(editor.cursor_position[1]);
 	// Construct a block from that line number
-	let mut blocks = Blocks::from_line(editor, line_num).unwrap();
+	let mut blocks = Blocks::from_line(editor, line_num)?;
 
 	// Get the line number of the first line of the widget
 	let line_num = editor.get_line_num(0);
 	// Might need to add a new head block
 	while line_num < blocks.starting_line_num {
-		blocks.push_head(editor, true).unwrap();
+		blocks.push_head(editor, true)?;
 	}
 	// Reset scroll offset
 	editor.scroll_offset = line_num - blocks.starting_line_num;
 	// Set the editor blocks to this new Blocks
 	editor.blocks = Some(blocks.clone());
+
+	Ok(())
 }
 
 // Recreate an existing file (for saving)

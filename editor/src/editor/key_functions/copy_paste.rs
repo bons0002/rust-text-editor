@@ -39,7 +39,7 @@ pub fn paste_from_clipboard(editor: &mut EditorSpace) {
 		editor.delete_selection();
 	}
 	// The text content of the clipboard
-	let text = paste_subroutines::get_clipboard_content(editor).0;
+	let text = paste_subroutines::get_clipboard_content(editor);
 	// Split the current line of text about the cursor
 	let (mut before_cursor, after_cursor) = paste_subroutines::split_line(editor);
 
@@ -204,14 +204,15 @@ mod copy_subroutines {
 // Subroutines for pasting from clipboard
 mod paste_subroutines {
 	use super::{
-		editing_keys, navigation_keys, ClipboardProvider, EditorSpace, UnicodeSegmentation,
+		super::super::key_functions, editing_keys, navigation_keys, ClipboardProvider, EditorSpace,
+		UnicodeSegmentation,
 	};
 
 	// Get the text on the line before and after the cursor
 	pub fn split_line(editor: &mut EditorSpace) -> (String, String) {
 		// The current line of text
 		let line = editor.blocks.as_ref().unwrap().get_current_line();
-		// The current line of text before the text positio, line_numn
+		// The current line of text before the text position
 		let before_cursor = String::from(&line[..editor.text_position]);
 		// The current line of text after the text position
 		let after_cursor = String::from(&line[editor.text_position..]);
@@ -220,16 +221,12 @@ mod paste_subroutines {
 	}
 
 	// Get the text content of the clipboard (and the length of the text)
-	pub fn get_clipboard_content(editor: &mut EditorSpace) -> (Vec<String>, usize) {
+	pub fn get_clipboard_content(editor: &mut EditorSpace) -> Vec<String> {
 		// Get the text stored in the clipboard
 		let text = editor.clipboard.as_mut().unwrap().get_contents().unwrap();
 
-		(
-			// The text from the clipboard as a text vector
-			text.split('\n').map(String::from).collect::<Vec<String>>(),
-			// The length of the text in the clipboard
-			text.graphemes(true).count(),
-		)
+		// The text from the clipboard as a text vector
+		text.split('\n').map(String::from).collect::<Vec<String>>()
 	}
 
 	// Paste a single line from the clipboard
@@ -241,18 +238,22 @@ mod paste_subroutines {
 	) {
 		// Append the clipboard content to the text before the cursor
 		*before_cursor += text[0].as_str();
-		// Get the length of the text before the cursor
-		let before_len = before_cursor.graphemes(true).count();
 		// Create the full line of text (after paste)
 		let text = before_cursor.to_owned() + &after_cursor;
+
+		// Store the original editor width
+		let original_width = editor.width;
+		// Make the editor width HUGE
+		editor.width = usize::MAX;
+
 		// Update the current line with this new text
 		editor.blocks.as_mut().unwrap().update_current_line(text);
-		// Move to the beginning of the line
-		navigation_keys::home_key(editor, true);
-		// Move to the new location for the cursor
-		for _i in 0..before_len {
-			navigation_keys::right_arrow(editor, true);
-		}
+
+		// Reset editor width
+		editor.width = original_width;
+
+		// Move cursor to new location
+		realign_cursor(editor, before_cursor.to_string());
 	}
 
 	// Paste multiple lines from the clipboard
@@ -267,17 +268,26 @@ mod paste_subroutines {
 		// Prepend the last line of the clipboard to the text after the cursor
 		let after_cursor = text.last().unwrap().to_owned() + &after_cursor;
 
+		// Store the original editor width
+		let original_width = editor.width;
+		// Make the editor width HUGE
+		editor.width = usize::MAX;
+
 		// Update the current line of text with the part before the cursor
 		editor
 			.blocks
 			.as_mut()
 			.unwrap()
 			.update_current_line(before_cursor.to_string());
+
 		// Move cursor to new location
 		realign_cursor(editor, before_cursor.to_string());
 
 		// Paste the multiline clipboard content
 		paste_loop(editor, text, after_cursor);
+
+		// Reset editor width
+		editor.width = original_width;
 	}
 
 	// Move to the new location after updating the first line of the mutliline paste
@@ -288,7 +298,7 @@ mod paste_subroutines {
 		// Move to the beginning of the line
 		navigation_keys::home_key(editor, true);
 		// Move to the new location on the line after the update
-		for _i in 0..before_len {
+		while editor.text_position < before_len && key_functions::check_cursor_end_line(editor) {
 			navigation_keys::right_arrow(editor, true);
 		}
 	}
@@ -331,7 +341,7 @@ mod paste_subroutines {
 		// Move to the beginning of the line
 		navigation_keys::home_key(editor, true);
 		// Move to the new location after updating the line
-		for _i in 0..after_len {
+		while editor.text_position < after_len && key_functions::check_cursor_end_line(editor) {
 			navigation_keys::right_arrow(editor, true);
 		}
 	}

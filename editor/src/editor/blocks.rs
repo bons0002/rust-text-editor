@@ -60,15 +60,10 @@ impl Blocks {
 
 	// Create a new Blocks from a line number rather than a block number
 	pub fn from_line(editor: &mut EditorSpace, line_num: usize) -> Result<Self, Error> {
-		// Create a Blocks from the first block
-		let mut blocks = Self::new(editor, 0, 0)?;
-
-		// Create a Blocks for the given line number
-
-		// Load in all blocks to find the block for the line number
-		blocks.load_all_blocks(editor);
-		// Get the block number for the given line number
-		let (block_num, line_num) = blocks.get_location(line_num)?;
+		// Load all blocks in the file
+		let blocks = Self::load_file(editor)?;
+		// Find the block number for the passed line number
+		let block_num = blocks.get_location(line_num)?.0;
 		// Return the Blocks
 		Blocks::new(editor, block_num, line_num)
 	}
@@ -292,7 +287,6 @@ impl Blocks {
 	}
 
 	// Update the line the cursor is on in the Blocks
-	#[allow(unused)]
 	pub fn update_current_line(&mut self, text: String) {
 		// Get the location of the line that needs to be updated
 		let [block_num, line_num] = self.curr_position;
@@ -308,43 +302,6 @@ impl Blocks {
 		self.blocks_list[block_num].content[line_num] = text;
 
 		Ok(())
-	}
-
-	// Return a tuple containing (block number, line number) for accessing the block content
-	pub fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
-		// Track the total lines over the blocks
-		let mut lines = self.starting_line_num;
-		// The starting line
-		let mut start = lines;
-		let mut block_num: Option<usize> = None;
-		// Loop until within the correct block
-		for block in &self.blocks_list {
-			// Skip over empty blocks
-			if block.len == 0 {
-				continue;
-			}
-			// Starting line of this block
-			start = lines;
-			// Starting line of next block
-			lines += block.len;
-			// If the line number is in this block, break loop
-			if line_num >= start && line_num < lines {
-				block_num = Some(block.block_num);
-				break;
-			}
-		}
-		// Return (block number, line number within block)
-		match block_num.map(|num| (num - self.head_block, line_num - start)) {
-			Some(location) => Ok(location),
-			None => Err(Error::other(format!(
-				/* Return the source file name, line number error occurred in this source file,
-				and line_num argument that was passed to this function. */
-				"{}::get_location: line {}. Couldn't get location for `line_num = {}`",
-				file!(),
-				line!(),
-				line_num
-			))),
-		}
 	}
 
 	// Check that the Blocks is valid for the current widget
@@ -387,6 +344,56 @@ impl Blocks {
 					}
 				}
 			}
+		}
+	}
+
+	// Load the entire file in
+	fn load_file(editor: &mut EditorSpace) -> Result<Blocks, Error> {
+		// Construct a new Blocks
+		let mut blocks = Blocks::new(editor, 0, 0)?;
+		// Load in all blocks in the file
+		for _i in 0..blocks.max_blocks {
+			blocks.push_tail(editor, false)?;
+		}
+
+		// Return this Blocks for the entire file
+		Ok(blocks)
+	}
+
+	// Return a tuple containing (block number, line number) for accessing the block content
+	fn get_location(&self, line_num: usize) -> Result<(usize, usize), Error> {
+		// Track the total lines over the blocks
+		let mut lines = self.starting_line_num;
+		// The starting line
+		let mut start = lines;
+		let mut block_num: Option<usize> = None;
+		// Loop until within the correct block
+		for block in &self.blocks_list {
+			// Skip over empty blocks
+			if block.len == 0 {
+				continue;
+			}
+			// Starting line of this block
+			start = lines;
+			// Starting line of next block
+			lines += block.len;
+			// If the line number is in this block, break loop
+			if line_num >= start && line_num < lines {
+				block_num = Some(block.block_num);
+				break;
+			}
+		}
+		// Return (block number, line number within block)
+		match block_num.map(|num| (num - self.head_block, line_num - start)) {
+			Some(location) => Ok(location),
+			None => Err(Error::other(format!(
+				/* Return the source file name, line number error occurred in this source file,
+				and line_num argument that was passed to this function. */
+				"{}::get_location: line {}. Couldn't get location for `line_num = {}`",
+				file!(),
+				line!(),
+				line_num
+			))),
 		}
 	}
 
