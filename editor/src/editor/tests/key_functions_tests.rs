@@ -1071,7 +1071,8 @@ fn copy_and_paste_multiblock() {
 		+ "\n" + GENOME_BLOCK_3
 		+ "\n" + GENOME_BLOCK_4
 		+ "\n" + GENOME_BLOCK_5
-		+ "\n\n" + GENOME_BLOCK_1
+		+ "\n\n"
+		+ GENOME_BLOCK_1
 		+ "\n" + GENOME_BLOCK_2
 		+ "\n" + GENOME_BLOCK_3
 		+ "\n" + GENOME_BLOCK_4

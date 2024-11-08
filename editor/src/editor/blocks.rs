@@ -60,8 +60,10 @@ impl Blocks {
 
 	// Create a new Blocks from a line number rather than a block number
 	pub fn from_line(editor: &mut EditorSpace, line_num: usize) -> Result<Self, Error> {
-		// Load in all blocks to find the block for the line number
-		let block_num = Self::calc_block_num(editor, line_num)?;
+		// Load all blocks in the file
+		let blocks = Self::load_file(editor)?;
+		// Find the block number for the passed line number
+		let block_num = blocks.get_location(line_num)?.0;
 		// Return the Blocks
 		Blocks::new(editor, block_num, line_num)
 	}
@@ -345,34 +347,17 @@ impl Blocks {
 		}
 	}
 
-	// Return a tuple containing (block number, line number) for accessing the block content
-	fn calc_block_num(editor: &mut EditorSpace, line_num: usize) -> Result<usize, Error> {
-		// Create a new Blocks
-		let blocks = Blocks::new(editor, 0, 0)?;
-		// The max number of blocks
-		let max_blocks = blocks.max_blocks;
-		// Track the total lines over the blocks
-		let mut lines = 0;
-		// The starting line
-		let mut start = lines;
-		let mut block_num = 0;
-		// Loop until within the correct block
-		while line_num >= start && line_num < lines {
-			// Create a block for the current block number
-			let block = TextBlock::new(editor, block_num, max_blocks)?;
-			// Increment block number
-			block_num += 1;
-			// Skip over empty blocks
-			if block.len == 0 {
-				continue;
-			}
-			// Starting line of this block
-			start = lines;
-			// Starting line of next block
-			lines += block.len;
+	// Load the entire file in
+	fn load_file(editor: &mut EditorSpace) -> Result<Blocks, Error> {
+		// Construct a new Blocks
+		let mut blocks = Blocks::new(editor, 0, 0)?;
+		// Load in all blocks in the file
+		for _i in 0..blocks.max_blocks {
+			blocks.push_tail(editor, false)?;
 		}
-		// Return the block number
-		Ok(block_num)
+
+		// Return this Blocks for the entire file
+		Ok(blocks)
 	}
 
 	// Return a tuple containing (block number, line number) for accessing the block content
