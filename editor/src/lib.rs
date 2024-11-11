@@ -1,3 +1,5 @@
+/// This module controls the editor space.
+/// The editor space is where the bulk of text editing takes place.
 pub mod editor {
 
 	use std::{
@@ -32,13 +34,16 @@ pub mod editor {
 	};
 	use unredo_stack::{stack_choice::StackChoice, UnRedoStack, UnRedoState};
 
-	// Contains the Blocks struct
+	/// Module containing the `Blocks` structure.
+	/// This `Blocks` structure loads in multiple text blocks at once.
 	mod blocks;
-	// Subroutines for the handle_input function
+	/// Subroutines for the `handle_input` function.
+	/// The `handle_input` function takes keyboard input and performs an action.
 	mod input_handlers;
-	// Module containing all the functionality of each key
+	/// Module containing all the logic of each key and key combination.
 	mod key_functions;
-	// Contains the UnRedoStack struct
+	/// Module containing the `UnRedoStack` structure which handles
+	/// both undo and redo states for the editor.
 	mod unredo_stack;
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
@@ -47,12 +52,14 @@ pub mod editor {
 	// 300 millisecond pollrate for reading terminal events
 	const POLLRATE: u64 = 300;
 
+	/// The struct for the editing space of the app.
+	/// Each `EditorSpace` opens its own file and handles the IO for editing.
 	pub struct EditorSpace {
 		// Object containing multiple text blocks
 		blocks: Option<Blocks>,
 		// The clipboard to copy from and paste to
 		clipboard: Option<ClipboardContext>,
-		// The config of the editor
+		/// The config of the editor. Currently, it only sets the tab width.
 		pub config: Config,
 		// Position of cursor on the screen
 		cursor_position: [usize; 2],
@@ -85,7 +92,7 @@ pub mod editor {
 	}
 
 	impl EditorSpace {
-		// Create a new EditorSpace
+		/// Create a new EditorSpace
 		pub fn new(filename: String, config: Config) -> Self {
 			// Open (and create if necessary) the given file
 			let file = Self::open_file(&filename);
@@ -116,24 +123,7 @@ pub mod editor {
 			}
 		}
 
-		// Initialize the editor
-		fn init_editor(
-			&mut self,
-			start: (usize, usize),
-			width: usize,
-			height: usize,
-		) -> Result<&str, Error> {
-			// Initialize the starting position of the screen cursor
-			self.init_starting_position(start, width, height);
-			// Initialize the length of the file
-			self.init_file_length();
-			// Create the first block of text in Blocks
-			self.init_first_block()?;
-			// Return the string "Success" (arbitrary)
-			Ok("Success")
-		}
-
-		// Get the key pressed
+		/// Get the key pressed and perform an action
 		pub fn handle_input(&mut self, break_loop: &mut bool) {
 			// Non-blocking read
 			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
@@ -162,7 +152,7 @@ pub mod editor {
 			}
 		}
 
-		// Render the widgets for the EditorSpace and its line numbers
+		/// Render the widgets for the EditorSpace and its line numbers
 		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
 			// Only initialize this if it hasn't been already
 			if !self.is_initialized {
@@ -189,6 +179,23 @@ pub mod editor {
 				// Render the editor widget
 				self.render_full_ui(layout, frame);
 			}
+		}
+
+		// Initialize the editor
+		fn init_editor(
+			&mut self,
+			start: (usize, usize),
+			width: usize,
+			height: usize,
+		) -> Result<&str, Error> {
+			// Initialize the starting position of the screen cursor
+			self.init_starting_position(start, width, height);
+			// Initialize the length of the file
+			self.init_file_length();
+			// Create the first block of text in Blocks
+			self.init_first_block()?;
+			// Return the string "Success" (arbitrary)
+			Ok("Success")
 		}
 
 		// Open (and create if necessary) the given file

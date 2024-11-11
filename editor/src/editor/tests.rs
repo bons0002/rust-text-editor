@@ -54,9 +54,6 @@ const SMALL_FILE: &str = "../editor/test_files/small_text.txt";
 // Text file used to test basic highlighting functionality
 const HIGHLIGHT_FILE: &str = "../editor/test_files/highlight.txt";
 
-// Test file used to benchmark the runtime of the app
-const BENCHMARK_FILE: &str = "../editor/test_files/bench_file.txt";
-
 /*
 =============================================
 			GENOME FILE CONSTANTS
