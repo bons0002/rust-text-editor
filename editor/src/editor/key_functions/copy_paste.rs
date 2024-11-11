@@ -5,31 +5,45 @@ use super::{
 
 // Copy a selection of text to the clipboard
 pub fn copy_to_clipboard(editor: &mut EditorSpace) {
-	// Start of the highlighted selection
-	let start = (editor.selection.start[0], editor.selection.start[1]);
-	// End of the highlighted selection
-	let end = (editor.selection.end[0], editor.selection.end[1]);
-	// Create a copy of the text blocks
-	let mut blocks = editor.blocks.as_ref().unwrap().clone();
+	// Only copy if the selection exists
+	if !editor.selection.is_empty {
+		// Start of the highlighted selection
+		let start = (editor.selection.start[0], editor.selection.start[1]);
+		// End of the highlighted selection
+		let end = (editor.selection.end[0], editor.selection.end[1]);
+		// Create a copy of the text blocks
+		let mut blocks = editor.blocks.as_ref().unwrap().clone();
 
-	// Copy the lines of text in the selection into a vector
-	let lines = match copy_subroutines::copy_lines(editor, start, end, &mut blocks) {
-		Ok(lines) => lines,
-		Err(err) => panic!(
-			"{}:{}::copy_to_clipboard | Couldn't copy selection | {}",
-			file!(),
-			line!(),
-			err
-		),
-	};
+		// Copy the lines of text in the selection into a vector
+		let lines = match copy_subroutines::copy_lines(editor, start, end, &mut blocks) {
+			Ok(lines) => lines,
+			Err(err) => panic!(
+				"{}:{}::copy_to_clipboard | Couldn't copy selection | {}",
+				file!(),
+				line!(),
+				err
+			),
+		};
 
-	// Write to the clipboard
-	editor
-		.clipboard
-		.as_mut()
-		.unwrap()
-		.set_contents(lines.into_par_iter().collect::<String>())
-		.unwrap();
+		// Write to the clipboard
+		editor
+			.clipboard
+			.as_mut()
+			.unwrap()
+			.set_contents(lines.into_par_iter().collect::<String>())
+			.unwrap();
+	// If selection is empty, copy the entire current line
+	} else {
+		// Get the current line
+		let line = editor.blocks.as_ref().unwrap().get_current_line();
+		// Copy the current line
+		editor
+			.clipboard
+			.as_mut()
+			.unwrap()
+			.set_contents(line)
+			.unwrap();
+	}
 }
 
 // Paste text from the clipboard

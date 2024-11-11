@@ -1083,6 +1083,30 @@ fn copy_and_paste_multiblock() {
 	assert_eq!(actual_content, expected_content);
 }
 
+// Test copying when the selection is empty
+#[test]
+#[serial]
+#[ignore]
+fn copy_empty_selection() {
+	// Make an editor over the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight down 2 lines
+	highlight_down(&mut editor);
+	highlight_down(&mut editor);
+
+	// Move right (clearing the selection)
+	right_arrow(&mut editor, true);
+	editor.selection.is_empty = true;
+
+	// Copy line to clipboard
+	copy_paste::copy_to_clipboard(&mut editor);
+	// Get contents of copy
+	let actual_content = editor.clipboard.unwrap().get_contents().unwrap();
+
+	assert_eq!(actual_content, "void test_func() {");
+}
+
 // Cut entire file and re-paste it
 #[test]
 #[serial]

@@ -9,9 +9,6 @@ mod selection_tests;
 /* Tests for the key_functions module. */
 mod key_functions_tests;
 
-/* Benchmark the runtime of the app */
-mod benchmark;
-
 /*
 ========================================
 			USEFUL FUNCTIONS
