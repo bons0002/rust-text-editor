@@ -1,3 +1,5 @@
+/// This module controls the editor space.
+/// The editor space is where the bulk of text editing takes place.
 pub mod editor {
 
 	use std::{
@@ -8,39 +10,57 @@ pub mod editor {
 		time::Duration,
 	};
 
-	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
+	use cli_clipboard::{ClipboardContext, ClipboardProvider};
+	use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 	use ratatui::{
 		layout::Rect,
-		style::{Style, Stylize},
+		style::Style,
 		text::{Line, Span, Text},
-		widgets::{Block, Borders, Paragraph},
+		widgets::{Block, BorderType, Borders, Paragraph},
 		Frame,
 	};
 	use rayon::iter::{
-		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelIterator,
+		IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator, ParallelExtend,
+		ParallelIterator,
 	};
-
-	use config::config::Config;
-
-	mod blocks;
-	use blocks::Blocks;
-
-	// Module containing all the functionality of each key. Called in handle_input
-	mod key_functions;
-	use key_functions::highlight_selection::Selection;
 	use unicode_segmentation::UnicodeSegmentation;
 
+	use blocks::Blocks;
+	use config::config::Config;
+	use key_functions::{
+		copy_paste, editing_keys,
+		highlight_keys::{self, selection::Selection},
+		navigation_keys, save_key,
+	};
+	use unredo_stack::{stack_choice::StackChoice, UnRedoStack, UnRedoState};
+
+	/// Module containing the `Blocks` structure.
+	/// This `Blocks` structure loads in multiple text blocks at once.
+	mod blocks;
+	/// Subroutines for the `handle_input` function.
+	/// The `handle_input` function takes keyboard input and performs an action.
+	mod input_handlers;
+	/// Module containing all the logic of each key and key combination.
+	mod key_functions;
+	/// Module containing the `UnRedoStack` structure which handles
+	/// both undo and redo states for the editor.
+	mod unredo_stack;
 	// Testing module found at crate/src/editor/tests.rs
 	#[cfg(test)]
 	mod tests;
 
+	// 300 millisecond pollrate for reading terminal events
+	const POLLRATE: u64 = 300;
+
+	/// The struct for the editing space of the app.
+	/// Each `EditorSpace` opens its own file and handles the IO for editing.
 	pub struct EditorSpace {
 		// Object containing multiple text blocks
 		blocks: Option<Blocks>,
-		// Flag for whether to break rendering loop in main app
-		pub break_loop: bool,
-		// The config of the editor
-		config: Config,
+		// The clipboard to copy from and paste to
+		clipboard: Option<ClipboardContext>,
+		/// The config of the editor. Currently, it only sets the tab width.
+		pub config: Config,
 		// Position of cursor on the screen
 		cursor_position: [usize; 2],
 		// The file that is open
@@ -49,25 +69,135 @@ pub mod editor {
 		filename: String,
 		// The number of lines in the entire file
 		file_length: usize,
-		// Vertical bounds of the editor widget
-		height: (usize, usize),
+		// The height of the widget
+		height: usize,
 		// Position used to access indices within graphemes vectors
-		index_position: usize,
+		is_initialized: bool,
 		// Used to scroll the text on screen (and calculate line number)
 		scroll_offset: usize,
 		// Structure keeping track of the highlighted selection of text
 		selection: Selection,
 		// Used to store the horizontal position in the text
 		stored_position: usize,
-		// Track if the editor has been intialized
-		is_initialized: bool,
 		// Actual position on the current line of text
 		text_position: usize,
+		// Stack for storing undo/redo states
+		unredo_stack: UnRedoStack,
 		// Horizontal bounds of the editor block
-		width: (usize, usize),
+		widget_horz_bounds: (usize, usize),
+		// Vertical bounds of the editor widget
+		widget_vert_bounds: (usize, usize),
+		// The width of the widget
+		width: usize,
 	}
 
 	impl EditorSpace {
+		/// Create a new EditorSpace
+		pub fn new(filename: String, config: Config) -> Self {
+			// Open (and create if necessary) the given file
+			let file = Self::open_file(&filename);
+			// Create a clipboard
+			let clipboard = match ClipboardContext::new() {
+				Ok(clip) => Some(clip),
+				Err(_) => None,
+			};
+			// Construct an EditorSpace
+			EditorSpace {
+				blocks: None,
+				clipboard,
+				config,
+				cursor_position: [0, 0],
+				file,
+				filename,
+				file_length: 0,
+				height: 0,
+				is_initialized: false,
+				scroll_offset: 0,
+				selection: Selection::new(),
+				stored_position: 0,
+				text_position: 0,
+				unredo_stack: UnRedoStack::new(),
+				widget_horz_bounds: (0, 0),
+				widget_vert_bounds: (0, 0),
+				width: 0,
+			}
+		}
+
+		/// Get the key pressed and perform an action
+		pub fn handle_input(&mut self, break_loop: &mut bool) {
+			// Non-blocking read
+			if event::poll(Duration::from_millis(POLLRATE)).unwrap() {
+				// Read input
+				if let Event::Key(KeyEvent {
+					code,
+					modifiers,
+					kind: KeyEventKind::Press,
+					..
+				}) = event::read().unwrap()
+				{
+					// If no modifier key is pressed
+					if modifiers.is_empty() {
+						input_handlers::no_modifiers(self, code);
+					// If the Shift modifier is pressed
+					} else if modifiers == KeyModifiers::SHIFT {
+						input_handlers::shift_modifier(self, code);
+					// If the Control modifier is pressed
+					} else if modifiers == KeyModifiers::CONTROL {
+						input_handlers::control_modifier(self, code, break_loop);
+					// If Control and Shift modifiers are both pressed
+					} else if modifiers == (KeyModifiers::CONTROL | KeyModifiers::SHIFT) {
+						input_handlers::control_and_shift_modifiers(self, code);
+					}
+				}
+			}
+		}
+
+		/// Render the widgets for the EditorSpace and its line numbers
+		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
+			// Only initialize this if it hasn't been already
+			if !self.is_initialized {
+				// Initialize the editor's cursor, file length, and first text block
+				let _ = self.init_editor(
+					(layout[1].x as usize, layout[1].y as usize),
+					layout[1].width as usize,
+					layout[1].height as usize,
+				);
+			}
+
+			// Set the cursor position on screen
+			frame.set_cursor(
+				(self.cursor_position[0] + self.widget_horz_bounds.0 + 1) as u16,
+				(self.cursor_position[1] + self.widget_vert_bounds.0 + 1) as u16,
+			);
+
+			// If the editor is empty, render an empty widget
+			if self.is_empty() {
+				// Render an empty
+				self.render_empty_ui(layout, frame);
+			// Otherwise, render the text blocks in a widget
+			} else {
+				// Render the editor widget
+				self.render_full_ui(layout, frame);
+			}
+		}
+
+		// Initialize the editor
+		fn init_editor(
+			&mut self,
+			start: (usize, usize),
+			width: usize,
+			height: usize,
+		) -> Result<&str, Error> {
+			// Initialize the starting position of the screen cursor
+			self.init_starting_position(start, width, height);
+			// Initialize the length of the file
+			self.init_file_length();
+			// Create the first block of text in Blocks
+			self.init_first_block()?;
+			// Return the string "Success" (arbitrary)
+			Ok("Success")
+		}
+
 		// Open (and create if necessary) the given file
 		fn open_file(filename: &str) -> File {
 			// Check if a file exists, if not create it
@@ -82,38 +212,263 @@ pub mod editor {
 			file
 		}
 
-		pub fn new(filename: String, config: Config) -> Self {
-			// Open (and create if necessary) the given file
-			let file = Self::open_file(&filename);
-			// Construct an EditorSpace
-			EditorSpace {
-				blocks: None,
-				break_loop: false,
-				config,
-				cursor_position: [0, 0],
-				file,
-				filename,
-				file_length: 0,
-				height: (0, 0),
-				index_position: 0,
-				scroll_offset: 0,
-				selection: Selection::new(),
-				stored_position: 0,
-				is_initialized: false,
-				text_position: 0,
-				width: (0, 0),
+		// Get the current line number for the given position
+		fn get_line_num(&self, position: usize) -> usize {
+			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
+		}
+
+		// Return the vector as a paragraph
+		fn get_paragraph(&mut self) -> Paragraph {
+			// Clone the blocks
+			let mut blocks = self.blocks.as_ref().unwrap().clone();
+			// Check the blocks are valid
+			blocks.check_blocks(self);
+			// Set the editor blocks to this new blocks
+			self.blocks = Some(blocks.clone());
+			// The current line number in the blocks
+			let line_num = self.get_line_num(self.cursor_position[1]) - blocks.starting_line_num;
+			// Get the lines of the currently loaded blocks as a vector
+			let mut lines = self.get_lines_from_blocks(blocks, line_num);
+
+			// Highlight the line that the cursor is on
+			if let Some(line) = lines.get(line_num) {
+				lines[line_num] = line.clone().style(
+					Style::default()
+						.fg(self.config.theme.line_highlight_fg_color)
+						.bg(self.config.theme.line_highlight_bg_color),
+				);
+			}
+
+			// Return a paragraph from the lines
+			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
+		}
+
+		// Return a Paragraph of the line numbers that are displayed
+		fn get_line_numbers_paragraph(&self) -> Paragraph {
+			// Construct a vector of line numbers
+			let line_nums: Vec<Line> = self
+				.get_line_numbers()
+				.into_par_iter()
+				.map(|num| Line::from(format!("{}", num)))
+				.collect();
+
+			Paragraph::new(Text::from(line_nums))
+		}
+
+		// Delete a highlighted selection of text
+		fn delete_selection(&mut self) {
+			// Start point of the selection (as an immutable tuple)
+			let start = (self.selection.start[0], self.selection.start[1]);
+			// End point of the selection (as an immutable tuple)
+			let end = (self.selection.end[0], self.selection.end[1]);
+
+			// Clone the blocks
+			let mut blocks = self.blocks.as_ref().unwrap().clone();
+			// Create the remaining line after deleting the selection
+			let remaining_line = Self::construct_remaining_line(&mut blocks, start, end);
+			// Update the first line of the selection
+			blocks.update_some_line(remaining_line, start.1).unwrap();
+
+			// Loop to delete the selection
+			for _i in start.1..end.1 {
+				// Ensure that the blocks are valid
+				blocks.check_blocks(self);
+				// Delete the next line
+				let _ = blocks.delete_line(start.1 + 1);
+				// Reduce the file length
+				self.file_length -= 1;
+			}
+			// Set the editor blocks
+			self.blocks = Some(blocks);
+
+			// Reset the position of the cursor (and the scroll offset)
+			self.reset_cursor(end);
+			// Clear the selection
+			self.selection.is_empty = true;
+		}
+
+		// Set the starting Position of the editing space cursor
+		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
+			// Set the bounds of the block
+			self.widget_horz_bounds = (start.0, start.0 + width);
+			self.widget_vert_bounds = (start.1, start.1 + height);
+			/* Track the height of the widget (subtract three because there is a top and
+			bottom boundary plus an extra line that isn't included in the height) */
+			self.height = self.widget_vert_bounds.1 - self.widget_vert_bounds.0 - 3;
+			/* Track the width of the widget (subtract 2 for the side borders of the
+			widget) */
+			self.width = self.widget_horz_bounds.1 - self.widget_horz_bounds.0 - 2;
+
+			// Set the cursor to the beginning of the block
+			self.cursor_position = [0, 0];
+
+			// Flag that cursor has been initialized
+			self.is_initialized = true;
+		}
+
+		// Initialize the file length variable
+		fn init_file_length(&mut self) {
+			// Get the lines of the file (with their newline chars)
+			let lines: Vec<String> = read_to_string(&self.filename)
+				.unwrap()
+				.split_inclusive('\n')
+				.map(String::from)
+				.collect();
+			// Count the number of lines in the file
+			self.file_length = lines.par_iter().count();
+
+			let default = String::from("\n");
+			// If there is a blank final line, add one to the file length
+			if lines.last().unwrap_or(&default).ends_with('\n') {
+				self.file_length += 1;
 			}
 		}
 
-		// Calculate the start and end indices for highlighting characters in the paragraph
-		fn calc_highlight_indices(&self) -> (usize, usize) {
-			if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
-				// The starting line number of the
-				let line = self.blocks.as_ref().unwrap().starting_line_num;
-				(0, self.selection.end[1] - line)
+		// Create the first block when the editor is opened
+		fn init_first_block(&mut self) -> Result<usize, Error> {
+			// Create a block at block number 0
+			let blocks = Blocks::new(self, 0, 0)?;
+			// Wrap this Blocks in an Option
+			self.blocks = Some(blocks);
+			// Return 0 to indicate success
+			Ok(0)
+		}
+
+		// Render a blank ui if there are no TextBlocks in the editor Blocks
+		fn render_empty_ui(&self, layout: Rc<[Rect]>, frame: &mut Frame) {
+			// If the file is empty, render an empty line numbers widget
+			frame.render_widget(Block::new().borders(Borders::ALL), layout[0]);
+			// If the file is empty, render an empty EditorSpace widget
+			frame.render_widget(Block::new().borders(Borders::ALL), layout[1]);
+		}
+
+		// Render the ui for the editor
+		fn render_full_ui(&mut self, layout: Rc<[Rect]>, frame: &mut Frame) {
+			// Render line numbers widget
+			frame.render_widget(
+				self.get_line_numbers_paragraph().block(
+					Block::new()
+						.borders(Borders::LEFT | Borders::TOP | Borders::BOTTOM)
+						.border_type(BorderType::Thick),
+				),
+				layout[0],
+			);
+
+			// Render the editor widget
+			frame.render_widget(
+				self.get_paragraph().block(
+					Block::new()
+						.borders(Borders::ALL)
+						.border_type(BorderType::Thick),
+				),
+				layout[1],
+			);
+		}
+
+		// Get the lines of text from the Blocks content
+		fn get_lines_from_blocks(&self, blocks: Blocks, line_num: usize) -> Vec<Line> {
+			// Convert the blocks into one text vector
+			let mut text: Vec<String> = Vec::new();
+			// Iterate through the blocks that are currently loaded in
+			for block in blocks.blocks_list {
+				// Add all of the lines in these blocks into the `text` vector
+				text.par_extend(block.content);
+			}
+
+			// Create a vector of Lines from the text
+			text.into_par_iter()
+				.enumerate()
+				.map(|(idx, line)| {
+					// If the line is empty, return a blank line
+					if line.is_empty() {
+						// Blank space to add to put on the line (for line highlighting)
+						let blank_space = String::from(&" ".repeat(self.width));
+						// Return the blank line
+						return Line::from(blank_space);
+					// The line the cursor is on
+					} else if idx == line_num {
+						// Length of the text on the line
+						let len = line.graphemes(true).count();
+						// Only create blank space if there is room
+						let blank_space = match len < self.width {
+							true => &" ".repeat(self.width - len),
+							false => &String::new(),
+						};
+						// Return the line
+						return self.parse_line(idx, &(line + blank_space));
+					}
+					self.parse_line(idx, &line)
+				})
+				.collect()
+		}
+
+		// Create a Line struct from the given String line
+		fn parse_line(&self, idx: usize, line: &str) -> Line {
+			// Top line of the widget
+			let top_line = self.scroll_offset;
+			// The bottom line of the widget
+			let bottom_line = self.height + self.scroll_offset;
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
+
+			// Only highlight if selection isn't empty (and its within the widget's bounds)
+			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
+				// Highlight characters
+				return self.highlight_line(idx, line);
+			}
+
+			Line::from(String::from(line).replace('\t', &tab_char))
+		}
+
+		// Highlight a line of text
+		fn highlight_line(&self, idx: usize, line: &str) -> Line {
+			// Indices for highlighting within the paragraph
+			let (start_line, end_line) = self.calc_highlight_indices();
+			// Start tab with a vertical line
+			let mut tab_char = String::from("\u{2502}");
+			// Iterator to create a string of tab_width - 1 number of spaces
+			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
+			// A vector of the graphemes as stylized spans
+			let graphemes: Vec<Span> = line
+				.grapheme_indices(true)
+				.map(|(loc, character)| {
+					// Highlight the grapheme
+					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
+				})
+				.collect();
+
+			Line::from(graphemes)
+		}
+
+		// Highlight an individual grapheme
+		fn highlight_grapheme(
+			&self,
+			idx: usize,
+			loc: usize,
+			character: &str,
+			tab_char: &str,
+			start_line: usize,
+			end_line: usize,
+		) -> Span {
+			if idx == start_line && start_line == end_line {
+				self.highlight_one_line(loc, String::from(character).replace('\t', tab_char))
+			// If on first line (and there are multiple lines in selection)
+			} else if idx == start_line {
+				// Highlight character
+				self.highlight_first_line(loc, String::from(character).replace('\t', tab_char))
+			// If on last line (and there are multiple lines in selection)
+			} else if idx == end_line {
+				// Highlight character
+				self.highlight_last_line(loc, String::from(character).replace('\t', tab_char))
+			// If between first and last line in multine selection
+			} else if idx > start_line && idx < end_line {
+				Span::from(String::from(character).replace('\t', tab_char))
+					.style(Style::default().bg(self.config.theme.selection_highlight))
+			// If not in selection
 			} else {
-				let line = self.blocks.as_ref().unwrap().starting_line_num;
-				(self.selection.start[1] - line, self.selection.end[1] - line)
+				Span::from(String::from(character).replace('\t', tab_char))
 			}
 		}
 
@@ -150,146 +505,16 @@ pub mod editor {
 			}
 		}
 
-		// Highlight an individual grapheme
-		fn highlight_grapheme(
-			&self,
-			idx: usize,
-			loc: usize,
-			character: &str,
-			tab_char: &str,
-			start_line: usize,
-			end_line: usize,
-		) -> Span {
-			if idx == start_line && start_line == end_line {
-				self.highlight_one_line(loc, String::from(character).replace("\t", tab_char))
-			// If on first line (and there are multiple lines in selection)
-			} else if idx == start_line {
-				// Highlight character
-				self.highlight_first_line(loc, String::from(character).replace("\t", tab_char))
-			// If on last line (and there are multiple lines in selection)
-			} else if idx == end_line {
-				// Highlight character
-				self.highlight_last_line(loc, String::from(character).replace("\t", tab_char))
-			// If between first and last line in multine selection
-			} else if idx > start_line && idx < end_line {
-				Span::from(String::from(character).replace("\t", tab_char))
-					.style(Style::default().bg(self.config.theme.selection_highlight))
-			// If not in selection
+		// Calculate the start and end indices for highlighting characters in the paragraph
+		fn calc_highlight_indices(&self) -> (usize, usize) {
+			if self.selection.start[1] < self.blocks.as_ref().unwrap().starting_line_num {
+				// The starting line number of the
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(0, self.selection.end[1] - line)
 			} else {
-				Span::from(String::from(character).replace("\t", tab_char))
+				let line = self.blocks.as_ref().unwrap().starting_line_num;
+				(self.selection.start[1] - line, self.selection.end[1] - line)
 			}
-		}
-
-		// Highlight a line of text
-		fn highlight_line(&self, idx: usize, line: &str) -> Line {
-			// Indices for highlighting within the paragraph
-			let (start_line, end_line) = self.calc_highlight_indices();
-			// Start tab with a vertical line
-			let mut tab_char = String::from("\u{2502}");
-			// Iterator to create a string of tab_width - 1 number of spaces
-			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
-			// A vector of the graphemes as stylized spans
-			let graphemes: Vec<Span> = line
-				.graphemes(true)
-				.collect::<Vec<&str>>()
-				.into_par_iter()
-				.enumerate()
-				.map(|(loc, character)| {
-					// Highlight the grapheme
-					self.highlight_grapheme(idx, loc, character, &tab_char, start_line, end_line)
-				})
-				.collect();
-
-			Line::from(graphemes)
-		}
-
-		// Create a Line struct from the given String line
-		fn parse_line(&self, idx: usize, line: &str) -> Line {
-			// Top line of the widget
-			let top_line = self.scroll_offset;
-			// The bottom line of the widget
-			let bottom_line = self.height.1 - self.height.0 - 3 + self.scroll_offset;
-			// Start tab with a vertical line
-			let mut tab_char = String::from("\u{2502}");
-			// Iterator to create a string of tab_width - 1 number of	 spaces
-			tab_char.push_str(&" ".repeat(self.config.tab_width - 1));
-
-			// Only highlight if selection isn't empty (and its within the widget's bounds)
-			if !self.selection.is_empty && idx >= top_line && idx <= bottom_line {
-				// Highlight characters
-				return self.highlight_line(idx, line);
-			}
-
-			Line::from(String::from(line).replace("\t", &tab_char))
-		}
-
-		// Get the current line number for the given position
-		fn get_line_num(&self, position: usize) -> usize {
-			position + self.scroll_offset + self.blocks.as_ref().unwrap().starting_line_num
-		}
-
-		// Check that there are enough blocks loaded in, and return the blocks
-		fn check_blocks(&mut self) -> Blocks {
-			// Clone the blocks of text
-			let mut blocks = self.blocks.as_ref().unwrap().clone();
-			// Height of widget
-			let height = self.height.1 - self.height.0;
-
-			/* If the Blocks is too short, but there is more text to be shown,
-			add a new TextBlock to the tail. */
-			if blocks.len() < height + self.scroll_offset
-				&& self.file_length > height
-				&& blocks.tail_block < blocks.max_blocks - 1
-			{
-				// Add new tail block
-				blocks.push_tail(self, true).unwrap();
-			}
-			// Return the blocks
-			blocks
-		}
-
-		fn get_lines_from_blocks(&self, blocks: Blocks) -> Vec<Line> {
-			// Convert the blocks into one text vector
-			let mut text: Vec<String> = Vec::new();
-			// Iterate through the blocks that are currently loaded in
-			for block in blocks.blocks_list {
-				// Add all of the lines in these blocks into the `text` vector
-				text.extend(block.content);
-			}
-
-			// Create a vector of Lines from the text
-			text.into_par_iter()
-				.enumerate()
-				.map(|(idx, line)| {
-					// If the line is empty, return a blank line
-					if line.is_empty() {
-						return Line::from(String::new());
-					}
-					self.parse_line(idx, &line)
-				})
-				.collect()
-		}
-
-		// Return the vector as a paragraph
-		fn get_paragraph(&mut self) -> Paragraph {
-			// Check that there are enough blocks loaded
-			let blocks = self.check_blocks();
-			// Set the editor blocks to this new blocks
-			self.blocks = Some(blocks.clone());
-			// The current line number in the blocks
-			let line_num = self.get_line_num(self.cursor_position[1]) - blocks.starting_line_num;
-			// Get the lines of the currently loaded blocks as a vector
-			let mut lines = self.get_lines_from_blocks(blocks);
-
-			// Highlight the line that the cursor is on
-			lines[line_num] = lines[line_num].clone().style(
-				Style::default()
-					.fg(self.config.theme.line_highlight_fg_color)
-					.bg(self.config.theme.line_highlight_bg_color),
-			);
-
-			// Return a paragraph from the lines
-			Paragraph::new(Text::from(lines)).scroll((self.scroll_offset as u16, 0))
 		}
 
 		// Return a Vector of the line numbers that are displayed
@@ -300,335 +525,81 @@ pub mod editor {
 				.collect()
 		}
 
-		// Return a Paragraph of the line numbers that are displayed
-		pub fn get_line_numbers_paragraph(&self) -> Paragraph {
-			// Construct a vector of line numbers
-			let line_nums: Vec<Line> = self
-				.get_line_numbers()
-				.into_par_iter()
-				.map(|num| Line::from(format!("{}", num)))
-				.collect();
-
-			Paragraph::new(Text::from(line_nums))
-		}
-
-		// Set the starting Position of the editing space cursor
-		fn init_starting_position(&mut self, start: (usize, usize), width: usize, height: usize) {
-			// Set the bounds of the block
-			self.width = (start.0, start.0 + width);
-			self.height = (start.1, start.1 + height);
-
-			// Set the cursor to the beginning of the block
-			self.cursor_position = [0, 0];
-
-			// Flag that cursor has been initialized
-			self.is_initialized = true;
-		}
-
-		// Initialize the file length variable
-		fn init_file_length(&mut self) {
-			// Get the lines of the file (with their newline chars)
-			let lines: Vec<String> = read_to_string(&self.filename)
-				.unwrap()
-				.split_inclusive('\n')
-				.map(String::from)
-				.collect();
-			// Count the number of lines in the file
-			self.file_length = lines.par_iter().count();
-			// If there is a blank final line, add one to the file length
-			if lines[lines.len() - 1].ends_with('\n') {
-				self.file_length += 1;
-			}
-		}
-
-		// Create the first block when the editor is opened
-		fn init_first_block(&mut self) -> Result<usize, Error> {
-			// Create a block at block number 0
-			let blocks = Blocks::new(self, 0)?;
-			// Wrap this Blocks in an Option
-			self.blocks = Some(blocks);
-			// Return 0 to indicate success
-			Ok(0)
-		}
-
-		// Initialize the editor
-		fn init_editor(
-			&mut self,
-			start: (usize, usize),
-			width: usize,
-			height: usize,
-		) -> Result<&str, Error> {
-			// Initialize the starting position of the screen cursor
-			self.init_starting_position(start, width, height);
-			// Initialize the length of the file
-			self.init_file_length();
-			// Create the first block of text in Blocks
-			self.init_first_block()?;
-			// Return the string "Success" (arbitrary)
-			Ok("Success")
-		}
-
-		// Render a blank ui if there are no TextBlocks in the editor Blocks
-		fn render_empty_ui(&self, layout: Rc<[Rect]>, frame: &mut Frame) {
-			// If the file is empty, render an empty line numbers widget
-			frame.render_widget(
-				Block::new()
-					.fg(self.config.theme.app_fg)
-					.bg(self.config.theme.app_bg)
-					.borders(Borders::ALL),
-				layout[0],
-			);
-			// If the file is empty, render an empty EditorSpace widget
-			frame.render_widget(
-				Block::new()
-					.fg(self.config.theme.app_fg)
-					.bg(self.config.theme.app_bg)
-					.borders(Borders::ALL),
-				layout[1],
-			);
-		}
-
-		// Render the ui for the editor
-		fn render_full_ui(&mut self, layout: Rc<[Rect]>, frame: &mut Frame) {
-			// Clone the config for the editor
-			let config = self.config.clone();
-
-			// Render line numbers widget
-			frame.render_widget(
-				self.get_line_numbers_paragraph().block(
-					Block::new()
-						.fg(self.config.theme.app_fg)
-						.bg(self.config.theme.app_bg)
-						.borders(Borders::ALL),
-				),
-				layout[0],
-			);
-
-			// Render the editor widget
-			frame.render_widget(
-				self.get_paragraph().block(
-					Block::new()
-						.fg(config.theme.app_fg)
-						.bg(config.theme.app_bg)
-						.borders(Borders::ALL),
-				),
-				layout[1],
-			);
-		}
-
-		// Render the widgets for the EditorSpace and its line numbers
-		pub fn render_ui(&mut self, frame: &mut Frame, layout: Rc<[Rect]>) {
-			// Only initialize this if it hasn't been already
-			if !self.is_initialized {
-				// Initialize the editor's cursor, file length, and first text block
-				let _ = self.init_editor(
-					(layout[1].x as usize, layout[1].y as usize),
-					layout[1].width as usize,
-					layout[1].height as usize,
-				);
-			}
-
-			// Set the cursor position on screen
-			frame.set_cursor(
-				(self.cursor_position[0] + self.width.0 + 1) as u16,
-				(self.cursor_position[1] + self.height.0 + 1) as u16,
-			);
-
-			// If the editor is empty, render an empty widget
-			if self.is_empty() {
-				// Render an empty
-				self.render_empty_ui(layout, frame);
-			// Otherwise, render the text blocks in a widget
-			} else {
-				// Render the editor widget
-				self.render_full_ui(layout, frame);
-			}
-		}
-
 		// Check if the editor is empty (no blocks loaded in)
-		pub fn is_empty(&self) -> bool {
+		fn is_empty(&self) -> bool {
 			self.blocks.as_ref().unwrap().blocks_list.is_empty()
 		}
 
-		// Delete a highlighted selection of text
-		fn delete_selection(&mut self) {
-			// Start point of the selection (as an immutable tuple)
-			let start = (self.selection.start[0], self.selection.start[1]);
-			// End point of the selection (as an immutable tuple)
-			let end = (self.selection.end[0], self.selection.end[1]);
+		// Create the remaining line after deleting a selection of text
+		fn construct_remaining_line(
+			blocks: &mut Blocks,
+			start: (usize, usize),
+			end: (usize, usize),
+		) -> String {
+			// Get the text on the first line of the selection before the cursor
+			let before_selection = blocks
+				.get_some_line(start.1)
+				.unwrap()
+				.grapheme_indices(true)
+				.filter_map(|(idx, graph)| {
+					if idx < start.0 {
+						Some(String::from(graph))
+					} else {
+						None
+					}
+				})
+				.collect::<String>();
 
-			// Clear the selection
-			self.selection.is_empty = true;
+			// Get the text on the last line of the selection after the cursor
+			let after_selection = blocks
+				.get_some_line(end.1)
+				.unwrap()
+				.grapheme_indices(true)
+				.filter_map(|(idx, graph)| {
+					if idx >= end.0 {
+						Some(String::from(graph))
+					} else {
+						None
+					}
+				})
+				.collect::<String>();
 
-			// If the cursor is at the beginning of the selection
-			if (
-				self.index_position,
-				self.get_line_num(self.cursor_position[1]),
-			) == start
-			{
-				// Move to the last line of the selection
-				while self.get_line_num(self.cursor_position[1]) < end.1 {
-					key_functions::down_arrow(self);
+			before_selection + after_selection.as_str()
+		}
+
+		/*  Reset the position of the cursor after a selection deletion (if need be).
+		Also, reset the scroll offset (if need be). */
+		fn reset_cursor(&mut self, end: (usize, usize)) {
+			// Only reset cursor and scroll offset if at the end of the selection
+			if self.get_line_num(self.cursor_position[1]) == end.1 && self.text_position == end.0 {
+				// Reset scroll offset
+				self.scroll_offset = self.selection.original_scroll_offset;
+				// Reset the Blocks tracked location
+				self.blocks.as_mut().unwrap().curr_position =
+					self.selection.original_tracked_location;
+				// Reset the cursor's line number
+				self.cursor_position[1] = self.selection.original_cursor_position.1;
+				// Move to the beginning of the line
+				navigation_keys::home_key(self, true);
+				// Move to the correct horizontal position on the line
+				while self.cursor_position[0] < self.selection.original_cursor_position.0
+					&& key_functions::check_cursor_end_line(self)
+				{
+					navigation_keys::right_arrow(self, true);
 				}
-				// Move the horizontal position to the end horizontal position
-				key_functions::home_key(self, true);
-				while self.index_position < end.0 {
-					key_functions::right_arrow(self, true);
-				}
-			}
-			// Backspace until at the beginning of the selection
-			while self.index_position != start.0
-				|| self.get_line_num(self.cursor_position[1]) != start.1
-			{
-				key_functions::backspace(self);
 			}
 		}
 
-		// Get the key pressed
-		pub fn handle_input(&mut self) {
-			// Non-blocking read
-			if event::poll(Duration::from_millis(300)).unwrap() {
-				// Read input
-				match event::read().unwrap() {
-					// Return the character if only a key (without moodifier key) is pressed
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::NONE,
-						..
-					}) => {
-						// Return the key
-						match code {
-							// If normal character, insert that character
-							KeyCode::Char(code) => key_functions::char_key(self, code),
-							// If Enter was pressed, insert newline
-							KeyCode::Enter => key_functions::enter_key(self),
-							// If tab was pressed, insert tab character
-							KeyCode::Tab => key_functions::tab_key(self),
-							// If backspace was pressed, remove the previous character
-							KeyCode::Backspace => key_functions::backspace(self),
-							// If delete was pressed, remove the next character
-							KeyCode::Delete => key_functions::delete_key(self),
-							// Left arrow moves cursor left
-							KeyCode::Left => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Left arrow functionality
-								key_functions::left_arrow(self, true);
-							}
-							// Right arrow moves cursor right
-							KeyCode::Right => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Right arrow functionality
-								key_functions::right_arrow(self, true);
-							}
-							// Up arrow move cursor up one line
-							KeyCode::Up => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Up arrow functionality
-								key_functions::up_arrow(self);
-							}
-							// Down arrow move cursor down one line
-							KeyCode::Down => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Down arrow functionality
-								key_functions::down_arrow(self);
-							}
-							// Home button moves to beginning of line
-							KeyCode::Home => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Home key functionality
-								key_functions::home_key(self, true);
-							}
-							// End button move to end of line
-							KeyCode::End => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// End key functionality
-								key_functions::end_key(self, true);
-							}
-							// The Page Up key moves up one `height` of the editor widget
-							KeyCode::PageUp => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Move one page up
-								key_functions::page_up(self);
-							}
-							// The Page Down key moves down one `height` of the editor widget
-							KeyCode::PageDown => {
-								// Clear the highlighted selection of text
-								self.selection.is_empty = true;
-								// Move one page down
-								key_functions::page_down(self);
-							}
-							_ => (),
-						}
-					}
-
-					// Shift modifier key
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::SHIFT,
-						..
-					}) => {
-						match code {
-							// Uppercase characters
-							KeyCode::Char(code) => {
-								key_functions::char_key(self, code.to_ascii_uppercase())
-							}
-							// Right arrow highlight text to the right
-							KeyCode::Right => {
-								key_functions::highlight_selection::highlight_right(self)
-							}
-							// Left arrow highlight text to the left
-							KeyCode::Left => {
-								key_functions::highlight_selection::highlight_left(self)
-							}
-							// Up arrow highlights text upwards
-							KeyCode::Up => key_functions::highlight_selection::highlight_up(self),
-							// Down arrow highlights text downwards
-							KeyCode::Down => {
-								key_functions::highlight_selection::highlight_down(self)
-							}
-							// End key highlights to end of line
-							KeyCode::End => key_functions::highlight_selection::highlight_end(self),
-							// Home key highlights to beginning of line
-							KeyCode::Home => {
-								key_functions::highlight_selection::highlight_home(self)
-							}
-							// Highlight one page up
-							KeyCode::PageUp => {
-								key_functions::highlight_selection::highlight_page_up(self)
-							}
-							// Highlight one page down
-							KeyCode::PageDown => {
-								key_functions::highlight_selection::highlight_page_down(self)
-							}
-							_ => (),
-						}
-					}
-
-					// Control modified keys
-					Event::Key(KeyEvent {
-						code,
-						modifiers: KeyModifiers::CONTROL,
-						..
-					}) => {
-						match code {
-							// Save the frame to the file
-							KeyCode::Char('s') => key_functions::save_key_combo(self, false, ""),
-							// Break the loop to end the program
-							KeyCode::Char('q') => self.break_loop = true,
-							_ => (),
-						}
-					}
-
-					_ => (),
-				}
-			}
+		// Get the current state of the editor (to be added to the unredo stack)
+		fn get_unredo_state(&self) -> UnRedoState {
+			(
+				self.stored_position,
+				self.text_position,
+				self.cursor_position,
+				self.scroll_offset,
+				self.blocks.as_ref().unwrap().clone(),
+				self.selection.clone(),
+			)
 		}
 	}
 }

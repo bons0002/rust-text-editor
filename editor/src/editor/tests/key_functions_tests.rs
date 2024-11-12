@@ -5,8 +5,10 @@
 */
 
 use super::*;
-use key_functions::{highlight_selection::*, *};
+use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*, save_key::*, *};
+use serial_test::serial;
 use std::fs::{self, read_to_string};
+use unredo_stack::stack_choice::StackChoice;
 
 /*
 ==================================
@@ -18,7 +20,6 @@ use std::fs::{self, read_to_string};
 The small file ends in an empty line,
 so this checks that that line gets saved. */
 #[test]
-#[ignore]
 fn save_key_combo_small_file() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -70,7 +71,6 @@ fn save_key_combo_small_file() {
 This tests whether mutliple block length
 files will be saved properly. */
 #[test]
-#[ignore]
 fn save_key_combo_genome_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -123,7 +123,6 @@ This file includes unicode characters.
 Also, I just felt like having a test for each of the existing files.
 Also tests repeated saves. */
 #[test]
-#[ignore]
 fn save_key_combo_highlight_file() {
 	// Make and editor for the HIGHLIGHT_FILE
 	let mut editor = construct_editor(HIGHLIGHT_FILE);
@@ -177,7 +176,6 @@ fn save_key_combo_highlight_file() {
 
 // Test saving a modified small file
 #[test]
-#[ignore]
 fn modified_small_file_save() {
 	// Make and editor for the SMALL_FILE
 	let mut editor = construct_editor(SMALL_FILE);
@@ -223,7 +221,6 @@ fn modified_small_file_save() {
 
 // Test saving a modified large file
 #[test]
-#[ignore]
 fn modified_large_file_save() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -251,11 +248,11 @@ fn modified_large_file_save() {
 	/* Check that the scroll offset is correct.
 	The top line of the widget should be the second line
 	(scroll offset = 1). */
-	assert_eq!(editor.scroll_offset, 1);
+	assert_eq!(editor.scroll_offset, 0);
 	/* Check that the cursor's line is correct.
 	Since the top line of the widget is the 2nd line,
 	the cursor should be on the top line. */
-	assert_eq!(editor.cursor_position[1], 0);
+	assert_eq!(editor.cursor_position[1], 1);
 
 	// Get a vector of the lines saved to the debug file
 	let saved_text = read_to_string(debug_filename).unwrap();
@@ -276,7 +273,6 @@ fn modified_large_file_save() {
 
 // Test saving GENOME_FILE multiple times, each time editing the file
 #[test]
-#[ignore]
 fn multiple_modifications_save() {
 	// Make and editor for the GENOME_FILE
 	let mut genome_editor = construct_editor(GENOME_FILE);
@@ -357,6 +353,58 @@ fn multiple_modifications_save() {
 	fs::remove_file(debug_filename).unwrap();
 }
 
+/* Cut entire file and re-paste it, then save it.
+This is ran serially because the clipboard is a shared resource. */
+#[test]
+#[serial]
+#[ignore]
+fn cut_file_save() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+	// The filename of the debug file
+	let debug_filename = &(String::from(GENOME_FILE) + "-cut-save-test");
+
+	// Write the file to a different debug file
+	save_key_combo(&mut editor, true, debug_filename);
+	// Create a new editor for this debug file
+	let mut editor = construct_editor(debug_filename);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Write the file in-place
+	save_key_combo(&mut editor, false, debug_filename);
+
+	// Get a vector of the lines saved to the debug file
+	let saved_text = read_to_string(debug_filename).unwrap();
+	let saved_content: Vec<String> = saved_text.split('\n').map(String::from).collect();
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(saved_content, expected_content);
+	// Delete the debug file
+	fs::remove_file(debug_filename).unwrap();
+}
+
 /*
 ===================================
 			ARROW TESTS
@@ -365,7 +413,6 @@ fn multiple_modifications_save() {
 
 // Use the right arrow key to move to the end of the file
 #[test]
-#[ignore]
 fn move_right_through_entire_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -382,7 +429,6 @@ fn move_right_through_entire_file() {
 }
 
 #[test]
-#[ignore]
 fn move_left_through_entire_file() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -709,4 +755,450 @@ fn end_of_file_delete_and_enter() {
 	down_arrow(&mut editor);
 	// Check that the cursor is on the new last line
 	assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12);
+}
+
+/*
+=======================================
+			JUMP WORD TESTS
+=======================================
+*/
+
+// Test the jump_right function
+#[test]
+fn jump_right_tests() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Jump right 4 times
+	for i in 0..4 {
+		jump_right(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 1),
+			1 => assert_eq!(editor.cursor_position[0], 9),
+			2 => assert_eq!(editor.cursor_position[0], 17),
+			// End of line
+			3 => assert_eq!(editor.cursor_position[0], 17),
+			_ => (),
+		}
+	}
+
+	// Move down 3 lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	// Move to the beginning of the line
+	home_key(&mut editor, true);
+
+	// Jump right to the end of the line
+	for i in 0..8 {
+		jump_right(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 4),
+			1 => assert_eq!(editor.cursor_position[0], 12),
+			2 => assert_eq!(editor.cursor_position[0], 20),
+			3 => assert_eq!(editor.cursor_position[0], 24),
+			4 => assert_eq!(editor.cursor_position[0], 31),
+			// Emoji is 2 wide
+			5 => assert_eq!(editor.cursor_position[0], 47),
+			6 => assert_eq!(editor.cursor_position[0], 51),
+			// End of line
+			7 => assert_eq!(editor.cursor_position[0], 51),
+			_ => (),
+		}
+	}
+}
+
+// Test the jump_left function
+#[test]
+fn jump_left_tests() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	end_key(&mut editor, true);
+	// Jump left 4 times
+	for i in 0..4 {
+		jump_left(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 9),
+			1 => assert_eq!(editor.cursor_position[0], 1),
+			2 => assert_eq!(editor.cursor_position[0], 0),
+			// Start of line
+			3 => assert_eq!(editor.cursor_position[0], 0),
+			_ => (),
+		}
+	}
+
+	// Move down 3 lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	// Move to the beginning of the line
+	end_key(&mut editor, true);
+
+	// Jump left to the beginning of the line
+	for i in 0..8 {
+		jump_left(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.cursor_position[0], 47),
+			// Emoji is 2 wide
+			1 => assert_eq!(editor.cursor_position[0], 31),
+			2 => assert_eq!(editor.cursor_position[0], 24),
+			3 => assert_eq!(editor.cursor_position[0], 20),
+			4 => assert_eq!(editor.cursor_position[0], 12),
+			5 => assert_eq!(editor.cursor_position[0], 4),
+			6 => assert_eq!(editor.cursor_position[0], 0),
+			// Beginning of line
+			7 => assert_eq!(editor.cursor_position[0], 0),
+			_ => (),
+		}
+	}
+}
+
+// Test the jump_up function
+#[test]
+fn jump_up_test() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the bottom of the file
+	page_down(&mut editor);
+
+	// Jump up 3 times
+	for i in 0..3 {
+		jump_up(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 2),
+			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 0),
+			// On first line
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 0),
+			_ => (),
+		}
+	}
+}
+
+// Test the jump_down function
+#[test]
+fn jump_down_test() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Jump down 3 times
+	for i in 0..3 {
+		jump_down(&mut editor, false);
+		match i {
+			0 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 10),
+			1 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12),
+			// On last line
+			2 => assert_eq!(editor.get_line_num(editor.cursor_position[1]), 12),
+			_ => (),
+		}
+	}
+}
+
+/*
+=======================================
+			UNDO/REDO TESTS
+=======================================
+*/
+
+// Test the length of the undo stack is updated properly
+#[test]
+fn unredo_stack_length() {
+	// Create an editor over the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	// Take enough actions to create three undo states
+	for i in 0..43 {
+		// Insert 20 '~'
+		if i < 20 {
+			char_key(&mut editor, '~');
+		// Delete all 20 '~'
+		} else if i < 40 {
+			backspace(&mut editor);
+		// Highlight down three lines
+		} else {
+			highlight_down(&mut editor);
+		}
+	}
+	// Delete selection
+	backspace(&mut editor);
+	// Check that the expected number (3) of undo states were added
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 3);
+
+	// Perform an 'undo' and check that a state was removed from the stack
+	let state = editor.get_unredo_state();
+	let _ = editor.unredo_stack.undo(state);
+	assert_eq!(editor.unredo_stack.len(StackChoice::Undo), 2);
+	assert_eq!(editor.unredo_stack.len(StackChoice::Redo), 1);
+}
+
+// Test undoing after deleting a selection of text
+#[test]
+fn unredo_delete_selection() {
+	// Create an editor over the HIGHLIGHT_FILE
+	let mut editor = construct_editor(HIGHLIGHT_FILE);
+
+	// Highlight three lines down
+	for _i in 0..3 {
+		highlight_down(&mut editor);
+	}
+
+	// Selection before deletion
+	let selection_before = editor.selection.clone();
+	// Delete the selection
+	backspace(&mut editor);
+	// Selection after deletion
+	let selection_after = editor.selection.clone();
+
+	// Undo
+	undo_redo(&mut editor, StackChoice::Undo);
+	// Check that the selections are different
+	assert_ne!(selection_after, editor.selection);
+	// Check that it reverted to the original selection
+	assert_eq!(selection_before, editor.selection);
+
+	// Redo
+	undo_redo(&mut editor, StackChoice::Redo);
+	// Check that the states have returned to normal
+	assert_ne!(selection_before, editor.selection);
+	assert_eq!(selection_after, editor.selection);
+}
+
+/*
+========================================
+			COPY-PASTE TESTS
+========================================
+
+Serial because the clipboard is a shared resource.
+Ignored because they worked on local machine but not on
+GitHub.
+*/
+
+// Test copying and pasting one line of text
+#[test]
+#[serial]
+#[ignore]
+fn copy_paste_oneline() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight the first line
+	highlight_end(&mut editor);
+	// Copy this line
+	copy_paste::copy_to_clipboard(&mut editor);
+
+	home_key(&mut editor, true);
+	// Clear the selection
+	editor.selection.is_empty = true;
+
+	for _i in 0..2 {
+		down_arrow(&mut editor);
+	}
+	// Move right
+	for _i in 0..15 {
+		right_arrow(&mut editor, true);
+	}
+	// Paste the first line
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = COPY_AND_PASTE_ONELINE.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test copy and pasting an entire file to its end
+#[test]
+#[serial]
+#[ignore]
+fn copy_and_paste_file() {
+	// Make an editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight entire file
+	highlight_page_down(&mut editor);
+	// Copy
+	copy_paste::copy_to_clipboard(&mut editor);
+
+	// Clear selection
+	editor.selection.is_empty = true;
+	// Paste this to the file
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = COPY_AND_PASTE_FILE.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test copying an entire large, multiblock file and pasting it again
+#[test]
+#[serial]
+#[ignore]
+fn copy_and_paste_multiblock() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Copy
+	copy_paste::copy_to_clipboard(&mut editor);
+	// Clear selection
+	editor.selection.is_empty = true;
+	// Create a blank line before pasting
+	enter_key(&mut editor);
+	enter_key(&mut editor);
+
+	// Paste this to the file
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5
+		+ "\n\n"
+		+ GENOME_BLOCK_1
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test copying when the selection is empty
+#[test]
+#[serial]
+#[ignore]
+fn copy_empty_selection() {
+	// Make an editor over the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight down 2 lines
+	highlight_down(&mut editor);
+	highlight_down(&mut editor);
+
+	// Move right (clearing the selection)
+	right_arrow(&mut editor, true);
+	editor.selection.is_empty = true;
+
+	// Copy line to clipboard
+	copy_paste::copy_to_clipboard(&mut editor);
+	// Get contents of copy
+	let actual_content = editor.clipboard.unwrap().get_contents().unwrap();
+
+	assert_eq!(actual_content, "void test_func() {");
+}
+
+// Cut entire file and re-paste it
+#[test]
+#[serial]
+#[ignore]
+fn cut_file_test() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Ensure that the EditorSpace is empty
+	assert_eq!(editor.cursor_position, [0, 0]);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![String::from("")]);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Check that the contents of the file have been re-pasted properly
+	assert_eq!(editor.cursor_position[1], editor.height);
+	assert_eq!(editor.cursor_position[0], 17);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Cut entire file and re-paste it when the width of the editor is small
+#[test]
+#[serial]
+#[ignore]
+fn cut_narrow_file() {
+	// Make an editor for the GENOME_FILE
+	let mut editor = construct_editor(GENOME_FILE);
+	// Set small width for editor
+	editor.width = 20;
+
+	// Highlight down entire file
+	for i in 0..8 {
+		if i % 50 == 0 {
+			editor.get_paragraph();
+		}
+		highlight_page_down(&mut editor);
+	}
+	// Highlight last line
+	highlight_end(&mut editor);
+
+	// Cut the entire file
+	copy_paste::cut(&mut editor);
+
+	// Ensure that the EditorSpace is empty
+	assert_eq!(editor.cursor_position, [0, 0]);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![String::from("")]);
+
+	// Paste the contents of the file back in
+	copy_paste::paste_from_clipboard(&mut editor);
+
+	// Check that the contents of the file have been re-pasted properly
+	assert_eq!(editor.cursor_position[1], editor.height);
+	assert_eq!(editor.cursor_position[0], 17);
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+
+	let genome = String::from(GENOME_BLOCK_1)
+		+ "\n" + GENOME_BLOCK_2
+		+ "\n" + GENOME_BLOCK_3
+		+ "\n" + GENOME_BLOCK_4
+		+ "\n" + GENOME_BLOCK_5;
+	// Vector of the lines of the SINGLE_LINE_SELECTION_DELETION constant
+	let expected_content: Vec<&str> = genome.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
 }

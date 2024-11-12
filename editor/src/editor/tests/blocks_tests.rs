@@ -4,7 +4,7 @@
 ==========================================================
 */
 
-use key_functions::{backspace, delete_key, down_arrow, end_key, enter_key, home_key, up_arrow};
+use key_functions::{editing_keys::*, navigation_keys::*};
 
 use super::*;
 
@@ -209,7 +209,6 @@ fn modified_blocks_length() {
 
 // Test deleting all lines of a file starting from the end
 #[test]
-#[ignore]
 fn end_of_file_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -242,7 +241,6 @@ fn end_of_file_deletion() {
 
 // Test deleting all lines of a file starting from the beginning
 #[test]
-#[ignore]
 fn beginning_of_file_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);

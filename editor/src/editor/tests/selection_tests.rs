@@ -4,14 +4,7 @@
 =================================================
 */
 
-use key_functions::{
-	backspace, delete_key, down_arrow, end_key,
-	highlight_selection::{
-		highlight_down, highlight_end, highlight_home, highlight_page_down, highlight_page_up,
-		highlight_right, highlight_up,
-	},
-	page_down, right_arrow,
-};
+use key_functions::{editing_keys::*, highlight_keys::*, navigation_keys::*};
 
 use super::*;
 
@@ -76,7 +69,6 @@ fn mutli_line_selection_deletion() {
 
 // Test deleting a selection over mutliple Blocks (from front to back)
 #[test]
-#[ignore]
 fn multi_block_selection_deletion_front_to_back() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -105,7 +97,6 @@ fn multi_block_selection_deletion_front_to_back() {
 
 // Test deleting a selection over mutliple Blocks (from back to front)
 #[test]
-#[ignore]
 fn multi_block_selection_deletion_back_to_front() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -144,7 +135,6 @@ fn multi_block_selection_deletion_back_to_front() {
 
 // Test repeatedly deleting selections from the file
 #[test]
-#[ignore]
 fn repeated_selection_deletion() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -178,7 +168,6 @@ fn repeated_selection_deletion() {
 
 // Test highlighting with the page down key
 #[test]
-#[ignore]
 fn page_down_selection() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -224,7 +213,6 @@ fn page_down_undo_selection() {
 
 // Test highlighting with the page up key
 #[test]
-#[ignore]
 fn page_up_selection() {
 	// Make and editor for the GENOME_FILE
 	let mut editor = construct_editor(GENOME_FILE);
@@ -320,4 +308,76 @@ fn end_of_line_upward_deletion() {
 	let expected_content: Vec<&str> = END_OF_LINE_DELETION.split('\n').collect();
 
 	assert_eq!(actual_content, expected_content);
+}
+
+// Test deleting a selection that was highlighted with jump_right and jump_left
+#[test]
+fn jump_right_left_selection() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight the entire line
+	for _i in 0..4 {
+		jump_right(&mut editor, true);
+	}
+	// Delete the selection
+	backspace(&mut editor);
+
+	// Move down 3 lines
+	for _i in 0..3 {
+		down_arrow(&mut editor);
+	}
+	// Move to the end of the line
+	end_key(&mut editor, true);
+	// Highlight the entire line
+	for _i in 0..8 {
+		jump_left(&mut editor, true);
+	}
+	// Delete the selection
+	backspace(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	// What the contents should be
+	let expected_content: Vec<&str> = JUMP_DELETIONS.split('\n').collect();
+
+	assert_eq!(actual_content, expected_content);
+}
+
+// Test highlighting with the jump_up function
+#[test]
+fn jump_up_selection() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+	// Move to the bottom of the file
+	page_down(&mut editor);
+
+	// Highlight the entire file
+	for _i in 0..3 {
+		jump_up(&mut editor, true);
+	}
+	// Delete the entire file
+	backspace(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![""]);
+}
+
+// Test highlighting with the jump_down function
+#[test]
+fn jump_down_selection() {
+	// Make and editor for the SMALL_FILE
+	let mut editor = construct_editor(SMALL_FILE);
+
+	// Highlight the entire file
+	for _i in 0..3 {
+		jump_down(&mut editor, true);
+	}
+	// Delete the entire file
+	backspace(&mut editor);
+
+	// The experimental contents of the Blocks
+	let actual_content = get_content(editor.blocks.as_ref().unwrap().clone());
+	assert_eq!(actual_content, vec![""]);
 }

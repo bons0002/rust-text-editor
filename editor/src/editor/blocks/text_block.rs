@@ -1,16 +1,14 @@
 use super::*;
 
-use std::{
-	io::{Error, Read, Seek, SeekFrom},
-	str,
-};
+use core::str;
+use std::io::{Error, Read, Seek, SeekFrom};
 
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 // Number of bytes in a block of text (5 KiB)
 pub const BLOCK_SIZE: u64 = 5120;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TextBlock {
 	// ID number of the current block
 	pub block_num: usize,
@@ -23,102 +21,6 @@ pub struct TextBlock {
 }
 
 impl TextBlock {
-	/* Parse a buffer of bytes from the text file to
-	a vector of lines of text (as Strings). */
-	fn parse_content(
-		editor: &mut EditorSpace,
-		block_num: usize,
-		buffer: &mut [u8; BLOCK_SIZE as usize],
-	) -> Result<Vec<String>, Error> {
-		// Move to the position within the file for this block
-		let _seek = editor
-			.file
-			.seek(SeekFrom::Start((block_num as u64) * BLOCK_SIZE))?;
-
-		// Read in bytes
-		let num_bytes = editor.file.read(buffer)?;
-
-		/* Parse bytes to String vector (with newlines intact)
-		and return it. */
-		Ok(str::from_utf8(&buffer[..num_bytes])
-			.unwrap()
-			.split_inclusive('\n')
-			.map(String::from)
-			.collect())
-	}
-
-	/* Complete the first line of this block if the previous
-	block doens't end in a newline (current first line is only
-	part of a line). */
-	fn fix_first_line(
-		editor: &mut EditorSpace,
-		buffer: &mut [u8; BLOCK_SIZE as usize],
-		block_num: usize,
-		content: &mut [String],
-	) -> Result<usize, Error> {
-		// Move to the position within the file for this block
-		let _seek = editor
-			.file
-			.seek(SeekFrom::Start(((block_num - 1) as u64) * BLOCK_SIZE))?;
-		// Read in bytes
-		let num_bytes = editor.file.read(buffer)?;
-		// Parse bytes to String vector (with newlines intact)
-		let prev_block_content = String::from(str::from_utf8(&buffer[..num_bytes]).unwrap());
-		// Check if the previous block ends in a "complete" line
-		let prev_newline = prev_block_content.ends_with('\n');
-		// If it doesn't end in a newline, fix the first line of this block
-		if !prev_newline {
-			// The starting index of the last line of the previous block
-			let last_line_start = prev_block_content.match_indices('\n').last().unwrap().0 + 1;
-			// Construct a "complete" line
-			let line1 = String::from(&prev_block_content[last_line_start..]) + content[0].as_str();
-			// Set the first line of the block to this "fixed" first line
-			content[0] = line1;
-		}
-
-		Ok(0)
-	}
-
-	// Get the length (in lines) of the current block
-	fn calc_len(&self) -> usize {
-		self.content.len()
-	}
-
-	// Create a new, incomplete block from the given content vector
-	fn construct_block(
-		ends_with_newline: bool,
-		block_num: usize,
-		max_blocks: usize,
-		content: &mut Vec<String>,
-	) -> TextBlock {
-		// If the last line is incomplete, remove it
-		if !ends_with_newline && block_num < max_blocks - 1 {
-			content.pop();
-		}
-		// Push a blank new line if the last block ends in a newline char
-		if ends_with_newline && block_num == max_blocks - 1 {
-			content.push(String::from(""));
-		}
-		// Trim the newlines
-		let content = content
-			.into_par_iter()
-			.map(|line| String::from(line.trim_end()))
-			.collect();
-		// Create and return the block
-		let mut block = TextBlock {
-			block_num,
-			content,
-			// Can't be modified if new
-			is_modified: false,
-			len: 0,
-		};
-		// Calculate the length of the block
-		block.len = block.calc_len();
-
-		// Return the block
-		block
-	}
-
 	/* Create a new block.
 	This function is disgustingly long. */
 	pub fn new(
@@ -128,7 +30,6 @@ impl TextBlock {
 	) -> Result<Self, Error> {
 		// Buffer that the bytes of the file are read into
 		let mut buffer = [0; BLOCK_SIZE as usize];
-
 		// Get the lines of text from the file
 		let mut content = Self::parse_content(editor, block_num, &mut buffer)?;
 
@@ -137,7 +38,6 @@ impl TextBlock {
 			// Fix the first line of the block if necessary
 			Self::fix_first_line(editor, &mut buffer, block_num, &mut content)?;
 		}
-
 		// Check if the last line ends with a newline
 		let ends_with_newline = match content.last() {
 			Some(line) => line.ends_with('\n'),
@@ -172,5 +72,123 @@ impl TextBlock {
 
 		// Return the line number
 		Ok(total_length)
+	}
+
+	/* Parse a buffer of bytes from the text file to
+	a vector of lines of text (as Strings). */
+	fn parse_content(
+		editor: &mut EditorSpace,
+		block_num: usize,
+		buffer: &mut [u8; BLOCK_SIZE as usize],
+	) -> Result<Vec<String>, Error> {
+		// Move to the position within the file for this block
+		let _seek = editor
+			.file
+			.seek(SeekFrom::Start((block_num as u64) * BLOCK_SIZE))?;
+
+		// Read in bytes
+		let num_bytes = editor.file.read(buffer)?;
+
+		// Parse bytes to String vector (with newlines intact)
+		let text: &str;
+		/* The TextBlock could begin or end in the middle of a unicode character,
+		so the utf8 validity check needs to not be used, which is unsafe. */
+		unsafe {
+			text = str::from_utf8_unchecked(&buffer[..num_bytes]);
+		}
+		Ok(text.split_inclusive('\n').map(String::from).collect())
+	}
+
+	/* Complete the first line of this block if the previous
+	block doens't end in a newline (current first line is only
+	part of a line). */
+	fn fix_first_line(
+		editor: &mut EditorSpace,
+		buffer: &mut [u8; BLOCK_SIZE as usize],
+		block_num: usize,
+		content: &mut [String],
+	) -> Result<usize, Error> {
+		// Move to the position within the file for this block
+		let _seek = editor
+			.file
+			.seek(SeekFrom::Start(((block_num - 1) as u64) * BLOCK_SIZE))?;
+		// Read in bytes
+		let num_bytes = editor.file.read(buffer)?;
+		// Parse bytes to String vector (with newlines intact)
+		let prev_block_content: String;
+		/* The content could begin or end in the middle of a unicode character,
+		so the utf8 validity check needs to not be used, which is unsafe. */
+		unsafe {
+			prev_block_content = String::from(str::from_utf8_unchecked(&buffer[..num_bytes]));
+		}
+
+		// Check if the previous block ends in a "complete" line
+		let prev_newline = prev_block_content.ends_with('\n');
+		// If it doesn't end in a newline, fix the first line of this block
+		if !prev_newline {
+			// The starting index of the last line of the previous block
+			let last_line_start = prev_block_content.match_indices('\n').last().unwrap().0 + 1;
+			// Construct a "complete" line
+			let line1 = String::from(&prev_block_content[last_line_start..]) + content[0].as_str();
+			// Set the first line of the block to this "fixed" first line
+			content[0] = line1;
+		}
+
+		Ok(0)
+	}
+
+	// Get the length (in lines) of the current block
+	fn calc_len(&self) -> usize {
+		self.content.len()
+	}
+
+	// Create a new, incomplete block from the given content vector
+	fn construct_block(
+		ends_with_newline: bool,
+		block_num: usize,
+		max_blocks: usize,
+		content: &mut Vec<String>,
+	) -> TextBlock {
+		// If the last line is incomplete, remove it
+		if !ends_with_newline && block_num < max_blocks - 1 {
+			content.pop();
+		}
+		// Push a blank new line if the last block ends in a newline char
+		if ends_with_newline && (max_blocks == 0 || block_num == max_blocks - 1) {
+			content.push(String::from(""));
+		}
+		// Trim the newlines
+		let content = content
+			.into_par_iter()
+			.map(|line| String::from(line.trim_end_matches('\n')))
+			.collect();
+		// Create and return the block
+		let mut block = TextBlock {
+			block_num,
+			content,
+			// Can't be modified if new
+			is_modified: false,
+			len: 0,
+		};
+		// Calculate the length of the block
+		block.len = block.calc_len();
+
+		// Return the block
+		block
+	}
+}
+
+impl PartialEq for TextBlock {
+	fn eq(&self, other: &Self) -> bool {
+		// If any of the fields of the TextBlocks don't align, return false
+		if (self.block_num != other.block_num)
+			|| (self.content != other.content)
+			|| (self.is_modified != other.is_modified)
+			|| (self.len != other.len)
+		{
+			return false;
+		}
+		// Otherwise, return true
+		true
 	}
 }
