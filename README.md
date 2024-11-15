@@ -30,10 +30,13 @@ Currently, the only way to open a file is by passing the file path as a runtime 
 
 Full funtionality is dependent on the terminal emulator:
 
-* `Alacritty` and `Konsole` have full functionality
-* `Terminator` and `Kitty` work, but keybinds requiring multiple modifier keys don't work (i.e. highlighting while jumping using `Shift + Ctrl`)
-* `Powershell` on Windows has odd interactions with unicode characters but works for the most part. Specifically, pasting text with unicode characters will omit the unicode characters.
+* `Alacritty`, `Kitty`, and `Konsole` have full functionality.
+    * Note: `Kitty` by default uses the `Shift + Ctrl` for its modifier key, so they can't be used together in this app unless rebound.
+    * `Kitty Keyboard Protocol` must be implemented by the terminal emulator in order to use multiple modifiers at once.
+* `Terminator` works but keybinds requiring multiple modifier keys don't work (i.e. highlighting while jumping using `Shift + Ctrl`).
+* `Powershell` on Windows has odd interactions with unicode characters but works for the most part.
+    * Specifically, pasting text with unicode characters will omit the unicode characters.
 * `xterm` works for the most part. `Shift + PgUp/PgDn` doesn't work though.
-* `tty`'s work with limited functionality
+* `tty`'s work with limited functionality.
 
 Terminal multiplexers such as `tmux` and `screen` can cause weird interactions.
